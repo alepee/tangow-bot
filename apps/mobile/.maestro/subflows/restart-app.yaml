@@ -1,0 +1,10 @@
+appId: com.romainjeff.tangow
+---
+# Each stacked thread keeps a live connection open; past six, iOS cancels new requests
+# ("FetchRequestCanceledException"). Restarting on the saved session empties the stack.
+- launchApp:
+    permissions:
+      notifications: deny
+- extendedWaitUntil:
+    visible: "Researcher.*"
+    timeout: 30000

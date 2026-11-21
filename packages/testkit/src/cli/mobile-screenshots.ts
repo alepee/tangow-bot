@@ -76,6 +76,7 @@ async function main() {
     port: API_PORT,
   });
   const deviceControl = startDeviceControlServer();
+  disableIosPasswordSaving();
 
   try {
     await waitForHealth(`${HOST_API_URL}/health`, 15_000);
@@ -138,6 +139,20 @@ async function main() {
   }
 }
 
+/**
+ * iOS offers to save the fixture password after sign-in, in an alert Maestro often cannot see,
+ * so its "Not Now" tap went through to the inbox. Without a booted simulator this is an Android run.
+ */
+function disableIosPasswordSaving() {
+  if (process.platform !== "darwin") return;
+  const setting = ["com.apple.WebUI", "AutoFillPasswords", "-bool", "NO"];
+  try {
+    execFileSync("xcrun", ["simctl", "spawn", "booted", "defaults", "write", ...setting], {
+      stdio: "ignore",
+    });
+  } catch {}
+}
+
 /** Maestro host-side helper: expand the Android shade without flaky status-bar swipes. */
 function startDeviceControlServer(): Server {
   const server = createServer((req, res) => {
@@ -187,6 +202,13 @@ function configureEnvironment() {
 
 async function seedFixture(app: App, prisma: PrismaClient) {
   const cookie = await signup(app);
+  // A connected model, so the models screen can switch from Auto to a fixed model.
+  await rpc(app, cookie, "models/connect", {
+    provider: "scripted",
+    apiKey: "fake-scripted-key",
+    modelId: "scripted",
+    label: "Scripted",
+  });
   const researcher = await rpc<{ id: string }>(app, cookie, "bots/create", {
     name: "Researcher",
     title: "Product research",
@@ -194,6 +216,8 @@ async function seedFixture(app: App, prisma: PrismaClient) {
     instructions: "Find evidence and summarize it clearly.",
     notifyOnFinish: true,
   });
+  // Up already: on iOS, booting it from a link opened over the avatar sheet leaves its screen blank.
+  await rpc(app, cookie, "computer/boot", { botId: researcher.id });
   await prisma.volumeSkill.create({
     data: {
       botId: researcher.id,
