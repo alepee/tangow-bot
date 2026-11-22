@@ -505,6 +505,9 @@ function Thread() {
   const [snap, setSnap] = useState<MobileSnapshot | null>(null);
   const activeThreadId = useRef<string | undefined>(undefined);
   const [draft, setDraft] = useState("");
+  /** The draft as the field holds it, which a selection event may report before a re-render. */
+  const latestDraft = useRef(draft);
+  latestDraft.current = draft;
   const [composerFocused, setComposerFocused] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   /** The `@query` being typed: where its `@` sits, and the caret after it. */
@@ -1385,11 +1388,16 @@ function Thread() {
         block.kind === "image" || block.kind === "file" ? [block.artifactId] : [],
       ),
     );
-    setDraft(
-      message.blocks
-        .flatMap((block) => (block.kind === "text" && block.text ? [block.text] : []))
-        .join("\n"),
-    );
+    const text = message.blocks
+      .flatMap((block) => (block.kind === "text" && block.text ? [block.text] : []))
+      .join("\n");
+    setDraft(text);
+    // Only what the edited message still names stays picked.
+    setSelectedMentions(mentionsInDraft(text, selectedMentions));
+    setSelectedSkill(skillInDraft(text, selectedSkill));
+    setMentionQuery(null);
+    setMentionRange(null);
+    setSlashQuery(null);
   }
 
   // An iOS multiline field set to "" from JS keeps the height of its last text, so a
@@ -1406,6 +1414,7 @@ function Thread() {
   function updateDraft(value: string) {
     const caret = caretAfterEdit(draft, value);
     setDraft(value);
+    latestDraft.current = value;
     const mentions = mentionsInDraft(value, selectedMentions);
     if (mentions.length !== selectedMentions.length) setSelectedMentions(mentions);
     const skill = skillInDraft(value, selectedSkill);
@@ -1415,6 +1424,14 @@ function Thread() {
     setMentionRange(mention ? { start: mention.start, caret } : null);
     const slashMatch = skill === null ? /^\/([^\n]*)$/.exec(value) : null;
     setSlashQuery(slashMatch ? (slashMatch[1] ?? "") : null);
+  }
+
+  /** Moving the caret moves the `@` picker with it: it shows for a query right before the caret. */
+  function trackSelection({ start, end }: { start: number; end: number }) {
+    const mention =
+      start === end ? mentionQueryAt(latestDraft.current, start, selectedMentions) : null;
+    setMentionQuery(mention?.query ?? null);
+    setMentionRange(mention ? { start: mention.start, caret: start } : null);
   }
 
   function placeCaret(caret: number) {
@@ -1481,7 +1498,7 @@ function Thread() {
   }
 
   function serializeComposerPromptText(): string {
-    return serializeComposerPrompt(draft, selectedSkill);
+    return serializeComposerPrompt(draft, skillInDraft(draft, selectedSkill));
   }
 
   function runSlashAction(action: SlashActionId) {
@@ -1516,7 +1533,7 @@ function Thread() {
     const attachments = attachmentsForThread(pendingAttachments, originThreadKey);
     const plan = resolveComposerSendPlan({
       text: serializeComposerPromptText(),
-      mentions: selectedMentions,
+      mentions: mentionsInDraft(draft, selectedMentions),
       hasAttachments: attachments.length > 0 || rewindArtifactIds.length > 0,
     });
     if (plan.isNoOp) return;
@@ -3148,6 +3165,7 @@ function Thread() {
                 <TextInput
                   ref={textInputRef}
                   onChangeText={updateDraft}
+                  onSelectionChange={(event) => trackSelection(event.nativeEvent.selection)}
                   accessibilityLabel={composerName(t, displayName, answerName)}
                   placeholder={
                     displayName || answerName

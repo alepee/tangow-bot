@@ -28,17 +28,13 @@ export function useComposerPickers({
   chatSettings?: boolean;
 }) {
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
-  /** Where the `@` of the query being typed sits in the draft. */
-  const [mentionStart, setMentionStart] = useState<number | null>(null);
   const [mentionHighlightIndex, setMentionHighlightIndex] = useState(0);
   const [slashQuery, setSlashQuery] = useState<string | null>(null);
   const mentionListboxId = useId();
 
   /** Reads the draft for an `@query` right before the caret, unless it is a picked token. */
   function trackCaret(value: string, caret: number, picked: readonly ComposerMention[]) {
-    const mention = mentionQueryAt(value, caret, picked);
-    setMentionQuery(mention?.query ?? null);
-    setMentionStart(mention?.start ?? null);
+    setMentionQuery(mentionQueryAt(value, caret, picked)?.query ?? null);
   }
 
   /** Reads the edited draft for an `@query` at the caret or a leading `/query`. */
@@ -117,7 +113,6 @@ export function useComposerPickers({
   return {
     trackDraft,
     trackCaret,
-    mentionStart,
     closeMentions,
     closeSlash,
     closeAll,

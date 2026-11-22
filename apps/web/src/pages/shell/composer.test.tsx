@@ -538,3 +538,48 @@ describe("Composer slash actions", () => {
     }
   });
 });
+
+describe("Composer tokens", () => {
+  const ivy = { kind: "bot", id: "ivy", name: "Ivy" };
+  const review = { id: "review", name: "review", description: "Review a change" };
+
+  it("sends only the tokens a rewound draft still holds", async () => {
+    vi.stubGlobal("matchMedia", () => ({ matches: true }));
+    const onSend = vi.fn(async () => {});
+    const props = baseProps({ onSend, mentionTargets: [ivy], agentSkills: [review] });
+    const { container, root } = mount(props);
+    const field = draftTextarea(container);
+    act(() => typeInto(field, "/"));
+    act(() => button(container, "Skill review").click());
+    act(() => typeInto(field, "/review @iv"));
+    act(() => button(container, "@Ivy").click());
+    expect(field.value).toBe("/review @Ivy ");
+
+    act(() => {
+      root.render(
+        <Composer
+          {...(props as unknown as ComponentProps<typeof Composer>)}
+          rewindDraft={{ key: "r1", text: "earlier message" }}
+        />,
+      );
+    });
+    await act(async () => button(container, "Send").click());
+    expect(onSend).toHaveBeenCalledWith("earlier message", [], undefined);
+    unmount(root, container);
+  });
+
+  it("closes the @ picker while text is selected", () => {
+    const { container, root } = mount({ mentionTargets: [ivy] });
+    const field = draftTextarea(container);
+    act(() => typeInto(field, "answer this @iv"));
+    expect(queryButton(container, "@Ivy")).toBeTruthy();
+
+    act(() => {
+      field.focus();
+      field.setSelectionRange(0, field.value.length);
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+    expect(queryButton(container, "@Ivy")).toBeNull();
+    unmount(root, container);
+  });
+});

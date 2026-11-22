@@ -5,6 +5,7 @@ import {
   composerSegments,
   insertMentionToken,
   mentionChipKey,
+  mentionQueryAt,
   mentionsInDraft,
   resolveMentionPickerKey,
   serializeComposerPrompt,
@@ -143,6 +144,9 @@ export const Composer = memo(function Composer({
   useEffect(() => {
     if (!rewindDraftKey) return;
     setDraft(rewindDraftText);
+    // Only what the edited message still names stays picked.
+    setSelectedMentions((current) => mentionsInDraft(rewindDraftText, current));
+    setSelectedSkill((current) => skillInDraft(rewindDraftText, current));
     if (rewindDraftLinkPreviewRemoved) linkPreview.remove();
     textareaRef.current?.focus();
   }, [rewindDraftKey, rewindDraftText, rewindDraftLinkPreviewRemoved, linkPreview]);
@@ -245,10 +249,14 @@ export const Composer = memo(function Composer({
   }
 
   function insertMention(mention: ComposerMention) {
-    const caret = textareaRef.current?.selectionStart ?? draft.length;
-    const next = insertMentionToken(draft, pickers.mentionStart ?? caret, caret, mention.name);
-    setDraft(next.draft);
+    const textarea = textareaRef.current;
+    const caret = textarea?.selectionStart ?? draft.length;
+    const collapsed = !textarea || caret === textarea.selectionEnd;
+    const query = collapsed ? mentionQueryAt(draft, caret, selectedMentions) : null;
     pickers.closeMentions();
+    if (!query) return;
+    const next = insertMentionToken(draft, query.start, caret, mention.name);
+    setDraft(next.draft);
     setSelectedMentions((current) =>
       current.some((selected) => mentionChipKey(selected) === mentionChipKey(mention))
         ? current
@@ -301,11 +309,11 @@ export const Composer = memo(function Composer({
 
   function send() {
     if (!canSend || sending || disabled) return;
-    const text = serializeComposerPrompt(draft, selectedSkill);
+    const text = serializeComposerPrompt(draft, skillInDraft(draft, selectedSkill));
+    const mentions = mentionsInDraft(draft, selectedMentions);
     setDraft("");
     pickers.closeAll();
     setSelectedSkill(null);
-    const mentions = selectedMentions;
     setSelectedMentions([]);
     const withoutPreview = linkPreview.isRemoved();
     linkPreview.reset();
@@ -508,6 +516,8 @@ export const Composer = memo(function Composer({
                 setSelection([selectionStart, selectionEnd]);
                 if (selectionStart === selectionEnd) {
                   pickers.trackCaret(draft, selectionStart, selectedMentions);
+                } else {
+                  pickers.closeMentions();
                 }
               }}
               onScroll={syncMirror}
