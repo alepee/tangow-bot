@@ -272,7 +272,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
             >
               {verificationSent ? <Trans>Sent</Trans> : <Trans>Send again</Trans>}
             </Button>
-            <Link to="/sign-up">
+            <Link to="/sign-up" onClick={() => setError(null)}>
               <Trans>Use another email</Trans>
             </Link>
           </>

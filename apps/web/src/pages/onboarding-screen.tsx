@@ -4,7 +4,8 @@ import plateau01800 from "@tangow/avatars/onboarding/plateau/p01-800.webp";
 import plateau011600 from "@tangow/avatars/onboarding/plateau/p01-1600.webp";
 import plateau04800 from "@tangow/avatars/onboarding/plateau/p04-800.webp";
 import plateau041600 from "@tangow/avatars/onboarding/plateau/p04-1600.webp";
-import { OnboardingFrame, type OnboardingFrameProps } from "@tangow/ui-web";
+import type { OnboardingFrameProps } from "@tangow/ui-web";
+import { OnboardingFrame } from "@tangow/ui-web";
 import { desktopBridge } from "../lib/desktop";
 import { WindowChrome } from "./WindowChrome";
 
