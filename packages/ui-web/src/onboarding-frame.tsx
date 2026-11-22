@@ -2,7 +2,6 @@ import { wordmark } from "@tangow/avatars/brand/wordmark";
 import type { FormEvent, ReactNode, RefObject } from "react";
 import { useEffect, useRef } from "react";
 
-/** Must match the phone breakpoint in `onboarding.css`. */
 const PHONE_MAX_WIDTH = 860;
 
 export type OnboardingFrameProps = {

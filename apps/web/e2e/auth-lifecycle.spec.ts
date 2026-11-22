@@ -93,7 +93,6 @@ test("logout protects bot deep links and sign-in restores the session", async ({
     "current-password",
   );
   await expect(page.getByRole("img", { name: "Tangow" })).toBeVisible();
-  // The desktop app waits for this field before showing its window.
   await expect(page.locator('form input[type="email"]')).toBeVisible();
   await expect(page.locator('[data-slot="onboarding-frame"] img')).toHaveJSProperty(
     "complete",
@@ -108,11 +107,7 @@ test("logout protects bot deep links and sign-in restores the session", async ({
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password", { exact: true }).fill("wrong-password12");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(
-    page
-      .locator("form")
-      .getByText(/wrong email or password/i),
-  ).toBeVisible();
+  await expect(page.locator("form").getByText(/wrong email or password/i)).toBeVisible();
   await expect(page).toHaveURL(/\/sign-in$/);
   await captureScreenshot(page, testInfo, "39-invalid-credentials");
 

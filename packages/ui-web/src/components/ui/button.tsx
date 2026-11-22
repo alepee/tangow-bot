@@ -53,7 +53,6 @@ const buttonVariants = cva(
         roundIconSm: "rk-press-round size-hover-icon",
         stack: "rk-press h-mobile-stack gap-2",
         call: "rk-press-round size-call-button",
-        /** The full-width main button of an onboarding step. */
         full: "rk-press h-primary-button w-full gap-2 rounded-full text-question",
       },
     },

@@ -20,15 +20,11 @@
     transition-timing-function: var(--motion-ease);
   }
 
-  /* The name holds the empty field's place; a select always has a value, so it never rests. */
   .rk-floating-field:has(> input:not(:autofill)) > label:not([data-filled], [data-focused]) {
     top: calc(var(--field-h) / 2 - 8px);
     font-size: var(--type-body-size);
   }
 
-  /* Every step is a box as tall as the tallest one (sign up: title, three fields,
-     actions), with the actions anchored at its foot: the title starts and the main
-     button lands at the same place on every step. */
   .rk-onboarding {
     --gap: 16px;
     --title-h: calc(var(--type-large-title-size) * var(--type-large-title-leading) + 8px);
@@ -119,7 +115,6 @@
     margin-top: 8px;
   }
 
-  /* A link under the main button tucks into the button's margin: its tap target is taller than its text. */
   .rk-onboarding-actions > :first-child + a {
     margin-top: -8px;
   }
@@ -149,9 +144,6 @@
     object-fit: cover;
   }
 
-  /* Phone: the logo row, then the scene card at one size and 10:9 framing on every
-     step (smaller on a short screen, never cropped tighter), then the step box down
-     to the bottom of the screen with the actions under the thumb. */
   @media (max-width: 860px) {
     .rk-onboarding {
       --pad: 24px;
@@ -171,7 +163,6 @@
         var(--gap) +
         var(--actions-h)
       );
-      /* The logo row above the card, the step box and the pane's padding below it. */
       --around-stage: calc(
         var(--size-logo-top) +
         var(--size-logo) +
@@ -225,13 +216,11 @@
       margin-top: var(--lift);
     }
 
-    /* While typing only the main button shows, just above the keyboard; the links keep their place. */
     .rk-onboarding[data-keyboard] .rk-onboarding-actions > :first-child {
       position: fixed;
       inset-inline: 24px;
       bottom: calc(var(--kb) + 12px);
       z-index: 5;
-      /* `max-width`, because the button's own `w-full` utility outranks this layer. */
       max-width: calc(100% - 48px);
       margin: 0;
     }
@@ -241,7 +230,6 @@
     }
   }
 
-  /* Short phone screens: a tighter form so the scene card keeps a useful size. */
   @media (max-width: 860px) and (max-height: 760px) {
     .rk-onboarding {
       --field-h: var(--size-field-short);
