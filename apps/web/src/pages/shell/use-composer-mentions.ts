@@ -12,7 +12,15 @@ type MentionConnector = {
 };
 
 /** Everything the composer's `@` can name: bots, groups, every bot's routines and connectors. */
-export function useComposerMentions({ bots, groups, groupId, inGroup, initialBotsLoaded }: Roster) {
+export function useComposerMentions({
+  active,
+  bots,
+  groups,
+  groupId,
+  inGroup,
+  initialBotsLoaded,
+}: Roster) {
+  const currentBotId = inGroup ? null : (active?.id ?? null);
   const [mentionRoutines, setMentionRoutines] = useState<Array<Routine & { botName?: string }>>([]);
   const [mentionConnectors, setMentionConnectors] = useState<MentionConnector[]>([]);
   const mentionBotsKey = useMemo(
@@ -88,12 +96,17 @@ export function useComposerMentions({ bots, groups, groupId, inGroup, initialBot
         query: "",
         includeEveryone: inGroup,
         currentGroupId: groupId,
+        currentBotId,
         bots: bots.map((bot) => ({
           id: bot.id,
           name: bot.name,
           avatarCharacter: bot.avatarCharacter,
         })),
-        groups: groups.map((group) => ({ id: group.id, name: group.name })),
+        groups: groups.map((group) => ({
+          id: group.id,
+          name: group.name,
+          botIds: group.members.map((member) => member.botId),
+        })),
         routines: mentionRoutines.map((routine) => ({
           id: routine.id,
           name: routine.name,
@@ -103,6 +116,6 @@ export function useComposerMentions({ bots, groups, groupId, inGroup, initialBot
         })),
         connectors: mentionConnectors,
       }),
-    [bots, groupId, groups, inGroup, mentionConnectors, mentionRoutines],
+    [bots, currentBotId, groupId, groups, inGroup, mentionConnectors, mentionRoutines],
   );
 }

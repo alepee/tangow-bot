@@ -131,7 +131,6 @@ export function ShellPage() {
     sync,
     thread,
     draft,
-    navigate,
     flushPendingBrowserNotifications: notifications.flushPendingBrowserNotifications,
     cancelFocusPromptFor,
   });

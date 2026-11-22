@@ -635,6 +635,7 @@ function Thread() {
         query: "",
         includeEveryone: inGroup,
         currentGroupId: groupId,
+        currentBotId: groupId ? null : botId,
         bots: mentionBots.map((bot) => ({
           id: bot.id,
           name: bot.name,
@@ -644,6 +645,7 @@ function Thread() {
         groups: mentionGroups.map((group) => ({
           id: group.id,
           name: group.name,
+          botIds: group.members.map((member) => member.botId),
         })),
         routines: mentionRoutines.map((routine) => ({
           id: routine.id,
@@ -654,7 +656,7 @@ function Thread() {
         })),
         connectors: mentionConnectors,
       }),
-    [groupId, inGroup, mentionBots, mentionConnectors, mentionGroups, mentionRoutines],
+    [botId, groupId, inGroup, mentionBots, mentionConnectors, mentionGroups, mentionRoutines],
   );
   const mentionOptions = useMemo(() => {
     if (mentionQuery === null || composerMentionTargets.length === 0) return [];
@@ -1504,10 +1506,10 @@ function Thread() {
     hexWithAlpha(tokens.foreground, 0.45);
 
   async function send() {
-    const initialBotTarget = botId;
-    const initialGroupTarget = groupId;
-    if ((!initialBotTarget && !initialGroupTarget) || sending) return;
-    const originThreadKey = initialGroupTarget ?? initialBotTarget;
+    const botTarget = botId;
+    const groupTarget = groupId;
+    if ((!botTarget && !groupTarget) || sending) return;
+    const originThreadKey = groupTarget ?? botTarget;
     const attachments = attachmentsForThread(pendingAttachments, originThreadKey);
     const plan = resolveComposerSendPlan({
       text: serializeComposerPromptText(),
@@ -1515,16 +1517,10 @@ function Thread() {
       hasAttachments: attachments.length > 0 || rewindArtifactIds.length > 0,
     });
     if (plan.isNoOp) return;
-    const reroutedToGroup = Boolean(
-      plan.rerouteGroupId && plan.rerouteGroupId !== initialGroupTarget,
-    );
-    const groupTarget = plan.rerouteGroupId ?? initialGroupTarget;
-    const botTarget = reroutedToGroup ? undefined : initialBotTarget;
     const trimmed = plan.trimmed;
     const dropDelayedSetup = () => {
       // Only after successful engagement so a failed upload/send keeps the setup card.
-      // Covers group-mention reroute while the bot thread stays mounted underneath.
-      if (initialBotTarget) cancelFocusPrompt(initialBotTarget);
+      if (botTarget) cancelFocusPrompt(botTarget);
     };
 
     // 7a / M2: snapshot the composer as it stands at the tap, then clear it
@@ -1580,16 +1576,6 @@ function Thread() {
       if (!plan.shouldSend) {
         delivered = true;
         dropDelayedSetup();
-        if (reroutedToGroup && groupTarget) {
-          router.push({
-            pathname: "/group-thread",
-            params: {
-              groupId: groupTarget,
-              name: plan.rerouteGroupName ?? t("Group"),
-            },
-          });
-          return;
-        }
         if (isCurrentTarget(botTarget, groupTarget)) {
           await refresh();
         }
@@ -1608,7 +1594,7 @@ function Thread() {
         artifactIds.push(artifact.id);
       }
       // Truncation happens here rather than on Edit, so backing out costs nothing.
-      if (composerSnapshot.rewindTarget && !reroutedToGroup) {
+      if (composerSnapshot.rewindTarget) {
         await rpc("threads/rewind", {
           ...(groupTarget ? { groupId: groupTarget } : { botId: botTarget! }),
           messageId: composerSnapshot.rewindTarget.id,
@@ -1616,7 +1602,7 @@ function Thread() {
         rewindApplied = true;
       }
       const clientNonce = newClientNonce();
-      const replaced = reroutedToGroup ? undefined : editedWaitingDraft(view, draftEdit);
+      const replaced = editedWaitingDraft(view, draftEdit);
       await rpc(
         "threads/send",
         groupTarget
@@ -1626,9 +1612,7 @@ function Thread() {
               text: trimmed || undefined,
               mentions: plan.mentionPayload.length ? plan.mentionPayload : undefined,
               artifactIds: artifactIds.length ? artifactIds : undefined,
-              replyToMessageId: reroutedToGroup
-                ? undefined
-                : composerSnapshot.replyTarget?.messageId,
+              replyToMessageId: composerSnapshot.replyTarget?.messageId,
               linkPreview: withoutLinkPreview ? (false as const) : undefined,
               draft: replaced?.draft,
             }
@@ -1649,16 +1633,6 @@ function Thread() {
       void loadSessionToken()
         .then((token) => resumeLiveNotifications(currentApiBase(), token, selectedSpaceId() ?? ""))
         .catch(() => undefined);
-      if (reroutedToGroup && groupTarget) {
-        router.push({
-          pathname: "/group-thread",
-          params: {
-            groupId: groupTarget,
-            name: plan.rerouteGroupName ?? t("Group"),
-          },
-        });
-        return;
-      }
       if (isCurrentTarget(botTarget, groupTarget)) {
         await refresh();
       }
@@ -1672,7 +1646,7 @@ function Thread() {
         if (composerSnapshot.pendingAttachments.length) {
           setPendingAttachments((current) => [...current, ...composerSnapshot.pendingAttachments]);
         }
-        if (isCurrentTarget(initialBotTarget, initialGroupTarget)) {
+        if (isCurrentTarget(botTarget, groupTarget)) {
           setDraft(composerSnapshot.draft);
           // The person had taken the link preview off: the draft comes back without it.
           if (withoutLinkPreview) linkPreview.controller.remove();
@@ -1685,9 +1659,7 @@ function Thread() {
           }
         }
       }
-      if (reroutedToGroup && groupTarget) {
-        setError(err instanceof Error ? err.message : t("Failed to send message"));
-      } else if (isCurrentTarget(botTarget, groupTarget)) {
+      if (isCurrentTarget(botTarget, groupTarget)) {
         setError(err instanceof Error ? err.message : t("Failed to send message"));
       }
     } finally {
