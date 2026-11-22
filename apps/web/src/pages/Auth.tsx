@@ -2,7 +2,15 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import pave800 from "@tangow/avatars/onboarding/pave-800.webp";
 import pave1600 from "@tangow/avatars/onboarding/pave-1600.webp";
 import { readBoundedJsonResponse, signupRequiresEmailVerification } from "@tangow/core";
-import { Button, FloatingField, Input, Label, OnboardingFrame } from "@tangow/ui-web";
+import {
+  Button,
+  buttonVariants,
+  cn,
+  FloatingField,
+  Input,
+  Label,
+  OnboardingFrame,
+} from "@tangow/ui-web";
 import { Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -364,7 +372,10 @@ export function PasswordResetPage() {
       </Link>
     ) : step === "expired" ? (
       <>
-        <Link to="/forgot-password">
+        <Link
+          to="/forgot-password"
+          className={cn(buttonVariants({ size: "full" }), "no-underline")}
+        >
           <Trans>Send a new link</Trans>
         </Link>
         <Link to="/sign-in">
