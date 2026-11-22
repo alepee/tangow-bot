@@ -7,9 +7,9 @@ export type ComposerState = "idle" | "typing" | "dictating" | "speaking";
 const BAR_DELAYS_MS = [0, 140, 280, 420];
 
 export interface ComposerShellProps extends Omit<ComponentPropsWithoutRef<"div">, "children"> {
-  /** The attach button — the capsule's leading edge, before any chip. */
+  /** The attach button — the capsule's leading edge. */
   attach?: ReactNode;
-  /** A mention/skill chip, or the avatar of the bot that is speaking. */
+  /** The avatar of the bot that is speaking. */
   leading?: ReactNode;
   /** The field itself. */
   children: ReactNode;
