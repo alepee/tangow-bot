@@ -29,6 +29,7 @@ import {
   resolveGroupTargetBotIds,
   routineResultBlocks,
   runFailureError,
+  stripMentionToken,
 } from "@tangow/core";
 import type { DraftLeft } from "@tangow/db";
 import {
@@ -40,6 +41,7 @@ import {
   createThreadMessageInTransaction,
   dismissProposalWithTextInTransaction,
   expireComputerExecutionLeases,
+  groupMembershipFilter,
   groupThreadPeople,
   IsolationError,
   lockGroupForPerson,
@@ -263,6 +265,22 @@ async function resolveOwnedConnectorDisplayNames(
   if (rows.length !== connectionIds.length) throw new IsolationError();
   const byId = new Map(rows.map((row) => [row.id, row.displayName]));
   return connectionIds.map((id) => byId.get(id) ?? "connector");
+}
+
+/** Names of the groups a message mentions, each one the sender is a person in. */
+async function resolveMentionedGroupNames(
+  tx: Prisma.TransactionClient,
+  actor: Actor,
+  groupIds: string[],
+) {
+  if (!groupIds.length) return [];
+  const rows = await tx.chatGroup.findMany({
+    where: { id: { in: groupIds }, ...groupMembershipFilter(actor.userId, actor.spaceId) },
+    select: { id: true, name: true },
+  });
+  if (rows.length !== groupIds.length) throw new IsolationError();
+  const byId = new Map(rows.map((row) => [row.id, row.name]));
+  return groupIds.map((id) => byId.get(id) ?? "group");
 }
 
 function sendRunClientNonce(
@@ -828,6 +846,11 @@ export async function sendThreadMessage(
           actor,
           mentionTargets.connectorMentionIds,
         );
+        const groupNames = await resolveMentionedGroupNames(
+          tx,
+          actor,
+          mentionTargets.groupMentionIds,
+        );
         const blocks = buildUserMessageBlocks(input.text, attachmentBlocks, {
           linkPreview: input.linkPreview,
         });
@@ -933,7 +956,7 @@ export async function sendThreadMessage(
             botId: target.botId,
             threadId: target.threadId,
             userId: actor.userId,
-            prompt: buildSendPrompt(input.text, artifacts, connectorNames),
+            prompt: buildSendPrompt(input.text, artifacts, connectorNames, groupNames),
             status: "queued",
           },
         });
@@ -967,9 +990,15 @@ export async function sendThreadMessage(
       const { members } = group;
       const memberBotIds = members.map((member) => member.botId);
       const mentionTargets = splitMentionTargets(input.mentions);
-      // Each woken bot runs as the sender, so only a bot they can use wakes.
+      const groupNames = await resolveMentionedGroupNames(
+        tx,
+        actor,
+        mentionTargets.groupMentionIds,
+      );
+      // Each woken bot runs as the sender, so only a bot they can use wakes. A mentioned group's
+      // name is only a reference: it never wakes a bot whose name it starts with.
       const targetBotIds = resolveGroupTargetBotIds({
-        text: input.text ?? "",
+        text: groupNames.reduce((text, name) => stripMentionToken(text, name), input.text ?? ""),
         members: members.map((member) => ({ id: member.botId, name: member.name })),
         explicitMentions: mentionTargets.botMentionIds,
         leadBotId: group.leadBotId,
@@ -1105,7 +1134,7 @@ export async function sendThreadMessage(
             botId,
             threadId: target.threadId,
             userId: actor.userId,
-            prompt: buildSendPrompt(input.text, artifacts, connectorNames),
+            prompt: buildSendPrompt(input.text, artifacts, connectorNames, groupNames),
             status: "queued",
           },
         });

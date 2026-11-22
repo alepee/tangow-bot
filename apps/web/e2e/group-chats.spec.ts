@@ -133,13 +133,15 @@ test("create group from + and see two bots in one transcript", async ({ page }, 
   await composer.fill("@Res");
   await captureScreenshot(page, testInfo, "group-mention-picker");
   await page.getByRole("option", { name: "@Research Writer", exact: true }).click();
-  await expect(
-    page.getByTestId("mention-chip").filter({ hasText: "Research Writer" }),
-  ).toBeVisible();
-  await composer.fill("turn the sources into a draft. @Res");
+  const tokens = page.getByTestId("composer-bar").locator('[data-slot="entity-mention-field"]');
+  await expect(tokens.filter({ hasText: "Research Writer" })).toBeVisible();
+  await page.keyboard.insertText("turn the sources into a draft. @Res");
   await page.getByRole("option", { name: "@Researcher", exact: true }).click();
-  await expect(page.getByTestId("mention-chip").filter({ hasText: "Researcher" })).toBeVisible();
-  await composer.fill(`${await composer.inputValue()}gather sources.`);
+  await expect(tokens.filter({ hasText: /^@Researcher$/ })).toBeVisible();
+  await page.keyboard.insertText("gather sources.");
+  await expect(composer).toHaveValue(
+    "@Research Writer turn the sources into a draft. @Researcher gather sources.",
+  );
   await composer.press("Enter");
 
   await expect(page.getByTestId("transcript")).toContainText(/handled|on it|gather/i, {
@@ -148,9 +150,10 @@ test("create group from + and see two bots in one transcript", async ({ page }, 
   const transcript = page.getByTestId("transcript");
   await expect(transcript.getByText("Researcher", { exact: true }).first()).toBeVisible();
   await expect(transcript.getByText("Research Writer", { exact: true }).first()).toBeVisible();
+  // Messages name Researcher inline too; its own row is the one under its name.
   const researcherRow = transcript
     .locator("[data-message-id]")
-    .filter({ has: page.getByText("Researcher", { exact: true }) })
+    .filter({ has: page.locator('[data-slot="message-row-author"]', { hasText: /^Researcher$/ }) })
     .first();
   const researcherSpeak = researcherRow.getByRole("button", { name: "Speak this reply" });
   // The hover pill only takes pointer events while its row is hovered.
@@ -171,10 +174,8 @@ test("create group from + and see two bots in one transcript", async ({ page }, 
 
   await composer.fill("@Res");
   await page.getByRole("option", { name: "@Research Writer", exact: true }).click();
-  await expect(
-    page.getByTestId("mention-chip").filter({ hasText: "Research Writer" }),
-  ).toBeVisible();
-  await composer.fill("ask me which city to use");
+  await expect(tokens.filter({ hasText: "Research Writer" })).toBeVisible();
+  await page.keyboard.insertText("ask me which city to use");
   await composer.press("Enter");
   // threads/get can observe waiting_input before the shell realtime feed paints the ask card.
   await expect

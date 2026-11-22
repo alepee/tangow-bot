@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### 2026-11-22
+
+#### Added
+
+- **Mentions stay where you type them.** Bots, groups, @everyone and skills now appear inline in your sentence, with the bot's face or a small glyph beside the name, in the composer and in messages, on web, desktop and iPhone, instead of as chips beside the field and names moved to the front of what you sent.
+
+#### Fixed
+
+- Mentioning a group with @ now keeps your message in the current chat and only tells the bot which group you mean, on web, desktop and mobile, instead of sending it to that group; in a bot's chat, @ only offers the groups that bot is in.
+- On a Docker-hosted Team Computer, a screen that fails to start now shows an error with Retry screen instead of staying on Connecting forever.
+
 ### 2026-11-21
 
 #### Fixed

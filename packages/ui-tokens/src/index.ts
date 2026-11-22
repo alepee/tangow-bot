@@ -444,6 +444,10 @@ export const sizes = {
   linkMentionIcon: 16,
   /** Space between a link mention's icon and its label. */
   linkMentionGap: 5,
+  /** The glyph of a bot, group, everyone or skill mention, inline in the text (web and iOS). */
+  mentionGlyph: 16,
+  /** Space between a mention's glyph and its name. */
+  mentionGap: 4,
   /** Height of a share bar: the usage screen's split of spend. */
   shareBar: 8,
   /** A field with a floating label, and the same on a short phone screen. */

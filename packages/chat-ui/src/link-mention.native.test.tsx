@@ -12,6 +12,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("react", async (actual) => ({
   ...(await actual<object>()),
   useMemo: <T,>(make: () => T) => make(),
+  useContext: () => undefined,
 }));
 vi.mock("react-native", () => {
   const flatten = (style: unknown): object | undefined =>

@@ -1,10 +1,22 @@
 import type { LinkMentionResolver } from "@tangow/core";
 import { wwwLinkHref } from "@tangow/core";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
-import { createContext, Fragment, memo, useCallback, useContext, useRef, useState } from "react";
+import {
+  createContext,
+  Fragment,
+  memo,
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { Components, ExtraProps } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import type { EntityMentionCatalog, EntityMentionKind } from "./entity-mention";
+import { entityTokens } from "./entity-mention";
+import { EntityMention, useEntityMentions } from "./entity-mention.web";
 import { resolvedLinkMention } from "./link-mention.web";
 import "./markdown.web.css";
 import {
@@ -106,8 +118,70 @@ function MarkdownLink({ node, href, ...props }: ComponentPropsWithoutRef<"a"> & 
   return mention ?? <a {...props} href={target} target="_blank" rel="noreferrer noopener" />;
 }
 
+/** A mention the rehype pass below marked in the text, drawn with the thread's bot faces. */
+function MarkdownEntityMention({ node, ...props }: ComponentPropsWithoutRef<"span"> & ExtraProps) {
+  const entities = useEntityMentions();
+  const kind = node?.properties.dataEntityMention as EntityMentionKind | undefined;
+  if (!kind) return <span {...props} />;
+  const character = node?.properties.dataEntityAvatar as string | undefined;
+  return (
+    <EntityMention
+      kind={kind}
+      name={textOf(node)}
+      avatar={kind === "bot" ? entities?.avatar(character) : undefined}
+    />
+  );
+}
+
+type HastElement = HastNode & {
+  type: "element";
+  tagName: string;
+  properties: Record<string, unknown>;
+  children: HastNode[];
+};
+
+/** Never inside code or a link: those keep their text as written. */
+const NO_MENTIONS = new Set(["a", "code", "pre"]);
+
+/** Marks every known `@Name` in the rendered text, so `span` draws it as a mention. */
+function rehypeEntityMentions(catalog: EntityMentionCatalog) {
+  function visit(parent: { children?: readonly HastNode[] }) {
+    if (!parent.children) return;
+    const next: HastNode[] = [];
+    for (const child of parent.children) {
+      if (child.type === "element") {
+        if (!NO_MENTIONS.has((child as HastElement).tagName)) visit(child);
+        next.push(child);
+        continue;
+      }
+      if (child.type !== "text" || !child.value?.includes("@")) {
+        next.push(child);
+        continue;
+      }
+      for (const token of entityTokens(child.value, catalog, false)) {
+        next.push(
+          token.kind === "text"
+            ? { type: "text", value: token.text }
+            : ({
+                type: "element",
+                tagName: "span",
+                properties: {
+                  dataEntityMention: token.kind,
+                  dataEntityAvatar: token.avatarCharacter ?? undefined,
+                },
+                children: [{ type: "text", value: token.name }],
+              } as HastElement),
+        );
+      }
+    }
+    (parent as { children: HastNode[] }).children = next;
+  }
+  return () => (tree: HastNode) => visit(tree);
+}
+
 const components: Components = {
   a: MarkdownLink,
+  span: MarkdownEntityMention,
   img({ node: _node, ...props }) {
     return <img {...props} alt={props.alt ?? ""} loading="lazy" />;
   },
@@ -143,6 +217,11 @@ export const ChatMarkdown = memo(function ChatMarkdown({
   mentions?: LinkMentionResolver<ReactNode>;
 }) {
   const source = repairMarkdownTables(streaming ? closeUnterminatedFence(children) : children);
+  const entities = useEntityMentions();
+  const rehypePlugins = useMemo(
+    () => (entities?.mentions.length ? [rehypeEntityMentions(entities)] : []),
+    [entities],
+  );
 
   return (
     <div className={streaming ? "rk-chat-markdown rk-chat-markdown-streaming" : "rk-chat-markdown"}>
@@ -150,6 +229,7 @@ export const ChatMarkdown = memo(function ChatMarkdown({
         <ReactMarkdown
           components={allowImages ? components : componentsNoImages}
           remarkPlugins={[remarkGfm]}
+          rehypePlugins={rehypePlugins}
           skipHtml
           urlTransform={(url, key) =>
             (key === "href" ? linkHref(url, true) : sanitizeMarkdownUrl(url, true)) ?? ""
@@ -165,7 +245,7 @@ export const ChatMarkdown = memo(function ChatMarkdown({
 
 /**
  * Plain text (what the person typed) with every URL in it made clickable, as a mention when the
- * server resolved one for it.
+ * server resolved one for it, and every bot, group or skill the thread knows drawn in place.
  */
 export function LinkifiedText({
   text,
@@ -174,6 +254,7 @@ export function LinkifiedText({
   text: string;
   mentions?: LinkMentionResolver<ReactNode>;
 }) {
+  const entities = useEntityMentions();
   return linkifyText(text).map((segment, i) =>
     segment.href ? (
       <Fragment key={i}>
@@ -184,11 +265,32 @@ export function LinkifiedText({
         )}
       </Fragment>
     ) : (
-      segment.text
+      <Fragment key={i}>
+        {entityTokens(segment.text, entities, i === 0).map((token, j) =>
+          token.kind === "text" ? (
+            token.text
+          ) : (
+            <EntityMention
+              key={j}
+              kind={token.kind}
+              name={token.name}
+              avatar={token.kind === "bot" ? entities?.avatar(token.avatarCharacter) : undefined}
+              ink
+            />
+          ),
+        )}
+      </Fragment>
     ),
   );
 }
 
+export type { EntityMentionTarget } from "./entity-mention";
+export type { EntityMentions } from "./entity-mention.web";
+export {
+  EntityMention,
+  EntityMentionField,
+  EntityMentionsProvider,
+} from "./entity-mention.web";
 export { LinkMentionGlyph } from "./link-mention.web";
 export type { ChatMarkdownProps } from "./markdown";
 export { truncateMarkdownForRender } from "./markdown";
