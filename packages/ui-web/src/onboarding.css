@@ -1,0 +1,265 @@
+/* The steps before an account exists (`OnboardingFrame`, `FloatingField`), from the
+   validated prototype. In `components`, like the other `rk-*` classes, so a caller's
+   utility still wins. */
+@layer components {
+  .rk-floating-field {
+    --field-h: var(--size-field);
+    position: relative;
+  }
+
+  .rk-floating-field > label {
+    position: absolute;
+    inset-inline-start: 15px;
+    top: calc(var(--field-h) / 2 - 19px);
+    font-size: var(--type-time-size);
+    line-height: 1;
+    color: var(--muted-foreground);
+    pointer-events: none;
+    transition-property: top, font-size;
+    transition-duration: var(--duration-label);
+    transition-timing-function: var(--motion-ease);
+  }
+
+  /* The name holds the empty field's place; a select always has a value, so it never rests. */
+  .rk-floating-field:has(> input:not(:autofill)) > label:not([data-filled], [data-focused]) {
+    top: calc(var(--field-h) / 2 - 8px);
+    font-size: var(--type-body-size);
+  }
+
+  /* Every step is a box as tall as the tallest one (sign up: title, three fields,
+     actions), with the actions anchored at its foot: the title starts and the main
+     button lands at the same place on every step. */
+  .rk-onboarding {
+    --gap: 16px;
+    --title-h: calc(var(--type-large-title-size) * var(--type-large-title-leading) + 8px);
+    --actions-h: 156px;
+    display: grid;
+    grid-template-columns: minmax(0, 45fr) minmax(0, 55fr);
+    grid-template-areas: "pane stage";
+    min-height: 100svh;
+    background: var(--background);
+    color: var(--foreground);
+  }
+
+  .rk-onboarding-top {
+    grid-area: pane;
+    align-self: start;
+    z-index: 1;
+    padding-block-start: 40px;
+    padding-inline-start: 64px;
+  }
+
+  .rk-onboarding-logo {
+    display: block;
+    height: var(--size-logo);
+    width: auto;
+    margin-inline-start: -2px;
+  }
+
+  .rk-onboarding-pane {
+    grid-area: pane;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 40px 64px;
+  }
+
+  .rk-onboarding-screen {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap);
+    width: 100%;
+    max-width: 360px;
+    min-height: calc(
+      var(--title-h) +
+      3 *
+      var(--field-h, var(--size-field)) +
+      4 *
+      var(--gap) +
+      var(--actions-h)
+    );
+    margin-block: auto;
+  }
+
+  .rk-onboarding-screen > h1 {
+    margin: 0 0 8px;
+    font-size: var(--type-large-title-size);
+    line-height: var(--type-large-title-leading);
+    letter-spacing: var(--type-large-title-tracking);
+    font-weight: var(--type-large-title-weight);
+    text-wrap: balance;
+  }
+
+  .rk-onboarding-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap);
+    min-height: var(--actions-h);
+    margin-top: auto;
+  }
+
+  .rk-onboarding-actions a {
+    color: var(--foreground);
+    text-decoration: underline;
+    text-decoration-color: var(--foreground-subtle);
+    text-underline-offset: 3px;
+  }
+
+  .rk-onboarding-actions > a {
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+    min-height: var(--size-mobile-stack);
+    padding-inline: 8px;
+    font-size: var(--type-link-size);
+    line-height: var(--type-link-leading);
+  }
+
+  .rk-onboarding-actions > :first-child {
+    margin-top: 8px;
+  }
+
+  /* A link under the main button tucks into the button's margin: its tap target is taller than its text. */
+  .rk-onboarding-actions > :first-child + a {
+    margin-top: -8px;
+  }
+
+  .rk-onboarding-actions > p {
+    margin: 0;
+    text-align: center;
+    font-size: var(--type-row-name-size);
+    color: var(--muted-foreground);
+  }
+
+  .rk-onboarding-stage {
+    grid-area: stage;
+    position: relative;
+    overflow: hidden;
+    margin: 24px 24px 24px 0;
+    border-radius: var(--corner-scene);
+    background: var(--plate);
+    filter: brightness(var(--scene-brightness));
+  }
+
+  .rk-onboarding-stage > img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* Phone: the logo row, then the scene card at one size and 10:9 framing on every
+     step (smaller on a short screen, never cropped tighter), then the step box down
+     to the bottom of the screen with the actions under the thumb. */
+  @media (max-width: 860px) {
+    .rk-onboarding {
+      --pad: 24px;
+      --actions-h: 148px;
+      --actions-gap: 12px;
+      --lift: 8px;
+      --title-h: calc(
+        var(--type-large-title-compact-size) *
+        var(--type-large-title-compact-leading) +
+        8px
+      );
+      --box: calc(
+        var(--title-h) +
+        3 *
+        var(--field-h, var(--size-field)) +
+        4 *
+        var(--gap) +
+        var(--actions-h)
+      );
+      /* The logo row above the card, the step box and the pane's padding below it. */
+      --around-stage: calc(
+        var(--size-logo-top) +
+        var(--size-logo) +
+        var(--size-logo-bottom) +
+        var(--pad) +
+        var(--box) +
+        16px
+      );
+      display: flex;
+      flex-direction: column;
+    }
+
+    .rk-onboarding-top {
+      order: -2;
+      padding: var(--size-logo-top) max(24px, env(safe-area-inset-left)) var(--size-logo-bottom);
+    }
+
+    .rk-onboarding-stage {
+      order: -1;
+      flex: none;
+      align-self: center;
+      aspect-ratio: 10 / 9;
+      height: min((100vw - 32px) * 0.9, 100svh - var(--around-stage) - env(safe-area-inset-bottom));
+      margin: 0 max(16px, env(safe-area-inset-left));
+      border-radius: var(--corner-block);
+    }
+
+    .rk-onboarding-pane {
+      flex: 1 0 auto;
+      padding: var(--pad) max(24px, env(safe-area-inset-right))
+        calc(16px + env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+    }
+
+    .rk-onboarding-screen {
+      flex: 1;
+      max-width: none;
+      min-height: 0;
+      margin-block: 0;
+    }
+
+    .rk-onboarding-screen > h1 {
+      font-size: var(--type-large-title-compact-size);
+      line-height: var(--type-large-title-compact-leading);
+    }
+
+    .rk-onboarding-actions {
+      gap: var(--actions-gap);
+    }
+
+    .rk-onboarding-actions > :first-child {
+      margin-top: var(--lift);
+    }
+
+    /* While typing only the main button shows, just above the keyboard; the links keep their place. */
+    .rk-onboarding[data-keyboard] .rk-onboarding-actions > :first-child {
+      position: fixed;
+      inset-inline: 24px;
+      bottom: calc(var(--kb) + 12px);
+      z-index: 5;
+      /* `max-width`, because the button's own `w-full` utility outranks this layer. */
+      max-width: calc(100% - 48px);
+      margin: 0;
+    }
+
+    .rk-onboarding[data-keyboard] .rk-onboarding-actions > :not(:first-child) {
+      visibility: hidden;
+    }
+  }
+
+  /* Short phone screens: a tighter form so the scene card keeps a useful size. */
+  @media (max-width: 860px) and (max-height: 760px) {
+    .rk-onboarding {
+      --field-h: var(--size-field-short);
+      --pad: 16px;
+      --gap: 12px;
+      --actions-h: 132px;
+      --actions-gap: 8px;
+      --lift: 0px;
+    }
+
+    .rk-onboarding .rk-floating-field {
+      --field-h: var(--size-field-short);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rk-floating-field > label {
+      transition: none;
+    }
+  }
+}
