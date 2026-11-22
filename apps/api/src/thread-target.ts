@@ -29,6 +29,7 @@ import {
   resolveGroupTargetBotIds,
   routineResultBlocks,
   runFailureError,
+  stripMentionToken,
 } from "@tangow/core";
 import type { DraftLeft } from "@tangow/db";
 import {
@@ -989,9 +990,15 @@ export async function sendThreadMessage(
       const { members } = group;
       const memberBotIds = members.map((member) => member.botId);
       const mentionTargets = splitMentionTargets(input.mentions);
-      // Each woken bot runs as the sender, so only a bot they can use wakes.
+      const groupNames = await resolveMentionedGroupNames(
+        tx,
+        actor,
+        mentionTargets.groupMentionIds,
+      );
+      // Each woken bot runs as the sender, so only a bot they can use wakes. A mentioned group's
+      // name is only a reference: it never wakes a bot whose name it starts with.
       const targetBotIds = resolveGroupTargetBotIds({
-        text: input.text ?? "",
+        text: groupNames.reduce((text, name) => stripMentionToken(text, name), input.text ?? ""),
         members: members.map((member) => ({ id: member.botId, name: member.name })),
         explicitMentions: mentionTargets.botMentionIds,
         leadBotId: group.leadBotId,
@@ -1008,11 +1015,6 @@ export async function sendThreadMessage(
         tx,
         actor,
         mentionTargets.connectorMentionIds,
-      );
-      const groupNames = await resolveMentionedGroupNames(
-        tx,
-        actor,
-        mentionTargets.groupMentionIds,
       );
       const blocks = buildUserMessageBlocks(input.text, attachmentBlocks, {
         linkPreview: input.linkPreview,

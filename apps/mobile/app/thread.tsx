@@ -635,6 +635,7 @@ function Thread() {
         query: "",
         includeEveryone: inGroup,
         currentGroupId: groupId,
+        currentBotId: groupId ? null : botId,
         bots: mentionBots.map((bot) => ({
           id: bot.id,
           name: bot.name,
