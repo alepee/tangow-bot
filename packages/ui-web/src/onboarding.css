@@ -192,14 +192,21 @@
     }
 
     .rk-onboarding-stage {
+      --stage-h: min(
+        (100vw - 32px) * 0.9,
+        100svh - var(--around-stage) - env(safe-area-inset-bottom)
+      );
       order: -1;
       flex: none;
-      height: min((100vw - 32px) * 0.9, 100svh - var(--around-stage) - env(safe-area-inset-bottom));
+      align-self: center;
+      width: min(100% - 2 * max(16px, env(safe-area-inset-left)), var(--stage-h) / 0.7);
+      height: var(--stage-h);
       margin: 0 max(16px, env(safe-area-inset-left));
       border-radius: var(--corner-block);
     }
 
-    /* Full width always; a short screen trims the empty backdrop above the scene. */
+    /* A short screen first trims the empty backdrop above the scene; below 10:7 it
+       would cut the scene, so the card narrows instead. */
     .rk-onboarding-stage > img {
       object-position: 50% 80%;
     }
