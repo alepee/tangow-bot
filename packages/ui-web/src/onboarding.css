@@ -193,8 +193,11 @@
 
     .rk-onboarding-stage {
       --stage-h: min(
-        (100vw - 32px) * 0.9,
-        100svh - var(--around-stage) - env(safe-area-inset-bottom)
+        (100vw - 32px) *
+        0.9,
+        100svh -
+        var(--around-stage) -
+        env(safe-area-inset-bottom)
       );
       order: -1;
       flex: none;
