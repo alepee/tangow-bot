@@ -155,6 +155,42 @@ describeWithDatabase("structured @ mention targets", () => {
     expect(run.task.prompt).toContain("Mentioned groups: Planning.");
   });
 
+  it("does not wake a bot whose name starts a mentioned group's name", async () => {
+    const cookie = await signup(app, `mention-group-name-${stamp}@tangow.test`, "Group Name");
+    const lead = await rpc<{ id: string }>(app, cookie, "bots/create", {
+      name: "Lead",
+      title: "",
+      description: "",
+      instructions: "",
+      notifyOnFinish: true,
+    });
+    const research = await rpc<{ id: string }>(app, cookie, "bots/create", {
+      name: "Research",
+      title: "",
+      description: "",
+      instructions: "",
+      notifyOnFinish: true,
+    });
+    const referenced = await rpc<{ id: string }>(app, cookie, "groups/create", {
+      name: "Research Team",
+      botIds: [research.id],
+    });
+    const group = await rpc<{ id: string; threadId: string }>(app, cookie, "groups/create", {
+      name: "Squad",
+      botIds: [lead.id, research.id],
+    });
+    await rpc(app, cookie, "threads/send", {
+      groupId: group.id,
+      text: "what did @Research Team ship?",
+      mentions: [{ kind: "group", id: referenced.id }],
+    });
+    const runs = await prisma.run.findMany({
+      where: { threadId: group.threadId, trigger: "user" },
+      select: { botId: true },
+    });
+    expect(runs.map((run) => run.botId)).toEqual([lead.id]);
+  });
+
   it("wakes exactly one bot on an unmentioned group send", async () => {
     const cookie = await signup(app, `mention-group-default-${stamp}@tangow.test`, "Group Default");
     const botA = await rpc<{ id: string }>(app, cookie, "bots/create", {
