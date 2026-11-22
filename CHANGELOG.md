@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 #### Changed
 
-- The clay characters have new names in the appearance picker on web, desktop and iOS (Dan, Windsor, Helmut, Ragnarrot, Witchway, Toutânkit, Floppy, Frankenbot, Ufolito, Dunecan, Lucifair), read by screen readers; bots keep the names you gave them.
+- The clay characters have new names in the appearance picker on web, desktop and iOS; bots keep the names you gave them.
 
 ### 2026-11-21
 
