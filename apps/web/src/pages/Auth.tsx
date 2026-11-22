@@ -4,13 +4,13 @@ import {
   readBoundedJsonResponse,
   signupRequiresEmailVerification,
 } from "@tangow/core";
-import { Button, buttonVariants, cn, FloatingField, OnboardingFrame } from "@tangow/ui-web";
+import { Button, buttonVariants, cn, FloatingField } from "@tangow/ui-web";
 import { Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { authClient } from "../lib/auth";
 import { clearSpaceSelection } from "../lib/rpc";
-import { paveScene, signupScene } from "./onboarding-scenes";
+import { OnboardingScreen, paveScene, signupScene } from "./onboarding-screen";
 
 type AuthMode = "in" | "up" | "forgot";
 type PasswordResetCapabilities = { passwordReset: boolean; resetUrl: string | null };
@@ -151,7 +151,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
 
   if (mode === "in") {
     return (
-      <OnboardingFrame
+      <OnboardingScreen
         onSubmit={submit}
         title={<Trans>Got the key?</Trans>}
         scene={paveScene}
@@ -199,14 +199,14 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
         >
           {passwordToggle}
         </FloatingField>
-      </OnboardingFrame>
+      </OnboardingScreen>
     );
   }
 
   if (mode === "forgot") {
     const sentTo = email.trim();
     return (
-      <OnboardingFrame
+      <OnboardingScreen
         onSubmit={submit}
         title={resetSent ? <Trans>A new key is on its way.</Trans> : <Trans>Lost the key?</Trans>}
         scene={paveScene}
@@ -245,13 +245,13 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
             error={error?.text}
           />
         )}
-      </OnboardingFrame>
+      </OnboardingScreen>
     );
   }
 
   if (checkEmail) {
     return (
-      <OnboardingFrame
+      <OnboardingScreen
         onSubmit={submit}
         title={
           <Trans>
@@ -284,14 +284,14 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
           </Trans>
         </p>
         {error ? <p role="alert">{error.text}</p> : null}
-      </OnboardingFrame>
+      </OnboardingScreen>
     );
   }
 
   const emailRejected =
     error?.code === "EMAIL_NOT_ALLOWED" || error?.code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL";
   return (
-    <OnboardingFrame
+    <OnboardingScreen
       onSubmit={submit}
       title={<Trans>Grab some clay.</Trans>}
       scene={signupScene}
@@ -342,7 +342,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
       >
         {passwordToggle}
       </FloatingField>
-    </OnboardingFrame>
+    </OnboardingScreen>
   );
 }
 
@@ -411,7 +411,7 @@ export function PasswordResetPage() {
     );
 
   return (
-    <OnboardingFrame
+    <OnboardingScreen
       onSubmit={submit}
       title={<Trans>Reset your password</Trans>}
       scene={paveScene}
@@ -453,6 +453,6 @@ export function PasswordResetPage() {
           />
         </>
       )}
-    </OnboardingFrame>
+    </OnboardingScreen>
   );
 }

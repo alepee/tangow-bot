@@ -13,6 +13,8 @@ export type OnboardingFrameProps = {
   /** Anchored at the bottom of the step, main button first. */
   actions: ReactNode;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  /** The desktop app's window controls, laid in a draggable band across the window's top. */
+  chrome?: ReactNode;
 };
 
 /**
@@ -27,11 +29,13 @@ export function OnboardingFrame({
   children,
   actions,
   onSubmit,
+  chrome,
 }: OnboardingFrameProps) {
   const frame = useRef<HTMLDivElement>(null);
   useKeyboardInset(frame);
   return (
     <div ref={frame} className="rk-onboarding" data-slot="onboarding-frame">
+      {chrome ? <div className="rk-onboarding-chrome">{chrome}</div> : null}
       <div className="rk-onboarding-top">
         <svg
           className="rk-onboarding-logo"

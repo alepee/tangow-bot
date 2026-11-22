@@ -4,6 +4,9 @@ import plateau01800 from "@tangow/avatars/onboarding/plateau/p01-800.webp";
 import plateau011600 from "@tangow/avatars/onboarding/plateau/p01-1600.webp";
 import plateau04800 from "@tangow/avatars/onboarding/plateau/p04-800.webp";
 import plateau041600 from "@tangow/avatars/onboarding/plateau/p04-1600.webp";
+import { OnboardingFrame, type OnboardingFrameProps } from "@tangow/ui-web";
+import { desktopBridge } from "../lib/desktop";
+import { WindowChrome } from "./WindowChrome";
 
 function scene(small: string, large: string) {
   return (
@@ -19,3 +22,8 @@ function scene(small: string, large: string) {
 export const paveScene = scene(pave800, pave1600);
 export const welcomeScene = scene(plateau01800, plateau011600);
 export const signupScene = scene(plateau04800, plateau041600);
+
+/** Every step before an account exists, with the desktop app's window controls. */
+export function OnboardingScreen(props: Omit<OnboardingFrameProps, "chrome">) {
+  return <OnboardingFrame {...props} chrome={desktopBridge() ? <WindowChrome /> : null} />;
+}

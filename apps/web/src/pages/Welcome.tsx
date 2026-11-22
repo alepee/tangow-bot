@@ -1,12 +1,12 @@
 import { Trans } from "@lingui/react/macro";
-import { buttonVariants, cn, OnboardingFrame } from "@tangow/ui-web";
+import { buttonVariants, cn } from "@tangow/ui-web";
 import { Link } from "react-router-dom";
-import { welcomeScene } from "./onboarding-scenes";
+import { OnboardingScreen, welcomeScene } from "./onboarding-screen";
 
 export function WelcomePage() {
   return (
     <div className="contents" data-tangow-surface="welcome">
-      <OnboardingFrame
+      <OnboardingScreen
         onSubmit={(event) => event.preventDefault()}
         title={
           <Trans>
