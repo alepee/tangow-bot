@@ -1,5 +1,22 @@
+import type { Page, TestInfo } from "@playwright/test";
 import { captureScreenshot, completeOnboarding, signup } from "./helpers";
 import { expect, test } from "./test";
+
+async function captureOnboardingStep(page: Page, testInfo: TestInfo, name: string) {
+  await expect(page.locator('[data-slot="onboarding-frame"] img')).toHaveJSProperty(
+    "complete",
+    true,
+  );
+  const desktopViewport = page.viewportSize();
+  for (const colorScheme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme });
+    await captureScreenshot(page, testInfo, `${name}-${colorScheme}`);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await captureScreenshot(page, testInfo, `${name}-${colorScheme}-phone`);
+    if (desktopViewport) await page.setViewportSize(desktopViewport);
+  }
+  await page.emulateMedia({ colorScheme: "light" });
+}
 
 test("restricted signup waits for mailbox verification", async ({ page }, testInfo) => {
   await page.route("**/api/auth/get-session**", (route) => route.fulfill({ json: null }));
@@ -189,13 +206,17 @@ test("changes and recovers an email password", async ({ page }, testInfo) => {
   await page.getByRole("button", { name: "Log out" }).click();
   await expect(page.getByRole("link", { name: "Forgot password?" })).toBeVisible();
   await page.getByRole("link", { name: "Forgot password?" }).click();
-  await expect(page.getByRole("heading", { name: "Reset your password" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Lost the key?" })).toBeVisible();
+  await captureOnboardingStep(page, testInfo, "42-forgot-password");
   await page.getByLabel("Email").fill(email);
   await expect(page.getByLabel("Email")).toHaveValue(email);
   await page.getByRole("button", { name: "Send reset link" }).click();
-  await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Reset your password" })).not.toBeVisible();
-  await captureScreenshot(page, testInfo, "42-password-reset-requested");
+  await expect(page.getByRole("heading", { name: "A new key is on its way." })).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText(
+    `If ${email} has an account, the link is in its inbox.`,
+  );
+  await expect(page.getByLabel("Email")).toHaveCount(0);
+  await captureOnboardingStep(page, testInfo, "42-password-reset-requested");
 
   const emailApi = process.env.API_URL ?? "http://127.0.0.1:3110";
   await expect
@@ -213,12 +234,22 @@ test("changes and recovers an email password", async ({ page }, testInfo) => {
   expect(resetUrl).toBeTruthy();
 
   await page.goto(resetUrl!);
-  await expect(page.getByRole("heading", { name: "Choose a new password" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Reset your password" })).toBeVisible();
+  await captureOnboardingStep(page, testInfo, "43-new-password");
   await page.getByLabel("New password").fill(resetPassword);
   await page.getByLabel("Confirm password").fill(resetPassword);
   await page.getByRole("button", { name: "Reset password" }).click();
   await expect(page.getByText("Password updated")).toBeVisible();
   await page.getByRole("link", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Got the key?" })).toBeVisible();
+
+  await page.goto(resetUrl!);
+  await expect(page.getByRole("alert")).toHaveText("This link has expired or was already used.");
+  await captureOnboardingStep(page, testInfo, "44-reset-link-expired");
+  await page.getByRole("link", { name: "Send a new link" }).click();
+  await expect(page.getByRole("heading", { name: "Lost the key?" })).toBeVisible();
+
+  await page.goto("/sign-in");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password", { exact: true }).fill(resetPassword);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
