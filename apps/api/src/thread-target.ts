@@ -40,6 +40,7 @@ import {
   createThreadMessageInTransaction,
   dismissProposalWithTextInTransaction,
   expireComputerExecutionLeases,
+  groupMembershipFilter,
   groupThreadPeople,
   IsolationError,
   lockGroupForPerson,
@@ -263,6 +264,22 @@ async function resolveOwnedConnectorDisplayNames(
   if (rows.length !== connectionIds.length) throw new IsolationError();
   const byId = new Map(rows.map((row) => [row.id, row.displayName]));
   return connectionIds.map((id) => byId.get(id) ?? "connector");
+}
+
+/** Names of the groups a message mentions, each one the sender is a person in. */
+async function resolveMentionedGroupNames(
+  tx: Prisma.TransactionClient,
+  actor: Actor,
+  groupIds: string[],
+) {
+  if (!groupIds.length) return [];
+  const rows = await tx.chatGroup.findMany({
+    where: { id: { in: groupIds }, ...groupMembershipFilter(actor.userId, actor.spaceId) },
+    select: { id: true, name: true },
+  });
+  if (rows.length !== groupIds.length) throw new IsolationError();
+  const byId = new Map(rows.map((row) => [row.id, row.name]));
+  return groupIds.map((id) => byId.get(id) ?? "group");
 }
 
 function sendRunClientNonce(
@@ -828,6 +845,11 @@ export async function sendThreadMessage(
           actor,
           mentionTargets.connectorMentionIds,
         );
+        const groupNames = await resolveMentionedGroupNames(
+          tx,
+          actor,
+          mentionTargets.groupMentionIds,
+        );
         const blocks = buildUserMessageBlocks(input.text, attachmentBlocks, {
           linkPreview: input.linkPreview,
         });
@@ -933,7 +955,7 @@ export async function sendThreadMessage(
             botId: target.botId,
             threadId: target.threadId,
             userId: actor.userId,
-            prompt: buildSendPrompt(input.text, artifacts, connectorNames),
+            prompt: buildSendPrompt(input.text, artifacts, connectorNames, groupNames),
             status: "queued",
           },
         });
@@ -986,6 +1008,11 @@ export async function sendThreadMessage(
         tx,
         actor,
         mentionTargets.connectorMentionIds,
+      );
+      const groupNames = await resolveMentionedGroupNames(
+        tx,
+        actor,
+        mentionTargets.groupMentionIds,
       );
       const blocks = buildUserMessageBlocks(input.text, attachmentBlocks, {
         linkPreview: input.linkPreview,
@@ -1105,7 +1132,7 @@ export async function sendThreadMessage(
             botId,
             threadId: target.threadId,
             userId: actor.userId,
-            prompt: buildSendPrompt(input.text, artifacts, connectorNames),
+            prompt: buildSendPrompt(input.text, artifacts, connectorNames, groupNames),
             status: "queued",
           },
         });

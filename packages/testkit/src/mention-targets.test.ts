@@ -2,10 +2,9 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { ComposioEmulator } from "@tangow/adapters";
-import type { ThreadSnapshot } from "@tangow/contracts";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { createApp } from "../../../apps/api/src/app.ts";
-import { sessionCookieHeader, threadMessages } from "./index.js";
+import { sessionCookieHeader } from "./index.js";
 
 type App = { request: (input: string, init?: RequestInit) => Promise<Response> };
 type AppHandles = Awaited<ReturnType<typeof createApp>>;
@@ -131,41 +130,29 @@ describeWithDatabase("structured @ mention targets", () => {
     expect(run.task.prompt).toContain("Use these connectors if relevant: Gmail");
   });
 
-  it("lands a group-targeted send in the group transcript, not the 1:1 bot thread", async () => {
+  it("names a mentioned group to the bot", async () => {
     const cookie = await signup(app, `mention-group-${stamp}@tangow.test`, "Group Owner");
-    const botA = await rpc<{ id: string }>(app, cookie, "bots/create", {
+    const bot = await rpc<{ id: string }>(app, cookie, "bots/create", {
       name: "BotA",
       title: "",
       description: "",
       instructions: "",
       notifyOnFinish: true,
     });
-    const botB = await rpc<{ id: string }>(app, cookie, "bots/create", {
-      name: "BotB",
-      title: "",
-      description: "",
-      instructions: "",
-      notifyOnFinish: true,
-    });
-    const group = await rpc<{ id: string; threadId: string }>(app, cookie, "groups/create", {
+    const group = await rpc<{ id: string }>(app, cookie, "groups/create", {
       name: "Planning",
-      botIds: [botA.id, botB.id],
+      botIds: [bot.id],
     });
-    const messageText = "follow up from 1:1 reroute";
-    await rpc(app, cookie, "threads/send", {
-      groupId: group.id,
-      text: messageText,
+    const sent = await rpc<{ runId: string }>(app, cookie, "threads/send", {
+      botId: bot.id,
+      text: "what is new in @Planning",
+      mentions: [{ kind: "group", id: group.id }],
     });
-    const groupSnap = await rpc<ThreadSnapshot>(app, cookie, "threads/get", { groupId: group.id });
-    const botSnap = await rpc<ThreadSnapshot>(app, cookie, "threads/get", { botId: botA.id });
-    const says = (snapshot: ThreadSnapshot) =>
-      threadMessages(snapshot).some((message) =>
-        message.blocks.some((block) => block.kind === "text" && block.text.includes(messageText)),
-      );
-    const groupHasMessage = says(groupSnap);
-    const botHasMessage = says(botSnap);
-    expect(groupHasMessage).toBe(true);
-    expect(botHasMessage).toBe(false);
+    const run = await prisma.run.findUniqueOrThrow({
+      where: { id: sent.runId },
+      include: { task: true },
+    });
+    expect(run.task.prompt).toContain("Mentioned groups: Planning.");
   });
 
   it("wakes exactly one bot on an unmentioned group send", async () => {
@@ -352,6 +339,13 @@ describeWithDatabase("structured @ mention targets", () => {
       mentions: [{ kind: "connector", id: started.connectionId }],
     });
     expect(connectionAttempt.status).toBeGreaterThanOrEqual(400);
+
+    const groupMentionAttempt = await raw(app, bob, "threads/send", {
+      botId: bobBot.id,
+      text: "about @Ada group",
+      mentions: [{ kind: "group", id: group.id }],
+    });
+    expect(groupMentionAttempt.status).toBeGreaterThanOrEqual(400);
 
     const groupAttempt = await raw(app, bob, "threads/send", {
       groupId: group.id,

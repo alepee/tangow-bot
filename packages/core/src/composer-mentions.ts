@@ -26,7 +26,7 @@ export type MentionPickerBot = {
   color?: string;
   avatarCharacter?: string | null;
 };
-export type MentionPickerGroup = { id: string; name: string };
+export type MentionPickerGroup = { id: string; name: string; botIds: readonly string[] };
 export type MentionPickerRoutine = {
   id: string;
   name: string;
@@ -156,6 +156,8 @@ export function buildComposerMentionOptions(input: {
   routines: readonly MentionPickerRoutine[];
   connectors: readonly MentionPickerConnector[];
   currentGroupId?: string | null;
+  /** In a bot's own thread, only the groups that bot is in can be named. */
+  currentBotId?: string | null;
   includeEveryone?: boolean;
   /** When omitted, return every match (catalog build). When set, apply after query filter. */
   limit?: number;
@@ -189,6 +191,7 @@ export function buildComposerMentionOptions(input: {
 
   for (const group of input.groups) {
     if (input.currentGroupId && group.id === input.currentGroupId) continue;
+    if (input.currentBotId && !group.botIds.includes(input.currentBotId)) continue;
     if (!matches(group.name)) continue;
     options.push({
       kind: "group",
@@ -232,10 +235,9 @@ export function buildComposerMentionOptions(input: {
 }
 
 /**
- * Shared send routing for web + mobile composers.
- * Chip-only `@Group` opens that group (no fabricated body), including from
- * another group thread. Routines always test-run; with a group chip, open after.
- * Callers should omit the current group from the picker (`currentGroupId`).
+ * Shared send plan for web + mobile composers. A message always stays in the
+ * thread it was written in: `@Group` is only a reference, kept in the text and
+ * sent as a mention. Routines always test-run.
  */
 export function resolveComposerSendPlan(input: {
   text: string;
@@ -244,41 +246,29 @@ export function resolveComposerSendPlan(input: {
 }): {
   trimmed: string;
   routineIds: string[];
-  rerouteGroupId: string | null;
-  rerouteGroupName: string | null;
   mentionPayload: ReturnType<typeof toThreadMentionPayload>;
   shouldSend: boolean;
-  shouldOpenGroup: boolean;
   shouldRunRoutines: boolean;
   isNoOp: boolean;
 } {
   const parts = partitionComposerMentions(input.mentions);
-  const mentionedGroup = parts.groups[0];
-  let trimmed = stripMentionKinds(input.text.trim(), input.mentions, [
-    "group",
-    "routine",
-    "connector",
-  ]);
+  let trimmed = stripMentionKinds(input.text.trim(), input.mentions, ["routine", "connector"]);
   trimmed = appendConnectorIntent(trimmed, needsAuthConnectorNames(input.mentions));
   if (!trimmed && parts.connectors.length) {
     trimmed = parts.connectors.map((mention) => `@${mention.name}`).join(" ");
   }
   const routineIds = [...new Set(parts.routines.map((routine) => routine.id))];
   const shouldSend = Boolean(trimmed) || input.hasAttachments;
-  const shouldOpenGroup = Boolean(mentionedGroup);
   const shouldRunRoutines = routineIds.length > 0;
   return {
     trimmed,
     routineIds,
-    rerouteGroupId: mentionedGroup?.id ?? null,
-    rerouteGroupName: mentionedGroup?.name ?? null,
     mentionPayload: toThreadMentionPayload(
-      input.mentions.filter((mention) => mention.kind !== "group" && mention.kind !== "routine"),
+      input.mentions.filter((mention) => mention.kind !== "routine"),
     ),
     shouldSend,
-    shouldOpenGroup,
     shouldRunRoutines,
-    isNoOp: !shouldSend && !shouldOpenGroup && !shouldRunRoutines,
+    isNoOp: !shouldSend && !shouldRunRoutines,
   };
 }
 
