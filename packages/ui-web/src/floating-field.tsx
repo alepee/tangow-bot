@@ -1,8 +1,6 @@
 import { Field } from "@base-ui/react/field";
 import type { ComponentProps, ReactNode } from "react";
-import { useId } from "react";
 import { Input } from "./components/ui/input.js";
-import { NativeSelect } from "./components/ui/native-select.js";
 import { cn } from "./lib/utils.js";
 
 export type FloatingFieldProps = Omit<ComponentProps<"input">, "children"> & {
@@ -10,14 +8,23 @@ export type FloatingFieldProps = Omit<ComponentProps<"input">, "children"> & {
   label: ReactNode;
   /** Shown in the gap under the field, over whatever follows, so nothing moves. */
   error?: ReactNode;
+  /** Marks the value itself as wrong; an error about something else leaves it unset. */
+  invalid?: boolean;
   /** A control laid over the field's end, such as a show-password button. */
   children?: ReactNode;
 };
 
 /** A field whose label sits inside it while empty and rises on focus or once filled. */
-export function FloatingField({ label, error, className, children, ...props }: FloatingFieldProps) {
+export function FloatingField({
+  label,
+  error,
+  invalid = false,
+  className,
+  children,
+  ...props
+}: FloatingFieldProps) {
   return (
-    <Field.Root invalid={Boolean(error)} className={cn("rk-floating-field", className)}>
+    <Field.Root invalid={invalid} className={cn("rk-floating-field", className)}>
       <Input
         {...props}
         className={cn(
@@ -36,22 +43,6 @@ export function FloatingField({ label, error, className, children, ...props }: F
           {error}
         </Field.Error>
       ) : null}
-    </Field.Root>
-  );
-}
-
-export type FloatingSelectProps = Omit<ComponentProps<typeof NativeSelect>, "size"> & {
-  label: ReactNode;
-};
-
-/** A native select with its label always risen: a select always has a value. */
-export function FloatingSelect({ label, id, className, ...props }: FloatingSelectProps) {
-  const generatedId = useId();
-  const selectId = id ?? generatedId;
-  return (
-    <Field.Root className={cn("rk-floating-field", className)}>
-      <NativeSelect id={selectId} size="field" className="w-full" {...props} />
-      <Field.Label htmlFor={selectId}>{label}</Field.Label>
     </Field.Root>
   );
 }

@@ -66,8 +66,7 @@ button shows, just above it. Under 760 px tall the form tightens (`fieldShort`).
 `FloatingField` is a Base UI `Field`: its real `<label>` is the accessible name,
 sits inside the empty field at 16 px and rises to 12 px on focus or once filled
 (`label` duration). Its error sits in the gap under the field and pushes
-nothing. `FloatingSelect` puts the same label, always risen, on `NativeSelect`
-`size="field"` (chevron 18 px, 11 px from the edge).
+nothing; `invalid` marks the value itself as wrong.
 
 ## FramedBlock
 

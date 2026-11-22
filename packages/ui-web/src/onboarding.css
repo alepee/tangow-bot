@@ -216,9 +216,17 @@
       margin-top: var(--lift);
     }
 
+    /* Room for a two-line error under the last field, which sits out of flow. */
     .rk-onboarding[data-keyboard] .rk-onboarding-actions {
       min-height: 0;
-      margin-top: 0;
+      margin-top: calc(
+        2 *
+        var(--type-meta-size) *
+        var(--type-meta-leading) +
+        8px -
+        var(--gap) -
+        var(--lift)
+      );
     }
 
     .rk-onboarding[data-keyboard] .rk-onboarding-actions > :not(:first-child) {

@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { act, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
-import { FloatingField, FloatingSelect } from "./floating-field.js";
+import { FloatingField } from "./floating-field.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -18,7 +18,7 @@ async function render(node: ReactNode) {
   return container;
 }
 
-function Email({ error }: { error?: string }) {
+function Email({ error, invalid }: { error?: string; invalid?: boolean }) {
   const [value, setValue] = useState("");
   return (
     <FloatingField
@@ -27,6 +27,7 @@ function Email({ error }: { error?: string }) {
       value={value}
       onChange={(event) => setValue(event.target.value)}
       error={error}
+      invalid={invalid}
     />
   );
 }
@@ -47,21 +48,14 @@ it("names the field by its label and raises the label once filled", async () => 
   expect(label.hasAttribute("data-filled")).toBe(true);
 });
 
-it("marks the field invalid and describes it with its error", async () => {
-  const container = await render(<Email error="Wrong email or password." />);
-  const input = container.querySelector("input")!;
-  const description = document.getElementById(input.getAttribute("aria-describedby") ?? "");
-
-  expect(input.getAttribute("aria-invalid")).toBe("true");
+it("describes the field with its error and marks it invalid only when asked", async () => {
+  const rejected = await render(<Email error="Wrong email or password." invalid />);
+  const rejectedInput = rejected.querySelector("input")!;
+  const description = document.getElementById(rejectedInput.getAttribute("aria-describedby") ?? "");
+  expect(rejectedInput.getAttribute("aria-invalid")).toBe("true");
   expect(description?.textContent).toBe("Wrong email or password.");
-});
 
-it("names a select by its label", async () => {
-  const container = await render(
-    <FloatingSelect label="Provider">
-      <option value="anthropic">Anthropic</option>
-    </FloatingSelect>,
-  );
-
-  expect(container.querySelector("select")?.labels?.[0]?.textContent).toBe("Provider");
+  const unreachable = await render(<Email error="Couldn't reach the server." />);
+  expect(unreachable.querySelector("input")!.hasAttribute("aria-invalid")).toBe(false);
+  expect(unreachable.querySelector("[role=alert]")?.textContent).toBe("Couldn't reach the server.");
 });

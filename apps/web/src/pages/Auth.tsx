@@ -26,6 +26,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   const [name, setName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [credentialsRejected, setCredentialsRejected] = useState(false);
   const [pending, setPending] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   // Signup triggers a session refresh that remounts the anonymous auth page.
@@ -72,6 +73,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
     e.preventDefault();
     setPending(true);
     setError(null);
+    setCredentialsRejected(false);
     try {
       if (mode === "forgot") {
         if (!reset?.passwordReset || !reset.resetUrl) {
@@ -98,10 +100,10 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
             })
           : await authClient.signIn.email({ email, password });
       if (result.error) {
+        const rejected = result.error.code === "INVALID_EMAIL_OR_PASSWORD";
+        setCredentialsRejected(rejected);
         setError(
-          result.error.code === "INVALID_EMAIL_OR_PASSWORD"
-            ? t`Wrong email or password.`
-            : (result.error.message ?? t`Could not continue`),
+          rejected ? t`Wrong email or password.` : (result.error.message ?? t`Could not continue`),
         );
         return;
       }
@@ -186,6 +188,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           error={error}
+          invalid={credentialsRejected}
         >
           {passwordToggle}
         </FloatingField>
