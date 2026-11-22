@@ -37,6 +37,7 @@ size carries the height or the square.
 | `roundIconSm` | 28 | `size-hover-icon` |
 | `stack` | 44 | `h-mobile-stack` |
 | `call` | 52 | `size-call-button` |
+| `full` | 52, full width | `h-primary-button` (pair with the default variant: an onboarding step's main button) |
 
 `consequential` prefixes a 13 px lock and sets `data-consequential="true"`, so
 an action that cannot be taken back reads as one before it is pressed. The size
@@ -50,6 +51,22 @@ written inside the primitive.
 
 Used by: the framed block's actions, quick replies, the composer, the hover
 pill, the call view.
+
+## OnboardingFrame and FloatingField
+
+`packages/ui-web/src/onboarding-frame.tsx`, `floating-field.tsx`, laid out by
+`onboarding.css`. One frame for every step before an account exists: the
+wordmark, the clay scene card (`plate`, 10:9 at phone width, smaller but never
+cropped tighter on a short screen) and a step box as tall as the tallest step,
+with its actions anchored at the foot so the title and the main button land at
+the same place on every step. Under 860 px wide the card sits above the box and
+the actions sit under the thumb; while a phone keyboard is up only the main
+button shows, just above it. Under 760 px tall the form tightens (`fieldShort`).
+
+`FloatingField` is a Base UI `Field`: its real `<label>` is the accessible name,
+sits inside the empty field at 16 px and rises to 12 px on focus or once filled
+(`label` duration). Its error sits in the gap under the field and pushes
+nothing; `invalid` marks the value itself as wrong.
 
 ## FramedBlock
 

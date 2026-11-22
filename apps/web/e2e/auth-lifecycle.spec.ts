@@ -24,7 +24,7 @@ test("restricted signup waits for mailbox verification", async ({ page }, testIn
   await expect(page.getByRole("heading", { name: "Check your email" })).toBeVisible();
   await captureScreenshot(page, testInfo, "signup-verification-required");
   await page.getByRole("link", { name: "Back to sign in" }).click();
-  await expect(page.getByRole("heading", { name: "Sign in to Tangow" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Got the key?" })).toBeVisible();
 });
 
 test("logout protects bot deep links and sign-in restores the session", async ({
@@ -72,7 +72,7 @@ test("logout protects bot deep links and sign-in restores the session", async ({
   await captureScreenshot(page, testInfo, "36-account-menu");
 
   await page.getByRole("button", { name: "Log out" }).click();
-  await expect(page.getByRole("heading", { name: "Sign in to Tangow" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Got the key?" })).toBeVisible();
   await page.goto("/");
   await expect(page.locator('[data-tangow-surface="welcome"]')).toBeVisible();
   await expect(page.getByText(/Your team of always-on agents/)).toBeVisible();
@@ -84,7 +84,7 @@ test("logout protects bot deep links and sign-in restores the session", async ({
 
   await page.goto(protectedBotPath);
   await page.waitForURL((url) => url.pathname === "/sign-in");
-  await expect(page.getByRole("heading", { name: "Sign in to Tangow" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Got the key?" })).toBeVisible();
   await expect(page.getByText("Chief", { exact: true })).toHaveCount(0);
   await expect(page.getByText(userName, { exact: true })).toHaveCount(0);
   await expect(page.getByLabel("Email")).toHaveAttribute("autocomplete", "username");
@@ -92,21 +92,27 @@ test("logout protects bot deep links and sign-in restores the session", async ({
     "autocomplete",
     "current-password",
   );
+  await expect(page.getByRole("img", { name: "Tangow" })).toBeVisible();
+  await expect(page.locator('form input[type="email"]')).toBeVisible();
+  await expect(page.locator('[data-slot="onboarding-frame"] img')).toHaveJSProperty(
+    "complete",
+    true,
+  );
   await captureScreenshot(page, testInfo, "38-protected-deep-link-sign-in");
+  const desktopViewport = page.viewportSize();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await captureScreenshot(page, testInfo, "38-sign-in-phone");
+  if (desktopViewport) await page.setViewportSize(desktopViewport);
 
-  await page.getByPlaceholder("Your email address").fill(email);
-  await page.getByPlaceholder("Password").fill("wrong-password12");
-  await page.getByRole("button", { name: "Continue with email" }).click();
-  await expect(
-    page
-      .locator("form")
-      .getByText(/invalid email or password|invalid credentials|incorrect password/i),
-  ).toBeVisible();
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password", { exact: true }).fill("wrong-password12");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.locator("form").getByText(/wrong email or password/i)).toBeVisible();
   await expect(page).toHaveURL(/\/sign-in$/);
   await captureScreenshot(page, testInfo, "39-invalid-credentials");
 
-  await page.getByPlaceholder("Password").fill(password);
-  await page.getByRole("button", { name: "Continue with email" }).click();
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.waitForURL((url) => url.pathname === protectedBotPath, {
     timeout: 20_000,
   });
@@ -215,6 +221,6 @@ test("changes and recovers an email password", async ({ page }, testInfo) => {
   await page.getByRole("link", { name: "Sign in" }).click();
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password", { exact: true }).fill(resetPassword);
-  await page.getByRole("button", { name: "Continue with email" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.waitForURL(/\/app(?:\/|$)/);
 });
