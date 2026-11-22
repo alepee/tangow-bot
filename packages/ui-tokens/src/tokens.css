@@ -309,6 +309,8 @@
   --size-link-photo-max: 320px;
   --size-link-mention-icon: 16px;
   --size-link-mention-gap: 5px;
+  --size-mention-glyph: 16px;
+  --size-mention-gap: 4px;
   --size-share-bar: 8px;
   --size-field: 56px;
   --size-field-short: 52px;

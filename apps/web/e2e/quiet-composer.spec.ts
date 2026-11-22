@@ -74,24 +74,30 @@ function speak(page: Page, transcript: string) {
   }, transcript);
 }
 
-/** Adds a mention chip for Helper and returns it. */
-async function addMentionChip(page: Page, composer: Locator) {
-  await composer.fill("@Help");
+/** Mentions Helper mid-sentence and returns its inline token. */
+async function addMention(page: Page, composer: Locator) {
+  await composer.fill("Ask @Help");
   const picker = page.getByTestId("mention-picker");
   await expect(picker).toBeVisible();
   await picker.getByRole("option", { name: "@Helper" }).click();
-  const chip = page.getByTestId("mention-chip");
-  await expect(chip).toBeVisible();
-  await expect(chip).toContainText("Helper");
-  return chip;
+  await page.keyboard.insertText("about the launch");
+  const token = page.getByTestId("composer-bar").locator('[data-slot="entity-mention-field"]');
+  await expect(token).toHaveText("@Helper");
+  await expect(composer).toHaveValue("Ask @Helper about the launch");
+  return token;
 }
 
-async function removeMentionChip(page: Page) {
-  await page.getByRole("button", { name: "Remove mention Helper" }).click();
-  await expect(page.getByTestId("mention-chip")).toHaveCount(0);
+/** The token sits on the text's line, no taller than it. */
+async function expectInline(token: Locator, composer: Locator) {
+  const tokenBox = await token.boundingBox();
+  const fieldBox = await composer.boundingBox();
+  expect(tokenBox).toBeTruthy();
+  expect(fieldBox).toBeTruthy();
+  expect(tokenBox!.y).toBeGreaterThanOrEqual(fieldBox!.y);
+  expect(tokenBox!.height).toBeLessThanOrEqual(fieldBox!.height);
 }
 
-test("composer capsule: empty, typing, and mention chip in light and dark", async ({
+test("composer capsule: empty, typing, and inline mention in light and dark", async ({
   page,
 }, testInfo) => {
   const composer = await setupGroupComposer(page);
@@ -117,15 +123,12 @@ test("composer capsule: empty, typing, and mention chip in light and dark", asyn
   await composer.fill("");
   await expect(bar.getByRole("button", { name: "Send" })).toHaveCount(0);
 
-  // Mention chip — a 30 px capsule carrying an 18 px bot avatar.
-  const lightChip = await addMentionChip(page, composer);
-  const lightChipBox = await lightChip.boundingBox();
-  expect(lightChipBox).toBeTruthy();
-  expect(lightChipBox!.height).toBeGreaterThanOrEqual(29);
-  expect(lightChipBox!.height).toBeLessThanOrEqual(31);
+  // Mention — inline where it was typed, its glyph over the `@`.
+  const lightToken = await addMention(page, composer);
+  await expectInline(lightToken, composer);
   await expect(bar.getByRole("button", { name: "Send" })).toBeVisible();
-  await captureScreenshot(page, testInfo, "quiet-composer-mention-chip-light");
-  await removeMentionChip(page);
+  await captureScreenshot(page, testInfo, "quiet-composer-mention-light");
+  await composer.fill("");
 
   await setTheme(page, "dark");
 
@@ -137,12 +140,9 @@ test("composer capsule: empty, typing, and mention chip in light and dark", asyn
   await captureScreenshot(page, testInfo, "quiet-composer-typing-dark");
   await composer.fill("");
 
-  const darkChip = await addMentionChip(page, composer);
-  const darkChipBox = await darkChip.boundingBox();
-  expect(darkChipBox).toBeTruthy();
-  expect(darkChipBox!.height).toBeGreaterThanOrEqual(29);
-  expect(darkChipBox!.height).toBeLessThanOrEqual(31);
-  await captureScreenshot(page, testInfo, "quiet-composer-mention-chip-dark");
+  const darkToken = await addMention(page, composer);
+  await expectInline(darkToken, composer);
+  await captureScreenshot(page, testInfo, "quiet-composer-mention-dark");
 });
 
 test("composer while a bot works: Send replaces Stop when drafting, light and dark", async ({

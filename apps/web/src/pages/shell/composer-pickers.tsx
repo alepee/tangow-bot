@@ -5,12 +5,13 @@ import type { ComposerMention, SlashActionId } from "@tangow/core";
 import {
   clampMentionHighlightIndex,
   mentionChipKey,
+  mentionQueryAt,
   SLASH_ACTIONS,
   slashSkillOptions as slashSkills,
   truncateSlashDescription,
 } from "@tangow/core";
 import { BotAvatar } from "@tangow/ui-web";
-import { Box, Clock, Puzzle, Settings, X } from "lucide-react";
+import { Box, Clock, Puzzle, Settings } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 
 /** The `@` and `/` pickers: what the draft is asking for and what they offer for it. */
@@ -31,10 +32,19 @@ export function useComposerPickers({
   const [slashQuery, setSlashQuery] = useState<string | null>(null);
   const mentionListboxId = useId();
 
-  /** Reads the edited draft for a trailing `@query` or a leading `/query`. */
-  function trackDraft(value: string, slashAllowed: boolean) {
-    const mentionMatch = /(?:^|\s)@([\w-]*)$/.exec(value);
-    setMentionQuery(mentionMatch ? (mentionMatch[1] ?? "") : null);
+  /** Reads the draft for an `@query` right before the caret, unless it is a picked token. */
+  function trackCaret(value: string, caret: number, picked: readonly ComposerMention[]) {
+    setMentionQuery(mentionQueryAt(value, caret, picked)?.query ?? null);
+  }
+
+  /** Reads the edited draft for an `@query` at the caret or a leading `/query`. */
+  function trackDraft(
+    value: string,
+    caret: number,
+    slashAllowed: boolean,
+    picked: readonly ComposerMention[],
+  ) {
+    trackCaret(value, caret, picked);
     // `/` only at the start of the draft so forced skills expand (`Use skill:` / `/Name` prefix).
     const slashMatch = slashAllowed ? /^\/([^\n]*)$/.exec(value) : null;
     const nextSlash = slashMatch ? (slashMatch[1] ?? "") : null;
@@ -102,6 +112,7 @@ export function useComposerPickers({
 
   return {
     trackDraft,
+    trackCaret,
     closeMentions,
     closeSlash,
     closeAll,
@@ -230,69 +241,6 @@ export function SlashPicker({
   );
 }
 
-/** The skill and mention chips picked into the draft. */
-export function SelectedChips({
-  skill,
-  mentions,
-  disabled,
-  onRemoveSkill,
-  onRemoveMention,
-}: {
-  skill: AgentSkillCatalogEntry | null;
-  mentions: ComposerMention[];
-  disabled: boolean;
-  onRemoveSkill: () => void;
-  onRemoveMention: (mention: ComposerMention) => void;
-}) {
-  const { t } = useLingui();
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {skill ? (
-        <span
-          data-testid="skill-chip"
-          className="inline-flex h-7.5 max-w-full items-center gap-1.5 rounded-full bg-accent ps-2.5 pe-2.5 text-capsule text-foreground"
-        >
-          <Box size={13} strokeWidth={1.7} className="shrink-0 text-muted-foreground/70" />
-          <span dir="auto" className="truncate">
-            {skill.name}
-          </span>
-          <button
-            type="button"
-            aria-label={t`Remove skill ${skill.name}`}
-            onClick={onRemoveSkill}
-            disabled={disabled}
-            className="text-muted-foreground hover:text-foreground disabled:pointer-events-none"
-          >
-            <X size={12} strokeWidth={2} />
-          </button>
-        </span>
-      ) : null}
-      {mentions.map((mention) => (
-        <span
-          key={mentionChipKey(mention)}
-          data-testid="mention-chip"
-          data-mention-kind={mention.kind}
-          className="inline-flex h-7.5 max-w-full items-center gap-1.5 rounded-full bg-mention-chip ps-1.25 pe-2.5 text-capsule text-mention-chip-foreground"
-        >
-          <MentionChipIcon mention={mention} />
-          <span dir="auto" className="truncate">
-            {mention.name}
-          </span>
-          <button
-            type="button"
-            aria-label={t`Remove mention ${mention.name}`}
-            onClick={() => onRemoveMention(mention)}
-            disabled={disabled}
-            className="text-muted-foreground hover:text-foreground disabled:pointer-events-none"
-          >
-            <X size={12} strokeWidth={2} />
-          </button>
-        </span>
-      ))}
-    </div>
-  );
-}
-
 function slashActionLabel(id: SlashActionId) {
   switch (id) {
     case "chat-settings":
@@ -326,22 +274,4 @@ function MentionOptionIcon({ mention }: { mention: ComposerMention }) {
     );
   }
   return <BotAvatar character={mention.avatarCharacter} size={16} />;
-}
-
-/** The 18 px avatar sized for the Quiet mention chip (see docs/design-system.md). */
-function MentionChipIcon({ mention }: { mention: ComposerMention }) {
-  if (mention.kind === "routine") {
-    return <Clock size={13} strokeWidth={1.7} className="shrink-0 text-muted-foreground/70" />;
-  }
-  if (mention.kind === "connector") {
-    return <Puzzle size={13} strokeWidth={1.7} className="shrink-0 text-muted-foreground/70" />;
-  }
-  if (mention.kind === "group" || mention.kind === "everyone") {
-    return (
-      <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-accent text-[9px] text-foreground/75">
-        {mention.kind === "group" ? "G" : "@"}
-      </span>
-    );
-  }
-  return <BotAvatar character={mention.avatarCharacter} size={18} />;
 }

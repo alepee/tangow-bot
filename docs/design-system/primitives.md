@@ -296,6 +296,35 @@ inside a table stay plain on iPhone, since `TableGrid` draws its own links.
 
 Used by: the web and desktop thread, and the iPhone thread.
 
+## EntityMention
+
+A bot, group, `@everyone` or skill named in a message, in place in the sentence: a
+`mentionGlyph` (16) glyph glued to the semibold name, `mentionGap` (4) between them, no `@`
+or `/`. The glyph says what it is: a bot's clay face (the only colour), a circle on
+`avatarDisc` for who can answer (group, everyone), a square on the `linkMentionTile` with a
+10% `foreground` hairline for what gets used (skill, routine, connector); in the person's
+bubble the tile is a 16% veil of its ink. No fill and no underline, so it never reads as a
+link mention. `packages/chat-ui/src/entity-mention.web.tsx`, drawn by `LinkifiedText` and, for
+a bot, `ChatMarkdown` (never inside code or a link), from the thread's catalog given once by
+`EntityMentionsProvider` in `shell-main.tsx`: what the composer can name plus the skills.
+Nothing is stored: the sent text keeps `@Name` and a leading `/skill` line, and
+`messageSegments` (`@tangow/core`) matches them longest name first on word boundaries; a
+name the client does not know stays text. Web anatomy is a link mention's: `inline-flex`,
+one line box tall, `nowrap`, at most `min(22ch, 100%)` with the name ellipsized in a `<bdi>`.
+
+In the web composer the textarea stays; `DraftMirror` (`composer-mirror.tsx`) draws the draft
+over it with the textarea's own text transparent, so the caret and selection are native.
+`EntityMentionField` keeps every character, so advance widths match: the glyph is drawn over
+the `@`, as wide as it allows, or for a leading skill in a first-line indent of
+`mentionGlyph` before its `/`; the weight is a stroke. Arrow keys step over a token, and
+Backspace or Delete next to one selects it (a `mentionChip` fill) before removing it whole.
+Editing a token's text drops the mention.
+
+iPhone (`entity-mention.native.tsx`, `NativeEntityMentionsProvider` in `thread.tsx`): the
+bubble draws the glyph as an inline view glued with a word joiner, as a link mention; the
+composer's `TextInput` cannot hold a view, so a token is styled text in it, a muted `@` or
+`/` and a semibold name.
+
 ## ComposerLinkPreview
 
 What the first complete link of the draft will look like, in the composer's

@@ -8,7 +8,6 @@ import {
   resolveComposerSendPlan,
 } from "@tangow/core";
 import { useCallback, useState } from "react";
-import type { NavigateFunction } from "react-router-dom";
 import type { CardEdits } from "../../components/AskCard";
 import { requestBrowserNotificationPermission } from "../../lib/browser-notifications";
 import { draftEdits } from "../../lib/draft-edits";
@@ -51,7 +50,6 @@ export function useThreadSend({
   sync,
   thread,
   draft,
-  navigate,
   flushPendingBrowserNotifications,
   cancelFocusPromptFor,
 }: {
@@ -60,7 +58,6 @@ export function useThreadSend({
   sync: ThreadSync;
   thread: ThreadViewState;
   draft: ComposerDraft;
-  navigate: NavigateFunction;
   flushPendingBrowserNotifications: () => void;
   cancelFocusPromptFor: (botId: string | undefined) => void;
 }) {
@@ -123,10 +120,10 @@ export function useThreadSend({
       mentions: ComposerMention[] = [],
       options: { linkPreview?: false } = {},
     ) => {
-      const initialBotTarget = activeBotId.current;
-      const initialGroupTarget = activeGroupId.current;
-      if ((!initialBotTarget && !initialGroupTarget) || sending) return;
-      const originThreadKey = initialGroupTarget ?? initialBotTarget;
+      const botTarget = activeBotId.current;
+      const groupTarget = activeGroupId.current;
+      if ((!botTarget && !groupTarget) || sending) return;
+      const originThreadKey = groupTarget ?? botTarget;
       const attachments = attachmentsForThread(pendingAttachments, originThreadKey);
       const rewindMessageId = activeRewindTarget?.id;
       const replyToMessageId = activeReplyTarget
@@ -139,11 +136,6 @@ export function useThreadSend({
         hasAttachments: attachments.length > 0 || restoredArtifactIds.length > 0,
       });
       if (plan.isNoOp) return;
-      const reroutedToGroup = Boolean(
-        plan.rerouteGroupId && plan.rerouteGroupId !== initialGroupTarget,
-      );
-      const groupTarget = plan.rerouteGroupId ?? initialGroupTarget;
-      const botTarget = reroutedToGroup ? undefined : initialBotTarget;
       if (
         plan.shouldSend &&
         (groupTarget || botsRef.current.find((bot) => bot.id === botTarget)?.notifyOnFinish)
@@ -155,7 +147,7 @@ export function useThreadSend({
       setSending(true);
       setSendError(null);
       // Only after successful engagement so a failed upload/send keeps the setup card.
-      const dropDelayedSetup = () => cancelFocusPromptFor(initialBotTarget);
+      const dropDelayedSetup = () => cancelFocusPromptFor(botTarget);
       let replaced: ReturnType<typeof editedWaitingDraft>;
       try {
         if (plan.shouldRunRoutines) {
@@ -177,10 +169,6 @@ export function useThreadSend({
             current.filter((attachment) => attachment.threadKey !== originThreadKey),
           );
           setAttachmentNotice(null);
-          if (reroutedToGroup && groupTarget) {
-            navigate(`/app/g/${groupTarget}`);
-            return;
-          }
           if (groupTarget && activeGroupId.current === groupTarget) {
             await refreshGroupThreadRef.current(groupTarget);
           } else if (botTarget && activeBotId.current === botTarget) {
@@ -203,7 +191,7 @@ export function useThreadSend({
           artifactIds.push(artifact.id);
         }
         // Truncation happens here rather than on Edit, so backing out costs nothing.
-        if (rewindMessageId && !reroutedToGroup) {
+        if (rewindMessageId) {
           await rpc.threads.rewind(
             groupTarget
               ? { groupId: groupTarget, messageId: rewindMessageId }
@@ -211,9 +199,7 @@ export function useThreadSend({
           );
         }
         const clientNonce = newClientNonce();
-        replaced = reroutedToGroup
-          ? undefined
-          : editedWaitingDraft(viewRef.current, (itemId) => draftEdits.get(itemId));
+        replaced = editedWaitingDraft(viewRef.current, (itemId) => draftEdits.get(itemId));
         if (groupTarget) {
           await rpc.threads.send({
             groupId: groupTarget,
@@ -221,7 +207,7 @@ export function useThreadSend({
             text: trimmed || undefined,
             mentions: plan.mentionPayload.length ? plan.mentionPayload : undefined,
             artifactIds: artifactIds.length ? artifactIds : undefined,
-            replyToMessageId: reroutedToGroup ? undefined : replyToMessageId,
+            replyToMessageId,
             linkPreview: options.linkPreview,
             draft: replaced?.draft,
           });
@@ -258,12 +244,7 @@ export function useThreadSend({
         setPendingAttachments((current) =>
           current.filter((attachment) => attachment.threadKey !== originThreadKey),
         );
-        // Refresh sidebar status even when a bot→group reroute navigates away below.
         void refreshBots().catch(() => undefined);
-        if (reroutedToGroup && groupTarget) {
-          navigate(`/app/g/${groupTarget}`);
-          return;
-        }
         if (groupTarget && activeGroupId.current === groupTarget) setAttachmentNotice(null);
         if (botTarget && activeBotId.current === botTarget) setAttachmentNotice(null);
         // The message is in the log and on the feed: the next one can go while the thread refreshes.
@@ -283,9 +264,7 @@ export function useThreadSend({
             linkPreviewRemoved: options.linkPreview === false,
           });
         }
-        if (reroutedToGroup && groupTarget) {
-          setSendError(error instanceof Error ? error.message : t`Failed to send message`);
-        } else if (groupTarget && activeGroupId.current === groupTarget) {
+        if (groupTarget && activeGroupId.current === groupTarget) {
           setSendError(error instanceof Error ? error.message : t`Failed to send message`);
         } else if (botTarget && activeBotId.current === botTarget) {
           setSendError(error instanceof Error ? error.message : t`Failed to send message`);
@@ -299,7 +278,6 @@ export function useThreadSend({
       activeRewindTarget?.id,
       cancelRewind,
       flushPendingBrowserNotifications,
-      navigate,
       pendingAttachments,
       rewindArtifacts,
       sending,
