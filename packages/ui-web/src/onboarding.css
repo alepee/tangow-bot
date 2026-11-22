@@ -155,12 +155,15 @@
         var(--type-large-title-compact-leading) +
         8px
       );
+      /* The phone step box holds the step's own fields, so the card keeps the room a
+         missing field would leave empty. Under the last field: two lines of error. */
+      --fields: 1;
+      --error-room: calc(2 * var(--type-meta-size) * var(--type-meta-leading) + 8px);
       --box: calc(
         var(--title-h) +
-        3 *
-        var(--field-h, var(--size-field)) +
-        4 *
-        var(--gap) +
+        var(--fields) *
+        (var(--field-h, var(--size-field)) + var(--gap)) +
+        var(--error-room) +
         var(--actions-h)
       );
       --around-stage: calc(
@@ -175,6 +178,14 @@
       flex-direction: column;
     }
 
+    .rk-onboarding:has(.rk-floating-field ~ .rk-floating-field) {
+      --fields: 2;
+    }
+
+    .rk-onboarding:has(.rk-floating-field ~ .rk-floating-field ~ .rk-floating-field) {
+      --fields: 3;
+    }
+
     .rk-onboarding-top {
       order: -2;
       padding: var(--size-logo-top) max(24px, env(safe-area-inset-left)) var(--size-logo-bottom);
@@ -183,11 +194,14 @@
     .rk-onboarding-stage {
       order: -1;
       flex: none;
-      align-self: center;
-      aspect-ratio: 10 / 9;
       height: min((100vw - 32px) * 0.9, 100svh - var(--around-stage) - env(safe-area-inset-bottom));
       margin: 0 max(16px, env(safe-area-inset-left));
       border-radius: var(--corner-block);
+    }
+
+    /* Full width always; a short screen trims the empty backdrop above the scene. */
+    .rk-onboarding-stage > img {
+      object-position: 50% 80%;
     }
 
     .rk-onboarding-pane {

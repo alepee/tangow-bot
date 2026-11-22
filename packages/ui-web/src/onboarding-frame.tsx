@@ -17,8 +17,9 @@ export type OnboardingFrameProps = {
 
 /**
  * One frame for every step before an account exists: the wordmark, the clay scene
- * card and a step box of fixed height whose actions sit at its foot, so the title
- * and the main button land at the same place on every step.
+ * card and a step box of fixed height whose actions sit at its foot, so the main
+ * button lands at the same place on every step. On a short phone the card takes
+ * the room a step's missing fields would leave, so it grows on shorter steps.
  */
 export function OnboardingFrame({
   scene,
