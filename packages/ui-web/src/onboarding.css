@@ -216,13 +216,9 @@
       margin-top: var(--lift);
     }
 
-    .rk-onboarding[data-keyboard] .rk-onboarding-actions > :first-child {
-      position: fixed;
-      inset-inline: 24px;
-      bottom: calc(var(--kb) + 12px);
-      z-index: 5;
-      max-width: calc(100% - 48px);
-      margin: 0;
+    .rk-onboarding[data-keyboard] .rk-onboarding-actions {
+      min-height: 0;
+      margin-top: 0;
     }
 
     .rk-onboarding[data-keyboard] .rk-onboarding-actions > :not(:first-child) {

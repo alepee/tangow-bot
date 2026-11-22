@@ -54,9 +54,10 @@ export function OnboardingFrame({
 }
 
 /**
- * Phone keyboard: the main button rides just above it and the focused field is
- * scrolled above the button. Measured against the layout viewport, because iOS
- * 27 Safari shrinks `innerHeight` with the keyboard.
+ * Phone keyboard: the actions close up under the fields and the page scrolls the
+ * main button to just above the keyboard, the focused field above it. iOS 27
+ * Safari measures client rects from the visual viewport's top, so its height is
+ * where the keyboard bar starts; a fixed button placed from it floats mid-screen.
  */
 function useKeyboardInset(ref: RefObject<HTMLDivElement | null>) {
   useEffect(() => {
@@ -64,34 +65,32 @@ function useKeyboardInset(ref: RefObject<HTMLDivElement | null>) {
     const viewport = window.visualViewport;
     if (!frame || !viewport) return;
     let settle: ReturnType<typeof setTimeout> | undefined;
-    const update = () => {
+    const update = (reveal: boolean) => {
       const layout = document.documentElement.clientHeight;
       const covered = layout - viewport.height;
       const open = covered > 80 && viewport.scale < 1.05 && frame.clientWidth <= PHONE_MAX_WIDTH;
-      frame.style.setProperty("--kb", `${Math.max(0, covered - viewport.offsetTop)}px`);
+      const opening = open && !frame.hasAttribute("data-keyboard");
       frame.toggleAttribute("data-keyboard", open);
       document.body.style.paddingBottom = open ? `${covered}px` : "";
       const field = document.activeElement;
+      if (!open || !(opening || reveal) || !(field instanceof HTMLElement)) return;
+      if (!field.matches("input, select")) return;
       const button = frame.querySelector(".rk-onboarding-actions > :first-child");
-      if (!open || !button || !(field instanceof HTMLElement) || !field.matches("input, select")) {
-        return;
-      }
-      const overlap =
-        field.getBoundingClientRect().bottom + 12 - button.getBoundingClientRect().top;
-      if (overlap > 1) window.scrollBy(0, overlap);
+      if (button) window.scrollBy(0, button.getBoundingClientRect().bottom + 12 - viewport.height);
     };
+    const onViewport = () => update(false);
     // Moving between fields with the keyboard already up fires no viewport event.
     const onFocus = () => {
       clearTimeout(settle);
-      settle = setTimeout(update, 350);
+      settle = setTimeout(() => update(true), 350);
     };
-    viewport.addEventListener("resize", update);
-    viewport.addEventListener("scroll", update);
+    viewport.addEventListener("resize", onViewport);
+    viewport.addEventListener("scroll", onViewport);
     document.addEventListener("focusin", onFocus);
     return () => {
       clearTimeout(settle);
-      viewport.removeEventListener("resize", update);
-      viewport.removeEventListener("scroll", update);
+      viewport.removeEventListener("resize", onViewport);
+      viewport.removeEventListener("scroll", onViewport);
       document.removeEventListener("focusin", onFocus);
       document.body.style.paddingBottom = "";
     };
