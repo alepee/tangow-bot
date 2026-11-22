@@ -1,5 +1,5 @@
 import { useLingui } from "@lingui/react/macro";
-import type { AvatarStyle, ComputerListItem, SpaceMemoryConfig } from "@tangow/contracts";
+import type { ComputerListItem, SpaceMemoryConfig } from "@tangow/contracts";
 import {
   Button,
   Dialog,
@@ -14,20 +14,7 @@ import {
   SettingRow,
   UserAvatar,
 } from "@tangow/ui-web";
-import {
-  Brain,
-  ChevronsUpDown,
-  CloudDownload,
-  Cpu,
-  Gauge,
-  KeyRound,
-  Monitor,
-  Signpost,
-  SlidersHorizontal,
-  UserRound,
-  Volume2,
-  XIcon,
-} from "lucide-react";
+import { ChevronsUpDown, CloudDownload, XIcon } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 import { rpc } from "../lib/rpc";
@@ -42,9 +29,10 @@ import { ModelSettingsOverlay } from "./ModelSettingsOverlay";
 import type { ProviderDetail } from "./ProvidersSettings";
 import { ProvidersSettings } from "./ProvidersSettings";
 import { SpaceGeneralSettings } from "./SpaceGeneralSettings";
+import type { SettingsSection } from "./settings-sections";
 import {
-  ACCOUNT_SETTINGS_SECTIONS,
-  type SettingsSection,
+  accountSettingsSections,
+  SETTINGS_NAV,
   SPACE_SETTINGS_SECTIONS,
 } from "./settings-sections";
 import { PHONE_MEDIA } from "./shell/layout";
@@ -66,8 +54,6 @@ export function SettingsOverlay({
   initials,
   image,
   initialSection = null,
-  avatarStyle,
-  onAvatarStyleChange,
   isDeploymentOwner = false,
   messagingEnabled = false,
   onOpenMessaging,
@@ -85,8 +71,6 @@ export function SettingsOverlay({
   initials: string;
   image: string | null;
   initialSection?: SettingsSection | null;
-  avatarStyle: AvatarStyle;
-  onAvatarStyleChange: (style: AvatarStyle) => Promise<void>;
   isDeploymentOwner?: boolean;
   messagingEnabled?: boolean;
   onOpenMessaging?: () => void;
@@ -144,23 +128,18 @@ export function SettingsOverlay({
   const back = usePushedFocus(section, panelRef);
   const providerBack = usePushedFocus(providerDetail?.key ?? null, panelRef);
 
-  const navItems: Record<SettingsSection, NavItem> = {
-    profile: { label: t`Profile`, icon: UserRound },
-    providers: { label: t`Providers`, icon: KeyRound },
-    updates: { label: t`Updates`, icon: CloudDownload },
-    space: { label: t`General`, icon: SlidersHorizontal },
-    models: { label: t`Models`, icon: Cpu },
-    voice: { label: t`Voice`, icon: Volume2 },
-    memory: { label: t`Memory`, icon: Brain },
-    "decision-model": { label: t`Decision Model`, icon: Signpost },
-    computer: { label: t`Computer`, icon: Monitor, updateAvailable: computerUpdateAvailable },
-    usage: { label: t`Usage`, icon: Gauge },
-  };
+  const accountSections = accountSettingsSections();
+
+  const navItem = (id: SettingsSection): NavItem => ({
+    label: t(SETTINGS_NAV[id].label),
+    icon: SETTINGS_NAV[id].icon,
+    updateAvailable: id === "computer" && computerUpdateAvailable,
+  });
 
   const sectionTitle = providerDetail
     ? providerDetail.title
     : section
-      ? navItems[section].label
+      ? navItem(section).label
       : t`Settings`;
 
   const closeLabel =
@@ -244,11 +223,11 @@ export function SettingsOverlay({
                 <UserAvatar initials={initials} image={image} className="size-6 text-label" />
                 <span className="truncate text-row-name font-semibold text-foreground">{name}</span>
               </div>
-              {ACCOUNT_SETTINGS_SECTIONS.map((id) => (
+              {accountSections.map((id) => (
                 <SettingsNavButton
                   key={id}
                   id={id}
-                  item={navItems[id]}
+                  item={navItem(id)}
                   active={id === section}
                   disabled={panelBusy}
                   onSelect={setSection}
@@ -264,7 +243,7 @@ export function SettingsOverlay({
                   <SettingsNavButton
                     key={id}
                     id={id}
-                    item={navItems[id]}
+                    item={navItem(id)}
                     active={id === section}
                     disabled={panelBusy}
                     onSelect={setSection}
@@ -280,7 +259,7 @@ export function SettingsOverlay({
                 {providerDetail ? (
                   <BackCapsule
                     ref={providerBack}
-                    label={navItems.providers.label}
+                    label={navItem("providers").label}
                     disabled={panelBusy}
                     onClick={() => setProviderDetail(null)}
                   />
@@ -317,7 +296,8 @@ export function SettingsOverlay({
             >
               {section === null ? (
                 <SettingsList
-                  navItems={navItems}
+                  navItem={navItem}
+                  accountSections={accountSections}
                   disabled={panelBusy}
                   spaceSwitcher={spaceSwitcher}
                   spaceLabelId={currentSpace ? spaceLabelId : undefined}
@@ -329,8 +309,6 @@ export function SettingsOverlay({
                   email={email}
                   name={name}
                   initials={initials}
-                  avatarStyle={avatarStyle}
-                  onAvatarStyleChange={onAvatarStyleChange}
                   isDeploymentOwner={isDeploymentOwner}
                 />
               ) : null}
@@ -350,6 +328,7 @@ export function SettingsOverlay({
                   onOpenMessaging={
                     onOpenMessaging ? () => leaveSettings(onOpenMessaging) : undefined
                   }
+                  onOpenDecisionModel={() => setSection("decision-model")}
                 />
               ) : null}
               {section === "usage" ? <UsageSettingsPanel panelRef={usageRef} /> : null}
@@ -435,13 +414,15 @@ function UpdateAvailableIcon() {
 
 /** At phone width the sections are a list the person picks from, grouped as the window's nav. */
 function SettingsList({
-  navItems,
+  navItem,
+  accountSections,
   disabled,
   spaceSwitcher,
   spaceLabelId,
   onSelect,
 }: {
-  navItems: Record<SettingsSection, NavItem>;
+  navItem: (id: SettingsSection) => NavItem;
+  accountSections: readonly SettingsSection[];
   disabled: boolean;
   spaceSwitcher: ReactNode;
   spaceLabelId: string | undefined;
@@ -449,7 +430,7 @@ function SettingsList({
 }) {
   const rows = (ids: readonly SettingsSection[]) =>
     ids.map((id) => {
-      const { label, icon: Icon, updateAvailable } = navItems[id];
+      const { label, icon: Icon, updateAvailable } = navItem(id);
       return (
         <SettingRow
           key={id}
@@ -467,7 +448,7 @@ function SettingsList({
     });
   return (
     <div className="flex flex-col gap-6">
-      <SettingsGroup>{rows(ACCOUNT_SETTINGS_SECTIONS)}</SettingsGroup>
+      <SettingsGroup>{rows(accountSections)}</SettingsGroup>
       <div className="flex flex-col gap-1.5">
         {spaceSwitcher}
         <fieldset aria-labelledby={spaceLabelId} className="contents">

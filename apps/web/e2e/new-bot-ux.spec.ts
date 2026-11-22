@@ -146,7 +146,11 @@ test("plus picker can create a Private computer bot", async ({ page }, testInfo)
   const stamp = Date.now();
   await signup(page, `new-bot-private-${stamp}@tangow.test`, "password12", "New Bot Private");
   await completeOnboarding(page);
+  const bootstrap = page.waitForResponse(
+    (response) => response.url().includes("/rpc/bootstrap") && response.ok(),
+  );
   await page.goto("/app");
+  await bootstrap;
   await page.waitForURL(/\/app\/[^/]+$/);
 
   await createBotFromPicker(page, { computerMode: "dedicated" });

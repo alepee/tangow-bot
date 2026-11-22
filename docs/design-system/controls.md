@@ -68,16 +68,17 @@ ring layered on top. Bottom-aligned (`items-end`) so its buttons stay on the las
 while the field grows; at least `min-h-12` (48 px) even empty.
 
 Props: `attach?` (the attach button — the capsule's **leading edge**, before
-any chip: `+ · [chips] · text · [mic] · action(s)`), `leading?` (a
-mention/skill chip, or the speaking bot's avatar), `children` (the field),
+the field: `+ · text · [mic] · action(s)`; picked mentions and skills sit
+inline in the text, see [EntityMention](primitives.md#entitymention)), `leading?`
+(the speaking bot's avatar), `children` (the field),
 `trailing?` (round-icon buttons: dictate, then send / stop), `attachments?` (a
 row of `ComposerAttachment`, rendered **above** the input line, inside the
 capsule — pending attachments and rewind artifacts both land here, wrapping on
 web), `state?: idle | typing | dictating | speaking`.
 
 **Dictation mode** (`state="dictating"`): the capsule swaps its ambient
-`shadow-composer-rest`/`-focus` for a 1.5 px `foreground` ring (`+` and any
-chip stay in place, just inactive — the caller disables them). Two new props
+`shadow-composer-rest`/`-focus` for a 1.5 px `foreground` ring (`+` stays in
+place, just inactive — the caller disables them). Two new props
 draw a row **under** the field: `dictationCancel?` (×, start) and
 `dictationConfirm?` (✓ — plus Stop when a reply is running — end), with this
 component's own four bars in between as the waveform (`data-slot="composer-
@@ -94,7 +95,7 @@ is composed from the slots, so its label stays translatable.
 progress is now carried by the Stop button's own contour (`StopContour`), not
 by chrome inside the capsule.
 
-Do: show Send only when the draft or a chip is non-empty; put the attach
+Do: show Send only when the draft is non-empty; put the attach
 button in `attach`, never in `trailing`; dictation and the call never fight
 over the composer — the call moved to the thread header (a phone icon labelled `Voice`, 1:1
 only; the mic always means dictation) and cancels a dictation in progress before it opens. Don't: put a second
@@ -134,9 +135,8 @@ colour chase each other around a 2 px ring, one lap per `--duration-flow`
 `bg-primary-foreground` square marks the button underneath. No head, no
 accessible name — it fills a `roundIcon` button that already has one.
 
-Props: `color?` — the bot's identity colour as a plain CSS colour string, the
-same precedent as `BotAvatar`'s `color` prop (data, not a token; carried as
-the inline custom property `--contour`). Omit it in a group, or when no bot is
+Props: `color?` — the bot's colour (`botDisplayColor`) as a plain CSS colour string
+(data, not a token; carried as the inline custom property `--contour`). Omit it in a group, or when no bot is
 known: the contour falls back to `color-mix(in srgb, var(--foreground) 45%,
 transparent)`. Reduced motion: the ring holds still, fully lit, no rotation.
 
@@ -170,17 +170,22 @@ A light sweep across a label that is still being written, as the `rk-shimmer`
 class. Ported from beautifului.dev
 (github.com/TurboKach/ai-native-react-components, MIT © 2026 Turbo).
 
-## BotAvatar — followPointer
+## BotAvatar
 
-`followPointer` lets the organic avatar look toward a fine pointer (a mouse)
-anywhere on the page: the pointer's position against the avatar's own box
-(`pointerLook` in `@tangow/core`, zero at the centre, ±1 at the edges, held
-beyond) is mapped onto the range the working glances already use (yaw ±26°,
-pitch -8° to 18°) and eased by the engine's `LOOK_MORPH`. It returns to rest
-when the pointer leaves the window. A working bot keeps its own glances and no
-listener is attached then; under reduced motion or on a touch screen none is
-attached either; the robot avatar ignores it. Only the avatar at the top of the
-bot page sets it, never a sidebar row.
+A bot's clay character in a round disc: the catalogue image (`characterById`,
+neutral Scout when the character is missing or unknown) cropped by size, on the
+`bg-muted` disc on web and the `avatarDisc` veil on iPhone. Sizes up to 20 px
+use the mini image. Above 20 px, the face comes alive over the faceless body
+(`ClayFace`) while the bot works and for two seconds after a run it saw
+complete or fail; `live` keeps it alive at rest too, on the bot page hero and
+in the conversation header. It is the still image otherwise, and until the body
+is loaded. `data-working` marks a working bot on web; on iPhone the avatar of a
+working bot reads "Working" to VoiceOver. The iPhone face moves on the native
+driver: its paths are drawn again only when the expression changes, and gaze,
+blinks and mouth motions are transforms of round clipped layers.
+
+Props: `character?`, `size?`, `status?`, `live?`. It carries no accessible
+name: the name beside it does.
 
 ## SettingRow
 

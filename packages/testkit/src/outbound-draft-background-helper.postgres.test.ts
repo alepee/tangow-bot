@@ -39,7 +39,7 @@ describe.skipIf(!databaseAvailable)("a draft from a background helper", () => {
         step({
           type: "tool",
           id: "mail",
-          name: "acme_deliver_message",
+          name: "mcp__acme__acme_deliver_message",
           arguments: { recipient: "anna@example.test", topic: "Hello", content: "Hi Anna." },
         }),
         {
@@ -60,7 +60,9 @@ describe.skipIf(!databaseAvailable)("a draft from a background helper", () => {
       // Its parent can send it itself, behind a draft card in the conversation.
       expect(refusal).toContain("which a background helper cannot ask for. Ask your parent");
       expect(
-        await run.prisma.externalEffect.count({ where: { kind: "acme_deliver_message" } }),
+        await run.prisma.externalEffect.count({
+          where: { kind: "mcp__acme__acme_deliver_message" },
+        }),
       ).toBe(0);
       await expect(latestCard(run.prisma, child.id)).rejects.toThrow();
       await expect(latestCard(run.prisma, parentId)).rejects.toThrow();

@@ -9,7 +9,7 @@ export function SettingSwitch({
   onChange,
 }: {
   label: string;
-  detail: string;
+  detail?: string;
   value: boolean;
   disabled: boolean;
   onChange: (value: boolean) => void;
@@ -25,7 +25,11 @@ export function SettingSwitch({
     >
       <View style={{ flex: 1 }}>
         <Text style={{ color: native.label, fontSize: 15 }}>{label}</Text>
-        <Text style={{ color: native.secondaryLabel, fontSize: 12.5, marginTop: 2 }}>{detail}</Text>
+        {detail ? (
+          <Text style={{ color: native.secondaryLabel, fontSize: 12.5, marginTop: 2 }}>
+            {detail}
+          </Text>
+        ) : null}
       </View>
       <Switch
         accessibilityLabel={label}

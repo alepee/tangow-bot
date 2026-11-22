@@ -378,6 +378,7 @@ model Bot {
   instructions      String            @default("")
   color             String
   shapeSeed         Int?
+  avatarCharacter   String?
   notifyOnFinish    Boolean           @default(true)
   pinned            Boolean           @default(false)
   position          Int               @default(0)

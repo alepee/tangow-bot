@@ -7,24 +7,19 @@ import {
 } from "./composer-slash.js";
 
 describe("serializeComposerPrompt", () => {
-  it("returns draft when no skill or mentions", () => {
-    expect(serializeComposerPrompt("  hello", null, [])).toBe("hello");
+  it("sends the draft as typed, mentions in place", () => {
+    expect(serializeComposerPrompt("  ask @Ivy to check with @Design crew ", null)).toBe(
+      "ask @Ivy to check with @Design crew",
+    );
   });
 
-  it("prefixes skill slash name alone", () => {
-    expect(serializeComposerPrompt("", { name: "Daily standup" }, [])).toBe("/Daily standup");
-  });
-
-  it("combines skill, mentions, and draft", () => {
-    expect(
-      serializeComposerPrompt("check blockers", { name: "Daily standup" }, [
-        { name: "Research Writer" },
-      ]),
-    ).toBe("/Daily standup\n@Research Writer check blockers");
-  });
-
-  it("prefixes mentions without a skill", () => {
-    expect(serializeComposerPrompt("go", null, [{ name: "everyone" }])).toBe("@everyone go");
+  it("moves an inline skill token to its own leading line", () => {
+    expect(serializeComposerPrompt("/Daily standup check @Ivy", { name: "Daily standup" })).toBe(
+      "/Daily standup\ncheck @Ivy",
+    );
+    expect(serializeComposerPrompt("/Daily standup ", { name: "Daily standup" })).toBe(
+      "/Daily standup",
+    );
   });
 });
 

@@ -767,7 +767,8 @@ export interface NotificationMessage {
       absolute count, never a delta: iOS renders it as the app icon badge and a missed push
       must not leave the badge off by one. */
   badge?: number;
-  avatar?: { color: string; shape: number };
+  /** `color` and `shape` describe the old drawn avatar, for apps that predate characters. */
+  avatar?: { character: string; color: string; shape: number };
 }
 
 /** A product-authored transactional email, independent of its delivery vendor. */

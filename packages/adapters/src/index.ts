@@ -53,7 +53,6 @@ export * from "./github-webhook-emulator.js";
 export * from "./group-handoff.js";
 export * from "./home.js";
 export * from "./home-volume-migration.js";
-export * from "./installed-connectors.js";
 export * from "./integration-provider-settings.js";
 export * from "./job-reconciler.js";
 export * from "./keyless-http-web.js";

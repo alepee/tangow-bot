@@ -145,6 +145,8 @@ services:
     restart: unless-stopped
     pull_policy: never
     command: ["pnpm", "--filter", "@tangow/worker", "start"]
+    # Time for in-flight runs to release their workers and hand their run back before SIGKILL.
+    stop_grace_period: 30s
     env_file:
       - ../../.env
     environment:

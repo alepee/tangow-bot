@@ -44,6 +44,7 @@ const bot: MobileBot = {
   title: "",
   color: "gray",
   shapeSeed: null,
+  avatarCharacter: null,
   computerMode: "team",
   notifyOnFinish: true,
   threadId: "thread-1",

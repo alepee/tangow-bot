@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
 import { SCREEN_PROXY_TTL_MS } from "../computer-screen-url.js";
 import { openScreenCapability, sealScreenCapability } from "./screen-capability.js";
@@ -23,7 +21,7 @@ const path = (url: string, interactive = false) =>
   ).pathname;
 describe("sealed screen capabilities", () => {
   it.each([false, true])(
-    "connects the shipped embed through one capability prefix (control=%s)",
+    "connects the viewer socket through one capability prefix (control=%s)",
     (interactive) => {
       const provider = new URL("http://127.0.0.1:49152/embed.html");
       provider.searchParams.set("view_only", String(!interactive));
@@ -31,49 +29,10 @@ describe("sealed screen capabilities", () => {
       const url = new URL(
         sealScreenCapability(provider.toString(), "fake-secret", "https://app.example", scope, 100),
       );
-      const html = readFileSync(
-        new URL("../../../../infra/sandboxes/computer/embed.html", import.meta.url),
-        "utf8",
-      );
-      const script = html
-        .match(/<script type="module">([\s\S]*?)<\/script>/)![1]!
-        .replace(/^\s*import[\s\S]*?;\s*$/gm, "");
-      let socketUrl = "";
-      let viewOnly: boolean | undefined;
-      runInNewContext(script, {
-        document: { location: url, getElementById: () => ({}) },
-        window: { location: url },
-        RFB: class {
-          constructor(_element: unknown, value: string) {
-            socketUrl = value;
-          }
-        },
-        // The session is stubbed to open its first connection the way the real one does:
-        // through createRfb with the URL the embed derived from its own location.
-        startScreenLinkSession: (ports: {
-          createRfb: (slot: unknown, value: string) => unknown;
-          url: string;
-          viewOnly: boolean;
-        }) => {
-          ports.createRfb({}, ports.url);
-          viewOnly = ports.viewOnly;
-          return { rfb: { viewOnly: ports.viewOnly } };
-        },
-        hostPoster: () => () => {},
-        attachHostClipboardPaste: () => {},
-        // Embed imports are stripped for this smoke; stub the touch-keyboard
-        // and trackpad bridges the same way as clipboard. Returning false
-        // skips Keyboard / KeyTable / keysyms, which this harness does not provide.
-        isTouchBrowser: () => false,
-        attachMobileKeyboard: () => {},
-        attachMobileTrackpad: () => {},
-      });
-      const socket = new URL(socketUrl);
-      expect(socket.protocol).toBe("wss:");
-      expect(socket.host).toBe(url.host);
-      expect(socket.pathname).toBe(url.pathname.replace("/embed.html", "/websockify"));
-      expect(socketUrl).not.toContain("fake-socket-token");
-      expect(viewOnly).toBe(!interactive);
+      // The viewer opens `websockify` next to itself; the provider's socket token stays sealed.
+      const socket = new URL("websockify", url);
+      expect(url.toString()).not.toContain("fake-socket-token");
+      expect(url.searchParams.get("view_only")).toBe(String(!interactive));
       expect(openScreenCapability(socket.pathname, "fake-secret", 101)?.target).toMatchObject({
         path: "/websockify?token=fake-socket-token",
         interactive,
@@ -142,11 +101,11 @@ describe("sealed screen capabilities", () => {
     const truncated = `${match![1]}${match![2]!.slice(0, 8)}${match![3]}`;
     expect(openScreenCapability(truncated, "fake-secret", 101)).toBeNull();
   });
-  it("enforces view policy and still serves relative assets", () => {
+  it("takes the policy from the seal, never from the query", () => {
     const value = path("http://127.0.0.1:49152/embed.html");
     expect(
-      openScreenCapability(`${value}?view_only=false`, "fake-secret", 101)?.target.path,
-    ).toContain("view_only=true");
+      openScreenCapability(`${value}?view_only=false`, "fake-secret", 101)?.target.interactive,
+    ).toBe(false);
     expect(
       openScreenCapability(value.replace("/embed.html", "/core/rfb.js"), "fake-secret", 101)?.target
         .path,

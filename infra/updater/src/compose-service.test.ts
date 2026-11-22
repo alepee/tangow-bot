@@ -95,9 +95,9 @@ describe("the updater compose service", () => {
     }
   });
 
-  it("uses the official registry namespace and digest-pins third-party runtime images", () => {
-    expect(updater.image).toContain("ghcr.io/elie222/rakazo/updater");
-    expect(compose.services.api?.image).toContain("ghcr.io/elie222/rakazo/app");
+  it("names locally built images and digest-pins third-party runtime images", () => {
+    expect(updater.image).toContain("tangow/updater");
+    expect(compose.services.api?.image).toContain("tangow/app");
     expect(compose.services.postgres?.image).toMatch(
       /^\$\{POSTGRES_IMAGE:-postgres:16@sha256:e17e86066e5ef83e0952a9347f5c792b7ece00972e2aa787a6986f471b3dd3d5\}$/,
     );

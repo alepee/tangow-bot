@@ -91,6 +91,8 @@ export function createWorkerAgentRuntime(options: {
       let text = "";
       let failure: unknown;
       try {
+        // An abort that landed before the listener must not launch a guest.
+        if (context?.signal?.aborted) throw new Error("The run was cancelled");
         await session.open();
         while (true) {
           const event = await session.events.next();

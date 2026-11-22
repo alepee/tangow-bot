@@ -1,16 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  COMPOSE_MANUAL_UPGRADE_COMMANDS,
-  chooseUpdateStrategy,
-  commitImageTag,
-  compareReleaseTags,
+  COMPOSE_UPGRADE_COMMANDS,
   composePsArgv,
-  composePullArgv,
   composeUpArgv,
   composeUpdatePlan,
   DEFAULT_COMPOSE_PROJECT_NAME,
   DEFAULT_IMAGE_TAG,
+  DEFAULT_SERVER_IMAGE,
   forkImageTag,
   gitIndexContentDiffArgv,
   gitStatusArgv,
@@ -21,11 +18,7 @@ import {
   isValidImageName,
   isValidImageTag,
   manualUpgradeCommands,
-  OFFICIAL_SERVER_IMAGE,
   parseGitNameOnly,
-  parseLsRemoteReleases,
-  parseLsRemoteTags,
-  parseReleaseTag,
   RECREATED_SERVICES,
   resolveComposeProjectName,
   resolveExecutionMode,
@@ -33,8 +26,6 @@ import {
   resolveTrackedDirtyPaths,
   rollbackTarget,
   SOURCE_MANUAL_UPGRADE_COMMANDS,
-  selectLatestRelease,
-  selectLatestReleaseTag,
   upsertEnvAssignments,
   validateUpdateRequest,
 } from "./compose-update.js";
@@ -45,7 +36,7 @@ const target = {
 };
 
 describe("image references", () => {
-  it("accepts the tags the publish workflow produces", () => {
+  it("accepts well-formed image tags", () => {
     expect(isValidImageTag("latest")).toBe(true);
     expect(isValidImageTag("v1.2.3")).toBe(true);
     expect(isValidImageTag("sha-0123456")).toBe(true);
@@ -64,7 +55,7 @@ describe("image references", () => {
   });
 
   it("accepts registry paths with a host and rejects anything else", () => {
-    expect(isValidImageName(OFFICIAL_SERVER_IMAGE)).toBe(true);
+    expect(isValidImageName(DEFAULT_SERVER_IMAGE)).toBe(true);
     expect(isValidImageName("ghcr.io:5000/owner/app")).toBe(true);
     expect(isValidImageName("tangow/app")).toBe(true);
     expect(isValidImageName("Ghcr.io/owner/app")).toBe(false);
@@ -74,84 +65,20 @@ describe("image references", () => {
   });
 
   it("refuses to assemble a reference it could not validate", () => {
-    expect(imageRef(OFFICIAL_SERVER_IMAGE, "v1.0.0")).toBe(`${OFFICIAL_SERVER_IMAGE}:v1.0.0`);
-    expect(() => imageRef(OFFICIAL_SERVER_IMAGE, "-rm")).toThrow(/image tag/);
+    expect(imageRef(DEFAULT_SERVER_IMAGE, "v1.0.0")).toBe(`${DEFAULT_SERVER_IMAGE}:v1.0.0`);
+    expect(() => imageRef(DEFAULT_SERVER_IMAGE, "-rm")).toThrow(/image tag/);
     expect(() => imageRef("BAD NAME", DEFAULT_IMAGE_TAG)).toThrow(/image name/);
   });
 
-  it("derives local and per-commit tags from a resolved commit only", () => {
+  it("derives per-commit tags from a resolved commit only", () => {
     expect(forkImageTag("0123456789abcdef0123456789abcdef01234567")).toBe(
       "local-0123456789abcdef0123456789abcdef01234567",
     );
-    expect(commitImageTag("0123456789abcdef0123456789abcdef01234567")).toBe(
-      "sha-0123456789abcdef0123456789abcdef01234567",
-    );
     expect(() => forkImageTag("HEAD")).toThrow(/commit/);
-    expect(() => commitImageTag("")).toThrow(/commit/);
   });
 });
 
-describe("release tag resolution", () => {
-  it("parses semver release tags and rejects other tag shapes", () => {
-    expect(parseReleaseTag("v1.2.3")).toMatchObject({ major: 1, minor: 2, patch: 3 });
-    expect(parseReleaseTag("v1.2.3-rc.1")).toMatchObject({ prerelease: "rc.1" });
-    expect(parseReleaseTag("1.2.3")).toBeNull();
-    expect(parseReleaseTag("v1.2")).toBeNull();
-    expect(parseReleaseTag("latest")).toBeNull();
-  });
-
-  it("orders releases numerically rather than lexically", () => {
-    const a = parseReleaseTag("v0.9.0");
-    const b = parseReleaseTag("v0.10.0");
-    expect(a && b && compareReleaseTags(a, b)).toBeLessThan(0);
-    const rc = parseReleaseTag("v1.0.0-rc.1");
-    const release = parseReleaseTag("v1.0.0");
-    expect(rc && release && compareReleaseTags(rc, release)).toBeLessThan(0);
-  });
-
-  it("reads ls-remote output, collapsing peeled refs", () => {
-    const first = "1".repeat(40);
-    const second = "2".repeat(40);
-    const tagObject = "a".repeat(40);
-    const stdout = [
-      `${tagObject}\trefs/tags/v0.1.0`,
-      `${first}\trefs/tags/v0.1.0^{}`,
-      `${second}\trefs/tags/v0.2.0`,
-      `${"b".repeat(40)}\trefs/heads/main`,
-      `${"c".repeat(40)}\trefs/tags/`,
-      "",
-    ].join("\n");
-    expect(parseLsRemoteTags(stdout)).toEqual(["v0.1.0", "v0.2.0"]);
-    expect(parseLsRemoteReleases(stdout)).toEqual([
-      { tag: "v0.1.0", commit: first },
-      { tag: "v0.2.0", commit: second },
-    ]);
-    expect(selectLatestRelease(parseLsRemoteReleases(stdout))).toEqual({
-      tag: "v0.2.0",
-      commit: second,
-    });
-  });
-
-  it("drops ls-remote tags that would not be usable as image tags", () => {
-    expect(parseLsRemoteTags("aa\trefs/tags/-dangerous\nbb\trefs/tags/v1.0.0")).toEqual(["v1.0.0"]);
-  });
-
-  it("picks the newest stable release and never a pre-release", () => {
-    expect(selectLatestReleaseTag(["v0.1.0", "v0.10.2", "v0.9.9"])).toBe("v0.10.2");
-    expect(selectLatestReleaseTag(["v1.0.0", "v1.1.0-rc.3"])).toBe("v1.0.0");
-    expect(selectLatestReleaseTag(["v2.0.0-rc.1"])).toBeNull();
-    expect(selectLatestReleaseTag(["main", "latest"])).toBeNull();
-    expect(selectLatestReleaseTag([])).toBeNull();
-  });
-});
-
-describe("strategy and mode selection", () => {
-  it("pulls for the official repository and builds for a fork", () => {
-    expect(chooseUpdateStrategy({ official: true }).strategy).toBe("pull");
-    expect(chooseUpdateStrategy({ official: false }).strategy).toBe("build");
-    expect(chooseUpdateStrategy({ official: false }).reason).toMatch(/minutes/);
-  });
-
+describe("mode selection", () => {
   it("prefers the sidecar, falls back to a checkout, and reports when neither exists", () => {
     expect(resolveExecutionMode({ hasUpdater: true, hasCheckout: true })).toEqual({
       mode: "sidecar",
@@ -188,20 +115,7 @@ describe("strategy and mode selection", () => {
     });
     expect(source.kind).toBe("source");
     expect(source.mode).toBe("checkout");
-    expect(manualUpgradeCommands("compose")).toEqual([
-      "# Published release tag",
-      ...COMPOSE_MANUAL_UPGRADE_COMMANDS,
-      "# Local tag (rebuild from checkout)",
-      "git pull",
-      "GIT_SHA=$(git rev-parse HEAD) docker compose --env-file .env -f infra/compose/docker-compose.prod.yml up -d --wait --pull never --build api worker web",
-    ]);
-    expect(manualUpgradeCommands("compose", { imageTag: "local" })).toEqual([
-      "git pull",
-      "GIT_SHA=$(git rev-parse HEAD) docker compose --env-file .env -f infra/compose/docker-compose.prod.yml up -d --wait --pull never --build api worker web",
-    ]);
-    expect(manualUpgradeCommands("compose", { imageTag: "sha-abc" })).toEqual([
-      ...COMPOSE_MANUAL_UPGRADE_COMMANDS,
-    ]);
+    expect(manualUpgradeCommands("compose")).toEqual([...COMPOSE_UPGRADE_COMMANDS]);
     expect(manualUpgradeCommands("source")).toEqual([...SOURCE_MANUAL_UPGRADE_COMMANDS]);
     expect(manualUpgradeCommands("sidecar")).toEqual([]);
   });
@@ -209,22 +123,15 @@ describe("strategy and mode selection", () => {
 
 describe("compose argv construction", () => {
   it("passes the compose file and env files as separate arguments", () => {
-    expect(composePullArgv(target)).toEqual({
-      command: "docker",
-      args: [
-        "compose",
-        "-p",
-        DEFAULT_COMPOSE_PROJECT_NAME,
-        "--env-file",
-        "/srv/tangow/.env",
-        "--file",
-        ...target.composeFiles,
-        "pull",
-        "api",
-        "worker",
-        "web",
-      ],
-    });
+    expect(composePsArgv(target).args.slice(0, 7)).toEqual([
+      "compose",
+      "-p",
+      DEFAULT_COMPOSE_PROJECT_NAME,
+      "--env-file",
+      "/srv/tangow/.env",
+      "--file",
+      ...target.composeFiles,
+    ]);
   });
 
   it("passes one --file per Compose file, in overlay order", () => {
@@ -235,11 +142,7 @@ describe("compose argv construction", () => {
         "/srv/tangow/ops/compose/docker-compose.sandbox.yml",
       ],
     };
-    for (const invocation of [
-      composePullArgv(overlaid),
-      composeUpArgv(overlaid),
-      composePsArgv(overlaid),
-    ]) {
+    for (const invocation of [composeUpArgv(overlaid), composePsArgv(overlaid)]) {
       const files = invocation.args.flatMap((arg, index) =>
         arg === "--file" ? [invocation.args[index + 1]] : [],
       );
@@ -248,17 +151,11 @@ describe("compose argv construction", () => {
   });
 
   it("refuses a target with no Compose file rather than running against the default stack", () => {
-    expect(() => composePullArgv({ ...target, composeFiles: [] })).toThrow(/no Compose file/);
+    expect(() => composeUpArgv({ ...target, composeFiles: [] })).toThrow(/no Compose file/);
   });
 
-  it("recreates and pulls the target's own services when an overlay adds one", () => {
+  it("recreates the target's own services when an overlay adds one", () => {
     const withSupervisor = { ...target, services: ["api", "worker", "web", "supervisor"] };
-    expect(composePullArgv(withSupervisor).args.slice(-4)).toEqual([
-      "api",
-      "worker",
-      "web",
-      "supervisor",
-    ]);
     expect(composeUpArgv(withSupervisor).args.slice(-4)).toEqual([
       "api",
       "worker",
@@ -284,20 +181,18 @@ describe("compose argv construction", () => {
       ],
       services: ["api", "worker", "web", "supervisor"],
     };
-    for (const strategy of ["pull", "build"] as const) {
-      const steps = composeUpdatePlan({ strategy, target: overlaid });
-      const composeSteps = steps.filter((step) => step.command === "docker");
-      expect(composeSteps.length).toBeGreaterThan(0);
-      for (const step of composeSteps) {
-        expect(step.args.filter((arg) => arg === "--file")).toHaveLength(2);
-        expect(step.args).toContain("supervisor");
-      }
+    const steps = composeUpdatePlan({ target: overlaid });
+    const composeSteps = steps.filter((step) => step.command === "docker");
+    expect(composeSteps.length).toBeGreaterThan(0);
+    for (const step of composeSteps) {
+      expect(step.args.filter((arg) => arg === "--file")).toHaveLength(2);
+      expect(step.args).toContain("supervisor");
     }
   });
 
   it("passes the project name as its own -p argument so a custom stack is the one updated", () => {
     const named = { ...target, projectName: "operator-stack" };
-    for (const invocation of [composePullArgv(named), composeUpArgv(named), composePsArgv(named)]) {
+    for (const invocation of [composeUpArgv(named), composePsArgv(named)]) {
       const projectFlag = invocation.args.indexOf("-p");
       expect(projectFlag).toBeGreaterThanOrEqual(0);
       expect(invocation.args[projectFlag + 1]).toBe("operator-stack");
@@ -314,7 +209,7 @@ describe("compose argv construction", () => {
 
   it("refuses a project name that could be parsed as another flag or a second argument", () => {
     expect(() => composeUpArgv({ ...target, projectName: "-f" })).toThrow(/project name/);
-    expect(() => composePullArgv({ ...target, projectName: "two words" })).toThrow(/project name/);
+    expect(() => composePsArgv({ ...target, projectName: "two words" })).toThrow(/project name/);
   });
 
   it("recreates detached, and only builds when asked to", () => {
@@ -330,10 +225,8 @@ describe("compose argv construction", () => {
 
   it("never recreates the updater, which is the process running the update", () => {
     expect(RECREATED_SERVICES).not.toContain("updater");
-    for (const invocation of [composeUpArgv(target), composePullArgv(target)]) {
-      expect(invocation.args).not.toContain("updater");
-      expect(invocation.args).not.toContain("postgres");
-    }
+    expect(composeUpArgv(target).args).not.toContain("updater");
+    expect(composeUpArgv(target).args).not.toContain("postgres");
   });
 
   it("names the services explicitly so a bare up cannot sweep the whole project", () => {
@@ -467,18 +360,8 @@ describe("dirty-tree argv and CRLF filtering", () => {
 });
 
 describe("update plans", () => {
-  it("pulls then recreates on the official path, with no migration step", () => {
-    const steps = composeUpdatePlan({ strategy: "pull", target });
-    expect(steps.map((step) => step.id)).toEqual(["pull", "recreate"]);
-    expect(steps.some((step) => step.id === "migrate")).toBe(false);
-    for (const step of steps) {
-      expect(step.args.slice(0, 3)).toEqual(["compose", "-p", DEFAULT_COMPOSE_PROJECT_NAME]);
-    }
-  });
-
-  it("fetches, fast-forwards, then builds on the fork path", () => {
+  it("fetches, fast-forwards, then builds, with no migration step", () => {
     const steps = composeUpdatePlan({
-      strategy: "build",
       target,
       repoUrl: "https://github.com/someone/tangow",
       branch: "trunk",
@@ -495,11 +378,11 @@ describe("update plans", () => {
     expect(merge?.args).toEqual(["merge", "--ff-only", "origin/trunk"]);
     expect(steps.find((step) => step.id === "fetch")?.args).not.toContain("--prune");
     expect(steps.at(-1)?.args).toContain("--build");
+    expect(steps.at(-1)?.args.slice(0, 3)).toEqual(["compose", "-p", DEFAULT_COMPOSE_PROJECT_NAME]);
   });
 
   it("leaves the remote alone when the checkout already points at the chosen repository", () => {
     const steps = composeUpdatePlan({
-      strategy: "build",
       target,
       branch: "main",
       repointRemote: false,
@@ -510,7 +393,6 @@ describe("update plans", () => {
   it("keeps the repository URL in argv rather than in any compose input", () => {
     const repoUrl = "https://github.com/someone/tangow";
     const steps = composeUpdatePlan({
-      strategy: "build",
       target,
       repoUrl,
       branch: "main",
@@ -601,26 +483,14 @@ describe("managed env assignments", () => {
 describe("sidecar boundary validation", () => {
   it("normalizes a request the API already validated", () => {
     expect(
-      validateUpdateRequest({ repoUrl: "https://github.com/elie222/rakazo.git", branch: " main " }),
+      validateUpdateRequest({
+        repoUrl: "https://github.com/tangow-ai/tangow-bot.git",
+        branch: " main ",
+      }),
     ).toEqual({
       request: {
-        repoUrl: "https://github.com/elie222/rakazo.git",
+        repoUrl: "https://github.com/tangow-ai/tangow-bot.git",
         branch: "main",
-        official: true,
-      },
-    });
-  });
-
-  it("marks a fork as unofficial so the sidecar picks the build path", () => {
-    const result = validateUpdateRequest({
-      repoUrl: "https://github.com/someone/tangow",
-      branch: "main",
-    });
-    expect(result).toEqual({
-      request: {
-        repoUrl: "https://github.com/someone/tangow",
-        branch: "main",
-        official: false,
       },
     });
   });

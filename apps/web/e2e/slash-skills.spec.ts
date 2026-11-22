@@ -43,26 +43,26 @@ test("composer / picker lists skills above actions", async ({ page }, testInfo) 
 
   await skillButton.click();
   await expect(page.getByTestId("slash-picker")).toHaveCount(0);
-  const skillChip = page.getByTestId("skill-chip");
-  await expect(skillChip).toBeVisible();
-  await expect(skillChip).toContainText("Daily standup");
-  await expect(composer).toHaveValue("");
-  await composer.fill("focus on blockers");
+  // The skill leads the draft in place, drawn as a token over its own text.
+  const skillToken = page
+    .getByTestId("composer-bar")
+    .locator('[data-slot="entity-mention-field"][data-kind="skill"]');
+  await expect(skillToken).toHaveText("/Daily standup");
+  await expect(composer).toHaveValue("/Daily standup ");
+  await page.keyboard.insertText("focus on blockers");
   await captureScreenshot(page, testInfo, "slash-skills-inserted");
 
+  // Editing the token's text away drops the skill.
   await composer.fill("hello /");
   await expect(page.getByTestId("slash-picker")).toHaveCount(0);
-
-  await page.getByRole("button", { name: "Remove skill Daily standup" }).click();
-  await expect(page.getByTestId("skill-chip")).toHaveCount(0);
+  await expect(skillToken).toHaveCount(0);
 
   await composer.fill("/Inter");
   await expect(interrogate).toBeVisible();
   await captureScreenshot(page, testInfo, "interrogate-skill-picker");
   await interrogate.click();
-  await expect(skillChip).toContainText("Interrogate");
-  await expect(composer).toHaveValue("");
-  await page.getByRole("button", { name: "Remove skill Interrogate" }).click();
+  await expect(skillToken).toHaveText("/Interrogate");
+  await composer.fill("");
 
   await composer.fill("@");
   await expect(page.getByTestId("slash-picker")).toHaveCount(0);

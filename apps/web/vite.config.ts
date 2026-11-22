@@ -1,16 +1,11 @@
-import type { ClientRequest, IncomingMessage } from "node:http";
-import http from "node:http";
-import https from "node:https";
+import { createRequire } from "node:module";
 import net from "node:net";
 import path from "node:path";
 import tls from "node:tls";
 import { lingui } from "@lingui/vite-plugin";
 import babel from "@rolldown/plugin-babel";
 import tailwindcss from "@tailwindcss/vite";
-import {
-  safeScreenProxyResponseHeaders,
-  stripSensitiveHandshakeHeaders,
-} from "@tangow/core/node/screen-proxy-response";
+import { stripSensitiveHandshakeHeaders } from "@tangow/core/node/screen-proxy-response";
 import react from "@vitejs/plugin-react";
 import type { PreviewServer, ViteDevServer } from "vite";
 import { defineConfig, loadEnv } from "vite";
@@ -18,11 +13,15 @@ import { resolveScreenProxySecret } from "../../packages/core/src/secrets-guard.
 import {
   resolveNovncTarget,
   safeProxyHeaders,
+  screenFile,
   watchScreenAuthorization,
 } from "./src/screen-proxy.js";
 
 const webPort = Number(process.env.WEB_PORT ?? 5173);
+// noVNC's package exports only RFB; the viewer's mobile keyboard also needs its input modules.
+const novncCore = path.dirname(createRequire(import.meta.url).resolve("@novnc/novnc"));
 function attachNovncProxy(server: ViteDevServer | PreviewServer, secret: string, api: string) {
+  // Tangow serves the viewer itself; only its WebSocket reaches the computer.
   server.middlewares.use(async (req, res, next) => {
     if (!req.url?.startsWith("/novnc/")) {
       next();
@@ -35,88 +34,21 @@ function attachNovncProxy(server: ViteDevServer | PreviewServer, secret: string,
       res.end("Invalid or expired screen capability");
       return;
     }
-    const headers = {
-      ...safeProxyHeaders(req.headers),
-      host: target.host ?? `${target.hostname}:${target.port}`,
-    };
-    const transport = target.protocol === "https:" ? https : http;
-    let upstream: ClientRequest | undefined;
-    let retries = 0;
-    let retryPending = false;
-    let stopChecking: () => void = () => undefined;
-    const retryable = req.method === "GET";
-    const scheduleRetry = (incoming?: IncomingMessage) => {
-      if (!retryable || retryPending || retries >= 3 || res.destroyed) return false;
-      retryPending = true;
-      retries += 1;
-      const delayMs = 50 * retries;
-      const retry = () => {
-        setTimeout(() => {
-          retryPending = false;
-          if (!res.destroyed) requestUpstream();
-        }, delayMs);
-      };
-      if (incoming && !incoming.destroyed) {
-        incoming.once("close", retry);
-        incoming.destroy();
-      } else {
-        retry();
-      }
-      return true;
-    };
-    function requestUpstream() {
-      if (res.destroyed) return;
-      upstream = transport.request(
-        {
-          hostname: target.hostname,
-          port: target.port,
-          path: target.path,
-          method: req.method,
-          headers,
-          ...(target.protocol === "https:" ? { servername: target.hostname } : {}),
-        },
-        (incoming) => {
-          if ((incoming.statusCode ?? 502) >= 500 && scheduleRetry(incoming)) {
-            return;
-          }
-          res.writeHead(
-            incoming.statusCode ?? 502,
-            safeScreenProxyResponseHeaders(incoming.headers),
-          );
-          incoming.pipe(res);
-        },
-      );
-      upstream.on("error", () => {
-        if (retryable && !res.headersSent && !res.destroyed && (retryPending || scheduleRetry())) {
-          return;
-        }
-        stopChecking();
-        if (res.headersSent) {
-          res.destroy();
-          return;
-        }
-        res.statusCode = 502;
-        res.end("Screen unavailable");
-      });
-      if (req.method === "GET" || req.readableEnded) upstream.end();
-      else req.pipe(upstream);
+    if ((req.method === "GET" || req.method === "HEAD") && screenFile(req.url) === "embed.html") {
+      req.url = "/screen.html";
+      next();
+      return;
     }
-    stopChecking = watchScreenAuthorization(
-      async () => Boolean(await resolveNovncTarget(req.url, secret, api)),
-      () => {
-        upstream?.destroy();
-        res.destroy();
-      },
-    );
-    res.once("close", () => {
-      stopChecking();
-      upstream?.destroy();
-    });
-    requestUpstream();
+    res.statusCode = 404;
+    res.end("Not found");
   });
 
   server.httpServer?.on("upgrade", async (req, socket, head) => {
     if (!req.url?.startsWith("/novnc/")) return;
+    if (screenFile(req.url) !== "websockify") {
+      socket.destroy();
+      return;
+    }
     const target = await resolveNovncTarget(req.url, secret, api);
     if (socket.destroyed) return;
     if (!target) {
@@ -242,6 +174,17 @@ export default defineConfig(({ mode }) => {
         configurePreviewServer: (server) => attachNovncProxy(server, screenProxySecret(), api),
       },
     ],
+    resolve: {
+      alias: [{ find: /^@novnc\/novnc\/core\//, replacement: `${novncCore}/` }],
+    },
+    build: {
+      rolldownOptions: {
+        input: {
+          index: path.resolve(import.meta.dirname, "index.html"),
+          screen: path.resolve(import.meta.dirname, "screen.html"),
+        },
+      },
+    },
     server: {
       host: "127.0.0.1",
       port: webPort,

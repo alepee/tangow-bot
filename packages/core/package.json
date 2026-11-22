@@ -47,9 +47,10 @@
   },
   "dependencies": {
     "@tangow/contracts": "workspace:*",
-    "dotenv": "17.4.2",
+    "@tangow/ui-tokens": "workspace:*",
     "croner": "10.0.1",
-    "@tangow/ui-tokens": "workspace:*"
+    "dotenv": "17.4.2",
+    "tldts": "7.4.10"
   },
   "devDependencies": {
     "fast-check": "4.10.0",

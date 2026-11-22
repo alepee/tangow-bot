@@ -1,8 +1,8 @@
 import { t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { ActionApprovalRule, ActionAutoReviewSettings } from "@tangow/contracts";
-import { Button, Label, Switch } from "@tangow/ui-web";
-import { useEffect, useId, useState } from "react";
+import type { ActionApprovalRule } from "@tangow/contracts";
+import { Button } from "@tangow/ui-web";
+import { useEffect, useState } from "react";
 import { rpc } from "../lib/rpc";
 
 function describeRule(rule: ActionApprovalRule): string {
@@ -26,24 +26,16 @@ function describeRule(rule: ActionApprovalRule): string {
 
 export function ApprovalRulesSettings() {
   const { t } = useLingui();
-  const autoReviewId = useId();
   const [rules, setRules] = useState<ActionApprovalRule[]>([]);
-  const [autoReview, setAutoReview] = useState<ActionAutoReviewSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingPreset, setSavingPreset] = useState<"email" | "purchase" | null>(null);
-  const [savingAutoReview, setSavingAutoReview] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function refresh() {
     setLoading(true);
     setError(null);
     try {
-      const [nextRules, nextAutoReview] = await Promise.all([
-        rpc.approvalRules.list(),
-        rpc.autoReview.get(),
-      ]);
-      setRules(nextRules);
-      setAutoReview(nextAutoReview);
+      setRules(await rpc.approvalRules.list());
     } catch (err) {
       setError(err instanceof Error ? err.message : t`Could not load approval rules`);
     } finally {
@@ -93,25 +85,9 @@ export function ApprovalRulesSettings() {
     }
   }
 
-  async function toggleAutoReview(enabled: boolean) {
-    if (loading || savingAutoReview) return;
-    setSavingAutoReview(true);
-    setError(null);
-    try {
-      setAutoReview(await rpc.autoReview.set({ enabled }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t`Could not save Auto Review`);
-    } finally {
-      setSavingAutoReview(false);
-    }
-  }
-
   return (
     <div data-testid="action-confirmation-settings" className="pt-5">
-      <h3 className="text-[15px] font-medium text-foreground">
-        <Trans>Action confirmations</Trans>
-      </h3>
-      <p className="mt-2 text-[13.5px] leading-[1.5] text-muted-foreground">
+      <p className="text-[13.5px] leading-[1.5] text-muted-foreground">
         <Trans>
           Bots act without asking by default. Add an exception only when you want to review a type
           of action first.
@@ -132,26 +108,6 @@ export function ApprovalRulesSettings() {
         >
           <Trans>Ask before purchases</Trans>
         </Button>
-      </div>
-      <div className="mt-5 flex items-start gap-3">
-        <Switch
-          id={autoReviewId}
-          data-testid="auto-review-toggle"
-          className="mt-0.5"
-          checked={autoReview?.enabled ?? false}
-          disabled={loading || savingAutoReview || !autoReview}
-          onCheckedChange={(checked) => void toggleAutoReview(checked)}
-        />
-        <div>
-          <Label htmlFor={autoReviewId} className="text-[14px] font-normal text-foreground/75">
-            <Trans>Flag unexpected actions</Trans>
-          </Label>
-          {autoReview?.enabled && !autoReview.checkerAvailable ? (
-            <p className="mt-1 text-[13px] text-muted-foreground">
-              <Trans>Add a model in Settings to use this.</Trans>
-            </p>
-          ) : null}
-        </div>
       </div>
       {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}
       {loading ? (

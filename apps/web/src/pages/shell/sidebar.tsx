@@ -1,13 +1,8 @@
 import { useLingui } from "@lingui/react/macro";
-import type { SearchHit } from "@tangow/contracts";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@tangow/ui-web";
-import { Search } from "lucide-react";
-import type { Dispatch, RefObject, SetStateAction } from "react";
-import { useRef } from "react";
+import type { RefObject } from "react";
 import { BOTS_SIDEBAR_EDGE_DRAG_PX } from "../../lib/bots-sidebar-pref";
 import { useMediaQuery } from "../../lib/use-media-query";
 import { ActivityList } from "../ActivityList";
-import { SpaceSearchResults } from "../SpaceSearch";
 import type { SidebarArchivedProps, SidebarFooterProps } from "./sidebar-footer";
 import { SidebarArchived, SidebarFooter } from "./sidebar-footer";
 import type { SidebarHeaderProps } from "./sidebar-header";
@@ -21,12 +16,6 @@ type BotsSidebarProps = SidebarHeaderProps &
   SidebarFooterProps & {
     botsSidebarCollapsed: boolean;
     mobileSidebarOpen: boolean;
-    query: string;
-    setQuery: Dispatch<SetStateAction<string>>;
-    showSpaceSearch: boolean;
-    searchHits: SearchHit[];
-    searchLoading: boolean;
-    jumpToSearchHit: (hit: SearchHit) => Promise<void>;
     botsSidebarEdgeDragRef: RefObject<{ startX: number; mode: "expand" | "collapse" } | null>;
   };
 
@@ -37,16 +26,9 @@ export function BotsSidebar(props: BotsSidebarProps) {
     activityMode,
     setBotsSidebarCollapsedPref,
     navigate,
-    query,
-    setQuery,
-    showSpaceSearch,
-    searchHits,
-    searchLoading,
-    jumpToSearchHit,
     botsSidebarEdgeDragRef,
   } = props;
   const { t } = useLingui();
-  const searchRef = useRef<HTMLInputElement>(null);
   // Below `md` the sidebar is the bot list's own page, on the page background.
   const desktopWidth = useMediaQuery("(min-width: 768px)");
   return (
@@ -76,52 +58,17 @@ export function BotsSidebar(props: BotsSidebarProps) {
           }`}
         >
           <SidebarHeader {...props} />
-          <InputGroup
-            data-testid="sidebar-search"
-            className="mx-2.5 mb-2 w-auto rounded-row border-transparent bg-sidebar-accent max-md:bg-group dark:bg-sidebar-accent max-md:dark:bg-group"
-          >
-            <InputGroupAddon>
-              <Search size={16} strokeWidth={1.8} aria-hidden="true" />
-            </InputGroupAddon>
-            <InputGroupInput
-              ref={searchRef}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(event) => {
-                if (event.key !== "Escape") return;
-                // Escape clears the query and drops focus; the field stays in
-                // place. Its own listener must not reach the panel's Escape.
-                event.preventDefault();
-                event.stopPropagation();
-                setQuery("");
-                searchRef.current?.blur();
-              }}
-              placeholder={t`Search`}
-              autoComplete="off"
-              name="sidebar-search"
-            />
-          </InputGroup>
           <div className="rk-scroll flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
-            {showSpaceSearch ? (
-              <SpaceSearchResults
-                hits={searchHits}
-                loading={searchLoading}
-                onSelect={(hit) => void jumpToSearchHit(hit)}
+            {activityMode ? (
+              <ActivityList
+                onOpenRun={(run) => {
+                  if (run.groupId) navigate(`/app/g/${run.groupId}`);
+                  else navigate(`/app/${run.botId}`);
+                }}
               />
-            ) : (
-              <>
-                {activityMode ? (
-                  <ActivityList
-                    onOpenRun={(run) => {
-                      if (run.groupId) navigate(`/app/g/${run.groupId}`);
-                      else navigate(`/app/${run.botId}`);
-                    }}
-                  />
-                ) : null}
-                <SidebarRoster {...props} />
-              </>
-            )}
-            {showSpaceSearch ? null : <SidebarArchived {...props} />}
+            ) : null}
+            <SidebarRoster {...props} />
+            <SidebarArchived {...props} />
           </div>
           <SidebarFooter {...props} />
         </div>

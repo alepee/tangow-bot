@@ -189,6 +189,7 @@ test("help, dry-run and invalid command options execute nothing and change nothi
 test("update automatically builds E2B templates, preserves its override and verifies deployment", (t) => {
   const f = fixture(t, { e2b: true });
   f.git("switch", "-c", "old-deployment");
+  writeFileSync(path.join(f.root, ".env.tangow.compose.yml"), "services: {}\n");
   const override = readFileSync(path.join(f.root, ".env.e2b.compose.json"), "utf8");
   const result = f.invoke(["update", "--sudo"]);
   assert.equal(result.status, 0, result.stderr);
@@ -209,9 +210,10 @@ test("update automatically builds E2B templates, preserves its override and veri
   );
   assert.ok(calls.some((c) => c.includes("{{.Image}} {{.State.Running}} {{.RestartCount}}")));
   assert.ok(calls.some((c) => c.includes("web") && c.includes("exec")));
-  assert.ok(
-    calls.filter((c) => c.includes("compose")).every((c) => c.includes(".env.e2b.compose.json")),
-  );
+  for (const call of calls.filter((c) => c.includes("compose"))) {
+    const files = call.flatMap((value, index) => (call[index - 1] === "-f" ? [value] : []));
+    assert.deepEqual(files.slice(-2), [".env.e2b.compose.json", ".env.tangow.compose.yml"]);
+  }
   assert.ok(
     calls
       .filter((c) => c[0] !== "pnpm")

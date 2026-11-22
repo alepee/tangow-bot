@@ -15,7 +15,7 @@ import type {
   ComposioProvider,
   ConnectorRegistry,
   DestinationEmulator,
-  RemoteConnectorDependencies,
+  RemoteTransportDependencies,
 } from "@tangow/adapters";
 import {
   applyMessagingOutboundStatus,
@@ -45,7 +45,6 @@ import {
   GraphileJobPublisher,
   InMemoryJobQueue,
   InMemoryRealtimeFanout,
-  InstalledConnectorProvider,
   IntegrationProviderSettings,
   isComposioEnabled,
   isMessagingSurfaceEnabled,
@@ -98,6 +97,7 @@ import {
   wakeMessageRoutines,
 } from "./messaging-inbound.js";
 import { mountMessagingWebhookRoutes } from "./messaging-webhook.js";
+import { moveMcpSources } from "./move-mcp-sources.js";
 import { mountApiRequestBodyLimits } from "./request-body-limit.js";
 import { createRouter } from "./router.js";
 import { mountScreenTarget } from "./screen-proxy.js";
@@ -136,7 +136,7 @@ export async function createApp(
     composio?: ComposioProvider;
     messaging?: MessagingSurface;
     email?: TransactionalEmailProvider;
-    remoteConnectors?: RemoteConnectorDependencies;
+    remoteConnectors?: RemoteTransportDependencies;
     logger?: Logger;
   } = {},
 ): Promise<AppHandles> {
@@ -171,6 +171,7 @@ export async function createApp(
         })
       : new InMemoryRealtimeFanout());
   const secrets = new EncryptedSecretStore(env.encryptionKey);
+  await moveMcpSources(prisma, secrets, (message) => logger.warn(message));
   const events = createThreadEvents(prisma, realtime, {
     runSecretWriter: createRunSecretWriter(secrets),
   });
@@ -284,7 +285,6 @@ export async function createApp(
     (env.smtpUrl
       ? new SmtpEmailProvider({ url: env.smtpUrl, from: env.emailFrom ?? "" })
       : localEmailEmulator);
-  const installed = new InstalledConnectorProvider(prisma, secrets, remoteConnectors);
   const integrationSettings = new IntegrationProviderSettings(prisma, secrets, {
     composio:
       composioOverride ??
@@ -293,7 +293,6 @@ export async function createApp(
         : undefined),
   });
   const stack = createConnectorStack(false, composioOverride, [
-    installed,
     ...integrationSettings
       .providers()
       .filter((provider) => !composioOverride || provider.describe().id !== "composio"),
@@ -507,7 +506,6 @@ export async function createApp(
       updaterUrl: env.updaterUrl,
       updaterToken: env.updaterToken,
       imageTag: env.imageTag,
-      integrationsCatalogUrl: env.integrationsCatalogUrl,
       mcpStdioEnabled: env.mcpStdioEnabled,
       mcpStdioAllowedCommands: env.mcpStdioAllowedCommands,
     },

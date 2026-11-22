@@ -1,7 +1,9 @@
 import type { Bot, BotSection, Group, Space, SpaceMemoryConfig } from "@tangow/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { rpc } from "../../lib/rpc";
 import type { ContextMenuPosition } from "../BotContextMenu";
+import type { CustomizeSection } from "../CustomizeOverlay";
 import type { SettingsSection } from "../settings-sections";
 import type { RunView } from "./bot-commands";
 import { isCommandPaletteHotkey } from "./command-palette";
@@ -14,7 +16,21 @@ type ChatTarget = { kind: "bot"; chat: Bot } | { kind: "group"; chat: Group };
  */
 export function useShellOverlays(sessionUser: unknown, spaceId: string | undefined) {
   const [customizeOpen, setCustomizeOpen] = useState(false);
-  const [mcpOpen, setMcpOpen] = useState(false);
+  const [params, setParams] = useSearchParams();
+  const [customizeSection, setCustomizeSection] = useState<CustomizeSection>();
+  useEffect(() => {
+    if (params.get("customize") !== "custom-apps") return;
+    setCustomizeSection("custom-apps");
+    setCustomizeOpen(true);
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.delete("customize");
+        return next;
+      },
+      { replace: true },
+    );
+  }, [params, setParams]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection | null>(null);
   const [messagingSettingsOpen, setMessagingSettingsOpen] = useState(false);
@@ -142,8 +158,7 @@ export function useShellOverlays(sessionUser: unknown, spaceId: string | undefin
   return {
     customizeOpen,
     setCustomizeOpen,
-    mcpOpen,
-    setMcpOpen,
+    customizeSection,
     settingsOpen,
     setSettingsOpen,
     settingsSection,

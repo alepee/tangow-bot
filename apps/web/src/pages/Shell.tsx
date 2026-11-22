@@ -1,6 +1,6 @@
 import { useLingui } from "@lingui/react/macro";
-import { AvatarStyleProvider } from "@tangow/ui-web";
-import { useCallback, useLayoutEffect, useRef } from "react";
+import { preloadClayBodies } from "@tangow/ui-web";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ComputerUpdateProgress } from "../components/ComputerUpdateProgress";
 import { authClient } from "../lib/auth";
@@ -48,6 +48,7 @@ export function ShellPage() {
     onBootstrapThread: store.primeFromBootstrap,
   });
   const { bots, archivedBots, active, activeGroup, inGroup, bootstrapMe, refreshBots } = roster;
+  useEffect(() => preloadClayBodies(bots.map((bot) => bot.avatarCharacter)), [bots]);
   const overlays = useShellOverlays(session.data?.user, bootstrapMe?.spaceId);
   const sidebar = useSidebarState({ userId, roster, navigate });
   const panels = usePanels(roster);
@@ -130,7 +131,6 @@ export function ShellPage() {
     sync,
     thread,
     draft,
-    navigate,
     flushPendingBrowserNotifications: notifications.flushPendingBrowserNotifications,
     cancelFocusPromptFor,
   });
@@ -261,6 +261,7 @@ export function ShellPage() {
         setMenuOpen={overlays.setMenuOpen}
         userName={userName}
         openSettings={overlays.openSettings}
+        openSearch={() => overlays.setCommandPaletteOpen(true)}
       />
 
       <ShellMain
@@ -330,6 +331,7 @@ export function ShellPage() {
         runBotAction={runBotAction}
         refreshAgentSkills={refreshAgentSkills}
         openSpaceChat={sidebar.openSpaceChat}
+        sidebarGroups={sidebar.sidebarGroups}
         userName={userName}
         initials={initials}
         userImage={userImage}
@@ -370,7 +372,5 @@ export function ShellPage() {
     </div>
   );
 
-  return (
-    <AvatarStyleProvider value={bootstrapMe?.avatarStyle ?? "organic"}>{shell}</AvatarStyleProvider>
-  );
+  return shell;
 }

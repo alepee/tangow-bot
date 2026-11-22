@@ -1,5 +1,6 @@
 import {
   type Actor,
+  botDisplayColor,
   GROUP_MEMBER_MAX,
   GROUP_MEMBER_MIN,
   type Group,
@@ -33,6 +34,7 @@ type GroupRecord = {
       name: string;
       color: string;
       shapeSeed: number | null;
+      avatarCharacter: string | null;
       runs: Array<{ status: string }>;
     };
   }>;
@@ -72,8 +74,9 @@ function mapGroupMembers(members: GroupRecord["members"], usable: Set<string>): 
   return members.map((member) => ({
     botId: member.bot.id,
     name: member.bot.name,
-    color: member.bot.color,
+    color: botDisplayColor(member.bot),
     shapeSeed: member.bot.shapeSeed,
+    avatarCharacter: member.bot.avatarCharacter,
     status: member.bot.runs[0]?.status ?? "idle",
     canUse: usable.has(member.bot.id),
   }));
@@ -245,6 +248,7 @@ const groupInclude = {
           name: true,
           color: true,
           shapeSeed: true,
+          avatarCharacter: true,
           runs: ownerRunSelection,
         },
       },
@@ -264,6 +268,7 @@ const groupTargetInclude = {
           name: true,
           color: true,
           shapeSeed: true,
+          avatarCharacter: true,
           runs: ownerRunSelection,
         },
       },

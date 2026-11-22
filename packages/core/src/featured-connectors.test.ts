@@ -77,14 +77,14 @@ describe("featured connectors", () => {
     const catalog = [
       item("gmail", "Gmail"),
       item("linear", "Linear"),
-      { ...item("notion", "Notion"), connectorId: "installed" },
+      { ...item("notion", "Notion"), connectorId: "mcp" },
     ];
 
     expect(filterConnectionCatalogItems(catalog, "").map(({ name }) => name)).toEqual(["Linear"]);
     expect(filterConnectionCatalogItems(catalog, "mail").map(({ name }) => name)).toEqual([
       "Gmail",
     ]);
-    expect(filterConnectionCatalogItems(catalog, "installed").map(({ name }) => name)).toEqual([
+    expect(filterConnectionCatalogItems(catalog, "mcp").map(({ name }) => name)).toEqual([
       "Notion",
     ]);
   });

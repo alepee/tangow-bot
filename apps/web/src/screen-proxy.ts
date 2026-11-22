@@ -7,8 +7,8 @@ import {
 } from "@tangow/core/node/screen-capability";
 
 /**
- * The computer is untrusted: send only what websockify needs to serve noVNC and upgrade
- * its socket, never credentials a browser, the desktop app or an auth proxy attached.
+ * The computer is untrusted: send only what websockify needs to upgrade its socket, never
+ * credentials a browser, the desktop app or an auth proxy attached.
  */
 const FORWARDED_HEADERS = new Set([
   "connection",
@@ -17,6 +17,13 @@ const FORWARDED_HEADERS = new Set([
   "sec-websocket-version",
   "sec-websocket-protocol",
 ]);
+
+const CAPABILITY_FILE = /^\/novnc\/session\/(?:view|control)\/\d+\.[A-Za-z0-9_-]+\/([^?#]*)/;
+
+/** The file a screen request names inside its capability directory, e.g. `embed.html`. */
+export function screenFile(url: string) {
+  return CAPABILITY_FILE.exec(url)?.[1] ?? null;
+}
 
 /** Fail closed when the authoritative lifecycle check is unavailable. */
 export async function resolveNovncTarget(

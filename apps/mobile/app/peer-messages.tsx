@@ -2,7 +2,6 @@ import { ChatMarkdown } from "@tangow/chat-ui/native";
 import type { EntryId, MessageBlock, ThreadEntry, ThreadMessagePage } from "@tangow/contracts";
 import {
   computeMessageGroups,
-  mergeEntries,
   peerConversations,
   showsTimeMarker,
   stripPeerAddressPrefix,
@@ -10,7 +9,7 @@ import {
 } from "@tangow/core";
 import { sizes } from "@tangow/ui-tokens";
 import { Stack, useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BotAvatar } from "../components/bot-avatar";
@@ -33,6 +32,8 @@ type PeerGroupable = {
   createdAt: string;
 };
 
+const KEEP_VISIBLE_POSITION = { minIndexForVisible: 0 };
+
 /**
  * View-only transcript of a bot-to-bot exchange, opened from a
  * Messaged / Message from chip in the human thread. Both bots render on the
@@ -45,28 +46,22 @@ export default function PeerMessages() {
   const tokens = mobileTokens();
   const colorScheme = useResolvedAppearance();
   const insets = useSafeAreaInsets();
-  const {
-    botId,
-    botName,
-    botColor,
-    botShapeSeed,
-    peerBotId,
-    peerBotName,
-    peerColor,
-    peerShapeSeed,
-  } = useLocalSearchParams<{
-    botId?: string;
-    botName?: string;
-    botColor?: string;
-    botShapeSeed?: string;
-    peerBotId?: string;
-    peerBotName?: string;
-    peerColor?: string;
-    peerShapeSeed?: string;
-  }>();
+  const { botId, botName, botCharacter, peerBotId, peerBotName, peerCharacter } =
+    useLocalSearchParams<{
+      botId?: string;
+      botName?: string;
+      botCharacter?: string;
+      peerBotId?: string;
+      peerBotName?: string;
+      peerCharacter?: string;
+    }>();
   const [entries, setEntries] = useState<readonly ThreadEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const scroll = useRef<ScrollView>(null);
+  const openedAtEnd = useRef(false);
+  const olderCursor = useRef<EntryId | null>(null);
+  const loadingOlder = useRef(false);
 
   useEffect(() => {
     if (!botId || !peerBotId) {
@@ -75,31 +70,40 @@ export default function PeerMessages() {
       return;
     }
     let cancelled = false;
-    void (async () => {
-      let before: EntryId | undefined;
-      const pages: ThreadEntry[][] = [];
-      do {
-        const page = await rpc<ThreadMessagePage>("threads/messages", {
-          botId,
-          ...(before === undefined ? {} : { before }),
-          includePeerRuns: true,
-        });
+    void rpc<ThreadMessagePage>("threads/peerMessages", { botId, peerBotId })
+      .then((page) => {
         if (cancelled) return;
-        pages.push(page.entries);
-        before = page.olderCursor ?? undefined;
-      } while (before !== undefined);
-      if (cancelled) return;
-      setEntries(mergeEntries([], pages.flat()));
-      setLoading(false);
-    })().catch((loadError) => {
-      if (cancelled) return;
-      setError(loadError instanceof Error ? loadError.message : t("Could not load this chat"));
-      setLoading(false);
-    });
+        olderCursor.current = page.olderCursor;
+        setEntries(page.entries);
+        setLoading(false);
+      })
+      .catch((loadError) => {
+        if (cancelled) return;
+        setError(loadError instanceof Error ? loadError.message : t("Could not load this chat"));
+        setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
   }, [botId, peerBotId]);
+
+  async function loadOlder() {
+    const before = olderCursor.current;
+    if (!botId || !peerBotId || before === null || loadingOlder.current) return;
+    loadingOlder.current = true;
+    try {
+      const page = await rpc<ThreadMessagePage>("threads/peerMessages", {
+        botId,
+        peerBotId,
+        before,
+      });
+      olderCursor.current = page.olderCursor;
+      setEntries((held) => [...page.entries, ...held]);
+    } catch {
+    } finally {
+      loadingOlder.current = false;
+    }
+  }
 
   const conversation = useMemo(
     () => peerConversations(entries).find((entry) => entry.peerBotId === peerBotId) ?? null,
@@ -107,10 +111,6 @@ export default function PeerMessages() {
   );
   const peer = conversation?.peerBotName ?? peerBotName ?? t("Bot");
   const own = botName ?? t("Bot");
-  const parsedShapeSeed = Number(botShapeSeed);
-  const ownShapeSeed =
-    botShapeSeed && Number.isFinite(parsedShapeSeed) ? parsedShapeSeed : undefined;
-  const otherShapeSeed = peerShapeSeed ? Number(peerShapeSeed) : undefined;
 
   const peerMessages = conversation?.messages ?? [];
   const groups = useMemo(() => {
@@ -131,16 +131,8 @@ export default function PeerMessages() {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 10, maxWidth: 240 }}>
               <StackedAvatars
                 items={[
-                  {
-                    color: botColor ?? tokens.mutedForeground,
-                    identity: botId,
-                    shapeSeed: ownShapeSeed,
-                  },
-                  {
-                    color: peerColor ?? tokens.mutedForeground,
-                    identity: peerBotId,
-                    shapeSeed: otherShapeSeed,
-                  },
+                  { identity: botId, character: botCharacter },
+                  { identity: peerBotId, character: peerCharacter },
                 ]}
                 size={28}
               />
@@ -158,8 +150,19 @@ export default function PeerMessages() {
         }}
       />
       <ScrollView
+        ref={scroll}
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingHorizontal: 14, paddingTop: 16, paddingBottom: 16 }}
+        maintainVisibleContentPosition={KEEP_VISIBLE_POSITION}
+        onContentSizeChange={() => {
+          if (openedAtEnd.current || !entries.length) return;
+          openedAtEnd.current = true;
+          scroll.current?.scrollToEnd({ animated: false });
+        }}
+        scrollEventThrottle={100}
+        onScroll={(event) => {
+          if (openedAtEnd.current && event.nativeEvent.contentOffset.y < 400) void loadOlder();
+        }}
       >
         {loading ? <ActivityIndicator color={tokens.mutedForeground} /> : null}
         {error ? <Text style={{ color: tokens.destructive, fontSize: 15 }}>{error}</Text> : null}
@@ -187,12 +190,10 @@ export default function PeerMessages() {
             : "";
           const sent = peerMessage.direction === "sent";
           const name = sent ? own : peer;
-          const color = (sent ? botColor : peerColor) ?? tokens.mutedForeground;
-          const identity = sent ? botId : peerBotId;
-          const shapeSeed = sent ? ownShapeSeed : otherShapeSeed;
+          const character = sent ? botCharacter : peerCharacter;
           return (
             <View
-              key={`${peerMessage.messageId}-${index}`}
+              key={peerMessage.messageId}
               style={{ marginTop: index === 0 ? 0 : group.isFirstOfGroup ? 14 : 3 }}
             >
               {timeMarker ? (
@@ -208,16 +209,7 @@ export default function PeerMessages() {
                 </Text>
               ) : null}
               <MessageRow
-                avatar={
-                  <BotAvatar
-                    color={color}
-                    identity={identity}
-                    shapeSeed={shapeSeed}
-                    size={sizes.message}
-                    // One drawn frame each: a loop per message saturated the JS thread.
-                    still
-                  />
-                }
+                avatar={<BotAvatar character={character} size={sizes.message} />}
                 author={name}
                 showAuthor={group.isFirstOfGroup}
                 showAvatar={group.isLastOfGroup}

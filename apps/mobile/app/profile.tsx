@@ -1,4 +1,3 @@
-import type { AvatarStyle } from "@tangow/contracts";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
@@ -14,8 +13,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAvatarStyle } from "../components/avatar-style";
-import { BotAvatar } from "../components/bot-avatar";
 import { NativeMenu } from "../components/native-menu";
 import { ServerSheet } from "../components/server-sheet";
 import { SettingSwitch } from "../components/setting-switch";
@@ -58,12 +55,9 @@ export default function Profile() {
   const [localeSaving, setLocaleSaving] = useState(false);
   const [localeError, setLocaleError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const [avatarPending, setAvatarPending] = useState(false);
-  const [avatarError, setAvatarError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [apiBase, setApiBase] = useState(() => currentApiBase());
   const [serverOpen, setServerOpen] = useState(false);
-  const { avatarStyle, updateAvatarStyle } = useAvatarStyle();
   const appearance = getCachedAppearancePreference();
   const debug = useDebugMode();
   const styles = useThemedStyles(createProfileStyles);
@@ -73,19 +67,6 @@ export default function Profile() {
       .then(setMe)
       .catch(() => undefined);
   }, []);
-
-  async function selectAvatarStyle(next: AvatarStyle) {
-    if (next === avatarStyle) return;
-    setAvatarPending(true);
-    setAvatarError(null);
-    try {
-      await updateAvatarStyle(next);
-    } catch {
-      setAvatarError(t("Couldn't update avatars"));
-    } finally {
-      setAvatarPending(false);
-    }
-  }
 
   async function handleSignOut() {
     setPending(true);
@@ -201,42 +182,6 @@ export default function Profile() {
             disabled={false}
             onChange={(next) => void setDebugMode(next)}
           />
-        </View>
-
-        <View accessibilityLabel={t("Avatar style")} style={styles.avatarSection}>
-          <Text style={styles.settingsTitle}>{t("Avatars")}</Text>
-          <View style={styles.avatarOptions}>
-            {(["robot", "organic"] as const).map((style) => {
-              const selected = avatarStyle === style;
-              const styleLabel = style === "robot" ? t("Robot") : t("Organic");
-              return (
-                <Pressable
-                  key={style}
-                  accessibilityLabel={t("{style} avatars", {
-                    style: styleLabel,
-                  })}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected, disabled: avatarPending }}
-                  disabled={avatarPending}
-                  onPress={() => void selectAvatarStyle(style)}
-                  style={({ pressed }) => [
-                    styles.avatarOption,
-                    selected && styles.avatarOptionSelected,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <BotAvatar
-                    color={style === "robot" ? "#8B5CF6" : "#D62F8B"}
-                    identity="avatar-preview"
-                    size={42}
-                    variant={style}
-                  />
-                  <Text style={styles.avatarLabel}>{styleLabel}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          {avatarError ? <Text style={styles.error}>{avatarError}</Text> : null}
         </View>
 
         <NativeMenu
@@ -569,29 +514,6 @@ function createProfileStyles() {
       backgroundColor: native.fillPressed,
     },
     appearanceLabel: {
-      color: native.label,
-      fontSize: 14,
-      fontWeight: "600",
-    },
-    avatarOptions: {
-      flexDirection: "row",
-      gap: 12,
-    },
-    avatarOption: {
-      flex: 1,
-      minHeight: 86,
-      borderRadius: 14,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: native.tertiaryLabel,
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-    },
-    avatarOptionSelected: {
-      borderColor: native.label,
-      backgroundColor: native.fillPressed,
-    },
-    avatarLabel: {
       color: native.label,
       fontSize: 14,
       fontWeight: "600",

@@ -133,6 +133,7 @@ export class ExpoPushProvider implements NotificationProvider {
             botId: message.botId,
             groupId: message.groupId,
             threadId: message.threadId,
+            avatarCharacter: message.avatar?.character,
             avatarColor: message.avatar?.color,
             avatarShape: message.avatar?.shape,
           },

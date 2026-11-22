@@ -1,5 +1,5 @@
 import type { RunActivityRow, SearchHit, SpaceBot, SpaceGroup } from "@tangow/contracts";
-import { botColors, sizes } from "@tangow/ui-tokens";
+import { sizes } from "@tangow/ui-tokens";
 import { useRouter } from "expo-router";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
@@ -14,8 +14,6 @@ import { rosterMuted } from "../../lib/shared-bot";
 import { BotAvatar } from "../bot-avatar";
 import { GroupAvatar } from "../group-avatar";
 import { createHomeStyles } from "./styles";
-
-const FALLBACK_COLOR = botColors[3];
 
 export function ActivitySection({
   activity,
@@ -94,13 +92,7 @@ function ActivityRow({
       accessibilityLabel={[title, status, time].filter(Boolean).join(", ")}
       onPress={onPress}
       avatar={
-        <BotAvatar
-          identity={run.botId}
-          color={bot?.color ?? FALLBACK_COLOR}
-          status={run.status}
-          size={sizes.mobileStack}
-          still
-        />
+        <BotAvatar character={bot?.avatarCharacter} status={run.status} size={sizes.mobileStack} />
       }
     />
   );
@@ -228,13 +220,10 @@ export function BotRow({
       onLongPress={onLongPress}
       avatar={
         <BotAvatar
-          color={bot.color || FALLBACK_COLOR}
-          identity={bot.id}
-          shapeSeed={bot.shapeSeed}
+          character={bot.avatarCharacter}
           status={bot.status}
           muted={rosterMuted(bot)}
           size={sizes.mobileStack}
-          still
         />
       }
     />
@@ -282,7 +271,6 @@ export function GroupRow({
           size={sizes.mobileStack}
           userInitials={userInitials}
           userImage={userImage}
-          still
         />
       }
     />

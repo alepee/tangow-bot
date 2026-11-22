@@ -2,7 +2,7 @@ import { i18n } from "@lingui/core";
 import { useLingui } from "@lingui/react/macro";
 import type { MessageReaction, ThreadItem } from "@tangow/contracts";
 import type { SkillSourceBlock, ThreadView } from "@tangow/core";
-import { isToolActivityBlock } from "@tangow/core";
+import { isToolActivityBlock, routineResultMessage } from "@tangow/core";
 import type { GroupAvatarMember } from "@tangow/ui-web";
 import { cn } from "@tangow/ui-web";
 import type { RefObject } from "react";
@@ -40,6 +40,14 @@ function actionTarget(item: ThreadItem): MessageItem | null {
   };
 }
 
+/** A routine's result takes the actions of a bot message. */
+function routineTarget(row: ThreadView["rows"][number]): MessageItem | null {
+  const { item, routine } = row;
+  return item.kind === "routine" && routine?.kind === "message"
+    ? routineResultMessage(item, routine.text)
+    : null;
+}
+
 /**
  * What a row's actions act on. A stack of images acts on its newest message, which draws no row of
  * its own, unless its host draws more than images: then the words keep the host's actions.
@@ -51,7 +59,9 @@ function rowTarget(row: ThreadView["rows"][number]): MessageItem | null {
     item.blocks.every((block) => block.kind === "image") &&
     !(item.role === "user" && item.replyTo) &&
     row.previewMessageId === undefined;
-  return actionTarget(imagesOnly && imageStack ? imageStack.front.item : item);
+  return (
+    routineTarget(row) ?? actionTarget(imagesOnly && imageStack ? imageStack.front.item : item)
+  );
 }
 
 export const Transcript = memo(function Transcript({
@@ -180,6 +190,10 @@ export const Transcript = memo(function Transcript({
       : rows.findIndex((row) => rowTarget(row)?.id === rewindFromItemId);
   const context = useMemo<RowContext>(() => {
     const messageById = new Map(messages.map((message) => [message.id as string, message]));
+    for (const row of rows) {
+      const routine = routineTarget(row);
+      if (routine) messageById.set(routine.id as string, routine);
+    }
     return {
       artifactTarget,
       inGroup,
@@ -227,6 +241,7 @@ export const Transcript = memo(function Transcript({
     onOpenSkill,
     onOpenIntegrations,
     messages,
+    rows,
     rowOf,
   ]);
   const workingBotName = workingBots.length === 1 ? workingBots[0]?.name : undefined;

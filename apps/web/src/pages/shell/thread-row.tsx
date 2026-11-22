@@ -34,13 +34,17 @@ import type {
   SessionViewTarget,
 } from "../../lib/thread-items";
 import { LinkPreviewRow } from "./block-views";
-import { FALLBACK_BOT_COLOR, threadJumpLocation } from "./layout";
+import { threadJumpLocation } from "./layout";
 import { MessageView, skillLine, useLinkMentions } from "./message-view";
 import { RoutineFailureLine } from "./routine-run-line";
 
-type PeerBot = (
-  botId: string,
-) => { color: string; name?: string; shapeSeed?: number | null; status?: string } | undefined;
+type PeerBot = (botId: string) =>
+  | {
+      name?: string;
+      avatarCharacter?: string | null;
+      status?: string;
+    }
+  | undefined;
 
 export type RowContext = {
   artifactTarget: ArtifactTarget;
@@ -307,7 +311,7 @@ function RoutineMessage({
     <>
       {inGroup ? null : origin}
       <MessageRow
-        avatar={<BotAvatar {...avatarLookup(context.peerBot)(item.botId)} size={26} />}
+        avatar={<BotAvatar {...avatarLookup(context.peerBot)(item.botId)} size={32} />}
         author={
           <>
             <span dir="auto">{context.memberName?.(item.botId) ?? bot?.name ?? t`Bot`}</span>
@@ -524,7 +528,10 @@ function OriginLabel({
 function avatarLookup(peerBot: PeerBot) {
   return (botId: string): StackedAvatarItem => {
     const bot = peerBot(botId);
-    return { color: bot?.color ?? FALLBACK_BOT_COLOR, identity: botId, shapeSeed: bot?.shapeSeed };
+    return {
+      identity: botId,
+      character: bot?.avatarCharacter,
+    };
   };
 }
 

@@ -27,13 +27,8 @@ npx --yes hyperframes@0.8.181 snapshot --at 1.5,5.5,9.8,12.5 --no-end -o snaps .
 The example film (14.5 s) must snapshot cleanly before you change anything. The CLI renders in its own Chromium, with
 the HTML-in-canvas support the screens need.
 
-To show the product's real avatar, bundle it from `packages/core` (run from the repository root) and load it before
-`film.js` in `index.html` with `<script src="assets/tangow-avatar.js"></script>`:
-
-```bash
-npx --yes esbuild@0.25.0 .agents/skills/product-film/template/avatar/avatar-entry.ts --bundle --format=iife \
-  --global-name=TangowAvatar --outfile=.tmp/product-films/<slug>/assets/tangow-avatar.js
-```
+Films show bots with the clay character images from `packages/avatars/characters`: copy the `.webp` files into
+the film's `assets/` like any other asset and draw them in the working line's mark.
 
 ## 2. Brief, script, words
 

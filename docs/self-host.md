@@ -1,6 +1,6 @@
 # Self-hosting Tangow
 
-The signed-in product is a long-running API, a Graphile Worker, Postgres, and a computer provider (Docker supervisor or E2B). It is not a static site. The marketing site in `apps/www` can be hosted separately.
+The signed-in product is a long-running API, a Graphile Worker, Postgres, and a computer provider (Docker supervisor or E2B). It is not a static site.
 
 ## Local (source checkout)
 
@@ -64,6 +64,21 @@ in. Configure SMTP below before enabling an allowlist or upgrading an allowliste
 
 For a public deployment, configure SMTP and an allowlist before the API's first start.
 Keep an installation without email on a trusted local network.
+
+### Host-specific Compose tweaks
+
+To change the stack for one host without editing tracked files, create `.env.tangow.compose.yml`
+at the repository root. It is ignored by Git, and every `./tangow` command and the backup and
+restore scripts pass it to Compose as the last `-f` file, so it overrides everything else and
+survives `./tangow update`. The [updater sidecar](#updater-sidecar) does not read it; add it to
+`TANGOW_COMPOSE_FILE` there. For example, to disable MPTCP inside a service's network namespace:
+
+```yaml
+services:
+  api:
+    sysctls:
+      net.mptcp.enabled: "0"
+```
 
 ### Bot computer resource ceilings
 
@@ -379,24 +394,19 @@ docker compose --env-file .env -f infra/compose/docker-compose.prod.yml \
 curl --fail https://app.example.com/health
 ```
 
-**Build, do not pull, for a first deployment.** `TANGOW_IMAGE_TAG` ships as `local`, a tag no
-registry serves, so the commands above build `api`, `worker`, and `web` from the checkout you just
-cloned. The opt-in command under [Updater sidecar](#updater-sidecar) builds `updater` when needed.
+**Images are built on the host.** No registry publishes Tangow images: the commands above build
+`api`, `worker`, and `web` from the checkout you just cloned, tagged `local`. The opt-in command
+under [Updater sidecar](#updater-sidecar) builds `updater` when needed. See
+[Images and tags](#images-and-tags) for the tag contract.
 
 Passing `GIT_SHA` is what makes `GET /health` report a `"revision"`; a locally built image has no
-other way to know its commit. Prebuilt images from the registry bake it in at publish time, so when
-you switch to a release tag you should leave `GIT_SHA` unset — a value in `.env` would override what
-the image already knows.
-
-Once a release has been published you can switch this host to prebuilt images by setting
-`TANGOW_IMAGE_TAG` to that release tag and running `pull` followed by `up -d --wait --pull never`.
-See [Published images and tags](#published-images-and-tags) for the tag contract.
+other way to know its commit.
 
 The root `.env` is excluded from both Git and the Docker build context. The database, application data,
 and Caddy certificates live in named Docker volumes.
 
 The production Compose file pins Postgres and Caddy to multi-architecture manifest digests, and the
-published application/updater builds pin their base-image digests. Refresh those pins deliberately
+application/updater Dockerfiles pin their base-image digests. Refresh those pins deliberately
 when taking upstream security updates; changing only the visible major tag does not change the
 content while a digest is present.
 
@@ -488,16 +498,7 @@ production snapshot's custom-format `tangow.dump` or `appdata.tgz`.
 Take a backup before upgrading (see [Backup](#backup)): an upgrade can move data to a shape the
 previous release cannot read, as the [session log migration](#session-log-migration) does.
 
-A Compose deployment on a published release tag upgrades by moving that tag:
-
-```bash
-docker compose --env-file .env -f infra/compose/docker-compose.prod.yml pull api worker web
-docker compose --env-file .env -f infra/compose/docker-compose.prod.yml \
-  up -d --wait --pull never api worker web
-```
-
-A deployment on the default `local` tag has no registry to pull from, so it upgrades by rebuilding
-the checkout instead:
+A Compose deployment upgrades by rebuilding its checkout:
 
 ```bash
 git pull
@@ -512,8 +513,8 @@ keeps them stopped. A failed CLI recreate does not auto-roll back; recover with 
 `TANGOW_IMAGE_TAG` (or rebuild `local`) and `up -d --wait --pull never --no-deps api worker web`.
 
 The updater sidecar has its own image and tag so an update never recreates the process performing
-it. Move it deliberately by setting `TANGOW_UPDATER_IMAGE_TAG` to the full `sha-<commit>` tag, then
-running `docker compose … pull updater && docker compose … up -d --wait --pull never updater`.
+it. Move it deliberately by rebuilding it from the checkout:
+`docker compose … --profile updater up -d --wait --build updater`.
 Sidecar `/apply` and `/rollback` recover a failed recreate by redeploying the previously cached
 image when possible; if that also fails, they report a possible mixed-version runtime. Both stop a
 `migrate` still running first, and neither restores a release that cannot read the database.
@@ -653,62 +654,28 @@ not an online rolling migration. Stop the old API and worker, apply the migratio
 versions together. Its lock waits are bounded so contention fails the migration instead of leaving
 application traffic queued indefinitely.
 
-### Published images and tags
+### Images and tags
 
-`.github/workflows/publish-server-image.yml` publishes to `ghcr.io/<owner>/<repo>/…`, derived from
-`${{ github.repository }}` rather than hardcoded, so a fork's CI fills the fork's own namespace. For
-this repository that is:
+Every image is built on the host from the checkout; no registry publishes them.
 
 | Image | Contents |
 | --- | --- |
-| `ghcr.io/elie222/rakazo/app` | api, worker, web, and sandbox supervisor — one image, multiple commands |
-| `ghcr.io/elie222/rakazo/computer` | Linux desktop used as each bot computer |
-| `ghcr.io/elie222/rakazo/updater` | the updater sidecar, plus the Docker CLI |
+| `tangow/app` | api, worker, web, and sandbox supervisor — one image, multiple commands |
+| `tangow/updater` | the updater sidecar, plus the Docker CLI |
+| `tangow/computer` | Linux desktop used as each bot computer with the Docker provider |
 
-Production Compose (`docker-compose.prod.yml`) can pull the app tags once `TANGOW_IMAGE_TAG` is set
-to a published value. The supervisor runs from the app image on the internal network only (not a
-separate published supervisor image, and no host port).
+`TANGOW_IMAGE` and `TANGOW_UPDATER_IMAGE` name the app and updater images. A deployment whose `.env`
+already sets them keeps its value, so the images it built stay usable for rollback.
 
-If you deploy from your own fork, set `TANGOW_IMAGE` and `TANGOW_UPDATER_IMAGE` to your namespace —
-your CI cannot publish into someone else's.
-
-| Tag | Published on | Moves? |
+| Tag | Built by | Moves? |
 | --- | --- | --- |
-| `local` | nothing — built locally by `up --build` | rebuilt in place |
-| `local-<full-commit>` | nothing — built on the server by a fork update | never |
-| `vX.Y.Z`, `vX.Y` | release tags | conventionally no / on patch releases |
-| `latest` | stable `vX.Y.Z` tags only (not prereleases) | yes, to the newest stable release |
-| `sha-<full-commit>` | every push and manual run | source-addressed; used by the updater sidecar |
-| `edge` | pushes to main | yes, to the newest main build |
+| `local` | the first `up --build` | rebuilt in place |
+| `local-<full-commit>` | each update | never |
 
-Every publish, including `edge` from main merges, is multi-arch (`amd64` + `arm64`): each
-architecture builds natively on its own runner and one manifest is assembled per image. Until a
-stable `vX.Y.Z` has been published, GHCR may only have `edge` and `sha-*` tags; do not pin
-`latest` unless that tag exists in the registry.
+`docker compose up --build` builds for the host's own architecture, without QEMU.
 
-Building the images yourself does not need QEMU. `docker compose up --build` builds for the host's
-own architecture, and a fork publishing multi-arch images should do what `publish-server-image.yml`
-does: build each architecture on a native runner (GitHub Actions provides `ubuntu-24.04-arm` for
-public repositories) and merge the digests into one manifest. QEMU emulation
-(`docker/setup-qemu-action`, `binfmt`) still works if you have no native arm64 machine, but it is
-many times slower, hours rather than minutes for the `computer` image.
-
-The updater resolves the newest stable `vX.Y.Z` source tag but deploys its `sha-<full-commit>` image,
-not `latest` or a moving minor tag. A registry tag is not an OCI digest and GHCR package writers can
-replace it, so the trust boundary remains this repository's publishing credentials. The workflow
-reduces that boundary by using SHA-pinned actions, read-only pull-request jobs, digest-pinned base
-images, SBOM/provenance output, and a GitHub build attestation. Operators who require registry-level
-content addressing can pin `TANGOW_IMAGE` outside the automatic updater to a verified digest.
-
-Rollback never contacts the registry: it redeploys the previous tag from the local Docker cache,
-so a later tag move cannot change rollback content. Do not prune the previous application image
-until the next update has been accepted. If it is missing, rollback fails closed instead of pulling
-new content under an old tag.
-
-To populate the registry the first time, run the workflow manually (`workflow_dispatch`) or push a
-`v*` tag. A manual run produces `sha-<full-commit>`; only a stable `vX.Y.Z` tag (no prerelease
-suffix) produces `latest`, and any `v*` tag produces semver tags. The updater ignores prereleases
-and refuses the official path until a stable `vX.Y.Z` exists.
+Rollback redeploys the previous tag from the local Docker cache. Do not prune the previous
+application image until the next update has been accepted. If it is missing, rollback fails closed.
 
 ### Updater sidecar
 
@@ -728,17 +695,13 @@ apply/rollback over that private HTTP API.
 The API cannot update itself — its image has no `.git`, and nothing inside the container would
 restart it — so the work happens in a separate `updater` container that outlives the recreate:
 
-- *Official repository:* resolves the newest stable release and its source commit with
-  `git ls-remote --tags`, pins the corresponding full `sha-<commit>` image tag in `.env`, keeps the
-  outgoing tag in `TANGOW_IMAGE_TAG_PREVIOUS`, explicitly pulls the new image, then runs
-  `up -d --wait --pull never`. No build runs on the server.
-- *Fork (Advanced):* a fork has no published images, so the sidecar fast-forwards the checkout in
-  `TANGOW_DEPLOY_DIR` and runs `up -d --build`. This builds on the server and takes minutes rather
-  than seconds. Point it only at a fork you control and have reviewed — the sidecar runs that
-  Compose file through a root-equivalent Docker socket.
+it fast-forwards the checkout in `TANGOW_DEPLOY_DIR`, pins `local-<commit>` in `.env`, keeps the
+outgoing tag in `TANGOW_IMAGE_TAG_PREVIOUS`, and runs `up -d --build`. This builds on the server
+and takes minutes rather than seconds. Point it only at a repository you control and have reviewed
+— the sidecar runs that Compose file through a root-equivalent Docker socket.
 
-Updates and rollbacks run one at a time. A failed pull leaves running services alone; a failed recreate restores the previous environment
-pin and attempts to redeploy the cached previous image. A failed fork build also restores the
+Updates and rollbacks run one at a time. A failed recreate restores the previous environment
+pin and attempts to redeploy the cached previous image. A failed build also restores the
 pre-update branch and commit (including when checkout succeeded but merge did not) so a later
 manual `--build` cannot deploy the rejected or unintended revision. Database migrations are not
 reversed. The sidecar never recreates itself, never touches Postgres or Caddy, and never runs
@@ -838,7 +801,6 @@ Use the same HTTPS origin for the web app, `/api`, and `/rpc`. Preserve the auth
 proxy routes. Choose a [computer provider](#choosing-a-computer-provider) appropriate to the
 service's trust boundary, and configure `SIGNUPS_ENABLED` and `SIGNUP_ALLOWLIST` before the API's
 first start.
-The optional marketing site in `apps/www` can be hosted separately.
 
 ## Connect mobile clients
 

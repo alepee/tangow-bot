@@ -743,4 +743,37 @@ describe("MCP setup with an existing access token", () => {
       expect(secrets.put).not.toHaveBeenCalled();
     },
   );
+
+  it("asks for a token when the endpoint refuses and publishes no OAuth metadata", async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>(async (input, init) => {
+      const href = logicalHref(input, init);
+      if (href === "https://mcp.example.test/mcp") return new Response(null, { status: 401 });
+      return new Response(null, { status: 404 });
+    });
+    const prisma = {
+      mcpServer: {
+        findFirst: vi.fn(async () => ({
+          id: "server",
+          endpoint: "https://mcp.example.test/mcp",
+          secretId: null,
+        })),
+      },
+      secret: { findFirst: vi.fn() },
+      mcpOAuthSession: oauthSessionStore(),
+    };
+    const secrets = { load: vi.fn(), put: vi.fn() };
+    const broker = new McpOAuthBroker(prisma as never, secrets as never, {
+      ...TEST_NETWORK,
+      fetch,
+    });
+    await expect(
+      broker.begin({
+        serverId: "server",
+        userId: "user",
+        spaceId: "space",
+        redirectUri: "https://app.example.test/mcp/oauth/callback",
+      }),
+    ).resolves.toEqual({ status: "token_required" });
+    expect(secrets.put).not.toHaveBeenCalled();
+  });
 });

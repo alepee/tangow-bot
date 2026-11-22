@@ -7,8 +7,6 @@ import { serve } from "@hono/node-server";
 import { MIGRATION_WAIT_TIMEOUT_S, type ServerUpdateRun } from "@tangow/contracts";
 import {
   type ComposeUpdateStep,
-  chooseUpdateStrategy,
-  commitImageTag,
   composeMessagesDroppedArgv,
   composeStopMigrateArgv,
   composeUpArgv,
@@ -28,11 +26,9 @@ import {
   PREVIOUS_IMAGE_TAG_ENV,
   parseGitNameOnly,
   parseGitStatusPorcelain,
-  parseLsRemoteReleases,
   repoIdentity,
   resolveTrackedDirtyPaths,
   rollbackTarget,
-  selectLatestRelease,
   upsertEnvAssignments,
   validateUpdateRequest,
 } from "@tangow/core";
@@ -221,30 +217,16 @@ export function createUpdaterApp(
       const request = parseRequest(await body(c.req.raw));
       const work = (async () => {
         const tags = readTagState(await readEnvFile());
-        const decision = chooseUpdateStrategy(request);
         const checkout = await readCheckout();
-        if (decision.strategy === "build") {
-          const targetCommit = await resolveRemoteHead(request);
-          return {
-            strategy: decision.strategy,
-            reason: decision.reason,
-            currentTag: tags.currentTag,
-            previousTag: tags.previousTag,
-            targetTag: null as string | null,
-            targetCommit,
-            upToDate: upToDateForBuild(tags.currentTag, checkout.commit, targetCommit),
-            checkout,
-          };
-        }
-        const target = await resolveRelease(request.repoUrl);
+        const targetCommit = await resolveRemoteHead(request);
         return {
-          strategy: decision.strategy,
-          reason: `${decision.reason} Latest stable release: ${target.releaseTag}.`,
+          strategy: "build" as const,
+          reason: "The server builds this update from its checkout. Expect minutes, not seconds.",
           currentTag: tags.currentTag,
           previousTag: tags.previousTag,
-          targetTag: target.imageTag,
-          targetCommit: target.commit,
-          upToDate: target.imageTag === tags.currentTag,
+          targetTag: null as string | null,
+          targetCommit,
+          upToDate: upToDateForBuild(tags.currentTag, checkout.commit, targetCommit),
           checkout,
         };
       })();
@@ -411,28 +393,6 @@ export function createUpdaterApp(
     };
   }
 
-  /** `ls-remote` reads the tag list without cloning, so it works for the pull path with no checkout. */
-  async function resolveRelease(repoUrl: string) {
-    const listed = await run("git", ["ls-remote", "--tags", "--", repoUrl], {
-      cwd: config.deployDir,
-      timeoutMs: STEP_TIMEOUT_MS.fetch ?? DEFAULT_TIMEOUT_MS,
-    });
-    if (!listed.ok) {
-      throw new UpdateRefused(`Could not read releases from ${repoUrl}: ${listed.output}`);
-    }
-    const release = selectLatestRelease(parseLsRemoteReleases(listed.output));
-    if (release === null) {
-      throw new UpdateRefused(
-        `${repoUrl} has no published release tags, so there is no image to pull.`,
-      );
-    }
-    return {
-      releaseTag: release.tag,
-      commit: release.commit,
-      imageTag: commitImageTag(release.commit),
-    };
-  }
-
   /** The branch head on the remote, read without fetching, so a plan does not mutate the checkout. */
   async function resolveRemoteHead(request: { repoUrl: string; branch: string }) {
     const listed = await run(
@@ -450,7 +410,7 @@ export function createUpdaterApp(
     return commit;
   }
 
-  /** A fork is current only when its checkout is on the remote head *and* that build is deployed. */
+  /** The deployment is current only when its checkout is on the remote head *and* that build is deployed. */
   function upToDateForBuild(
     currentTag: string,
     commit: string | null,
@@ -460,86 +420,54 @@ export function createUpdaterApp(
     return currentTag === forkImageTag(commit);
   }
 
-  async function apply(request: { repoUrl: string; branch: string; official: boolean }) {
-    const decision = chooseUpdateStrategy(request);
+  async function apply(request: { repoUrl: string; branch: string }) {
     const tags = readTagState(await readEnvFile());
     const checkout = await readCheckout();
 
-    if (decision.strategy === "build") {
-      if (!checkout.present) {
-        throw new UpdateRefused(
-          "Building a fork needs the deployment's git checkout, and TANGOW_DEPLOY_DIR has no .git directory. Clone the fork to the deployment directory, or switch back to the official repository to use published images.",
-        );
-      }
-      if (checkout.remoteUrl === null) {
-        throw new UpdateRefused(
-          `Building a fork needs the deployment checkout to have an ${DEFAULT_UPDATE_REMOTE} remote. Add it or clone the fork again before updating.`,
-        );
-      }
-      if (checkout.dirty) {
-        throw new UpdateRefused(
-          "The deployment checkout has changed or untracked source files, or its state could not be verified. Commit, stash, clean, or fix it before updating.",
-        );
-      }
-      if (checkout.commit === null || !isGitCommit(checkout.commit)) {
-        throw new UpdateRefused(
-          "The deployment checkout's current commit could not be verified. Fix it before updating.",
-        );
-      }
+    if (!checkout.present) {
+      throw new UpdateRefused(
+        "Updating needs the deployment's git checkout, and TANGOW_DEPLOY_DIR has no .git directory. Clone the repository to the deployment directory before updating.",
+      );
+    }
+    if (checkout.remoteUrl === null) {
+      throw new UpdateRefused(
+        `Updating needs the deployment checkout to have an ${DEFAULT_UPDATE_REMOTE} remote. Add it or clone the repository again before updating.`,
+      );
+    }
+    if (checkout.dirty) {
+      throw new UpdateRefused(
+        "The deployment checkout has changed or untracked source files, or its state could not be verified. Commit, stash, clean, or fix it before updating.",
+      );
+    }
+    if (checkout.commit === null || !isGitCommit(checkout.commit)) {
+      throw new UpdateRefused(
+        "The deployment checkout's current commit could not be verified. Fix it before updating.",
+      );
     }
 
-    let targetTag: string | null = null;
-    let targetCommit: string | null = null;
-    let releaseTag: string | null = null;
-    if (decision.strategy === "pull") {
-      const target = await resolveRelease(request.repoUrl);
-      targetTag = target.imageTag;
-      targetCommit = target.commit;
-      releaseTag = target.releaseTag;
-      if (targetTag === tags.currentTag) {
-        return rememberRun(upToDateRecord(request, targetTag, "pull", targetCommit));
-      }
-    } else {
-      const remoteHead = await resolveRemoteHead(request);
-      if (upToDateForBuild(tags.currentTag, checkout.commit, remoteHead)) {
-        return rememberRun(upToDateRecord(request, tags.currentTag, "build", checkout.commit));
-      }
+    const remoteHead = await resolveRemoteHead(request);
+    if (upToDateForBuild(tags.currentTag, checkout.commit, remoteHead)) {
+      return rememberRun(upToDateRecord(request, tags.currentTag, checkout.commit));
     }
 
-    const steps =
-      decision.strategy === "pull"
-        ? composeUpdatePlan({ strategy: "pull", target: composeTarget })
-        : composeUpdatePlan({
-            strategy: "build",
-            target: composeTarget,
-            repoUrl: request.repoUrl,
-            branch: request.branch,
-            repointRemote:
-              checkout.remoteUrl === null ||
-              repoIdentity(checkout.remoteUrl) !== repoIdentity(request.repoUrl),
-          });
-
+    const repointRemote = repoIdentity(checkout.remoteUrl) !== repoIdentity(request.repoUrl);
     return rememberRun(
       await execute({
         request,
-        strategy: decision.strategy,
         fromTag: tags.currentTag,
         originalPreviousTag: tags.previousTag,
-        toTag: targetTag,
+        toTag: null,
         fromCommit: checkout.commit,
         fromBranch: checkout.branch,
-        toCommit: targetCommit,
-        restoreRemoteUrl:
-          decision.strategy === "build" &&
-          checkout.remoteUrl !== null &&
-          repoIdentity(checkout.remoteUrl) !== repoIdentity(request.repoUrl)
-            ? checkout.remoteUrl
-            : null,
-        steps,
+        restoreRemoteUrl: repointRemote ? checkout.remoteUrl : null,
+        steps: composeUpdatePlan({
+          target: composeTarget,
+          repoUrl: request.repoUrl,
+          branch: request.branch,
+          repointRemote,
+        }),
         restartAdvice:
-          decision.strategy === "pull"
-            ? `The updater deployed ${releaseTag ?? targetTag} from its full source-commit image tag and recreated the API, worker, and web containers. Migrations ran before the new API started.`
-            : "The updater built the fork and recreated the API, worker, and web containers. Migrations ran before the new API started.",
+          "The updater built the new version and recreated the API, worker, and web containers. Migrations ran before the new API started.",
       }),
     );
   }
@@ -556,19 +484,17 @@ export function createUpdaterApp(
         `${decision.tag} cannot read this database: its conversations have moved to the session log. Restore the backup taken before the update instead; see "Session log migration" in docs/self-host.md.`,
       );
     }
-    // Never re-pull a rollback tag: registry tags can move. Reuse the exact image cached when it ran.
+    // Reuse the exact image built when that tag ran.
     const up = composeUpArgv(composeTarget, { restore: true });
     const steps = [{ id: "recreate", label: "Recreate the services", ...up }];
     return rememberRun(
       await execute({
         request: { repoUrl: "", branch: "" },
-        strategy: "pull",
         fromTag: tags.currentTag,
         originalPreviousTag: tags.previousTag,
         toTag: decision.tag,
         fromCommit: checkout.commit,
         fromBranch: checkout.branch,
-        toCommit: null,
         restoreRemoteUrl: null,
         steps,
         restartAdvice: `Rolled back to ${decision.tag}. Database migrations are not reversed: if the newer version added a migration, roll forward again or restore a database backup.`,
@@ -605,13 +531,12 @@ export function createUpdaterApp(
    */
   async function execute(input: {
     request: { repoUrl: string; branch: string };
-    strategy: "pull" | "build";
     fromTag: string;
     originalPreviousTag: string | null;
+    /** Null for an update: the tag is the commit the fast-forward lands on. */
     toTag: string | null;
     fromCommit: string | null;
     fromBranch: string | null;
-    toCommit: string | null;
     restoreRemoteUrl: string | null;
     steps: ComposeUpdateStep[];
     restartAdvice: string;
@@ -621,10 +546,10 @@ export function createUpdaterApp(
       finishedAt: null,
       ok: false,
       fromCommit: input.fromCommit,
-      toCommit: input.toCommit,
+      toCommit: null,
       fromTag: input.fromTag,
       toTag: input.toTag,
-      strategy: input.strategy,
+      strategy: input.toTag === null ? "build" : null,
       repoUrl: input.request.repoUrl,
       branch: input.request.branch,
       restart: "not-required",
@@ -664,9 +589,9 @@ export function createUpdaterApp(
         if (!(await runStep(record, step))) return record;
       }
 
-      // The build path only knows its tag after the fast-forward, because the tag is the commit.
+      // An update only knows its tag after the fast-forward, because the tag is the commit.
       let toTag = input.toTag;
-      if (input.strategy === "build") {
+      if (toTag === null) {
         const head = await git(["rev-parse", "HEAD"]);
         const commit = head.ok ? head.output.trim() : "";
         if (!isGitCommit(commit)) {
@@ -676,10 +601,6 @@ export function createUpdaterApp(
         record.toCommit = commit;
         toTag = forkImageTag(commit);
         record.toTag = toTag;
-      }
-      if (toTag === null) {
-        record.error = "Could not resolve a target image tag.";
-        return record;
       }
 
       try {
@@ -801,7 +722,6 @@ export function createUpdaterApp(
   function upToDateRecord(
     request: { repoUrl: string; branch: string },
     tag: string,
-    strategy: "pull" | "build",
     commit: string | null,
   ): ServerUpdateRun {
     const now = new Date().toISOString();
@@ -813,7 +733,7 @@ export function createUpdaterApp(
       toCommit: commit,
       fromTag: tag,
       toTag: tag,
-      strategy,
+      strategy: "build",
       repoUrl: request.repoUrl,
       branch: request.branch,
       restart: "not-required",

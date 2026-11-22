@@ -8,20 +8,23 @@ import {
   DialogTitle,
   SettingRow,
 } from "@tangow/ui-web";
-import { Puzzle, Sparkles, X } from "lucide-react";
+import { Plug, Puzzle, Sparkles, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { useMediaQuery } from "../lib/use-media-query";
 import { BackCapsule } from "./BackCapsule";
 import { SettingsGroup } from "./bot-page/page-kit";
+import type { DeclaredAppContext } from "./custom-apps/CustomApps";
+import { CustomApps } from "./custom-apps/CustomApps";
 import { PluginsOverlay } from "./PluginsOverlay";
 import { SkillsOverlay } from "./SkillsOverlay";
 import { PHONE_MEDIA } from "./shell/layout";
 import { usePushedFocus } from "./use-pushed-focus";
 
-export type CustomizeSection = "integrations" | "skills";
+export type CustomizeSection = "integrations" | "custom-apps" | "skills";
 
 const CUSTOMIZE_ITEMS = [
   { id: "integrations" as const, label: <Trans>Integrations</Trans>, Icon: Puzzle },
+  { id: "custom-apps" as const, label: <Trans>Custom apps</Trans>, Icon: Plug },
   { id: "skills" as const, label: <Trans>Skills</Trans>, Icon: Sparkles },
 ];
 
@@ -92,24 +95,30 @@ function CustomizeList({ onSelect }: { onSelect: (section: CustomizeSection) => 
 export function CustomizeOverlay({
   activeBotId,
   onClose,
-  onOpenMcp,
+  initialSection,
+  declared,
   onSkillsChanged,
 }: {
   activeBotId?: string;
   onClose: () => void;
-  onOpenMcp?: () => void;
+  initialSection?: CustomizeSection;
+  declared?: DeclaredAppContext;
   onSkillsChanged?: () => void;
 }) {
   const { t } = useLingui();
   const phone = useMediaQuery(PHONE_MEDIA);
-  const [chosen, setChosen] = useState<CustomizeSection | null>(phone ? null : "integrations");
+  const [chosen, setChosen] = useState<CustomizeSection | null>(
+    initialSection ?? (phone ? null : "integrations"),
+  );
   // A phone shows the list of sections until one is chosen; a window always shows one.
   const section = phone ? chosen : (chosen ?? "integrations");
   const panelRef = useRef<HTMLDivElement>(null);
   const back = usePushedFocus(section, panelRef);
-  const [skillsVisited, setSkillsVisited] = useState(false);
+  const [skillsVisited, setSkillsVisited] = useState(initialSection === "skills");
+  const [customAppsVisited, setCustomAppsVisited] = useState(initialSection === "custom-apps");
   const selectSection = (next: CustomizeSection) => {
     setChosen(next);
+    if (next === "custom-apps") setCustomAppsVisited(true);
     if (next === "skills") setSkillsVisited(true);
   };
   const sectionClass = (id: CustomizeSection) =>
@@ -127,7 +136,9 @@ export function CustomizeOverlay({
               ? t`Close integrations`
               : section === "skills"
                 ? t`Close skills`
-                : t`Close`
+                : section === "custom-apps"
+                  ? t`Close custom apps`
+                  : t`Close`
           }
         />
       }
@@ -165,6 +176,8 @@ export function CustomizeOverlay({
                 <Trans>Customize</Trans>
               ) : section === "integrations" ? (
                 <Trans>Integrations</Trans>
+              ) : section === "custom-apps" ? (
+                <Trans>Custom apps</Trans>
               ) : (
                 <Trans>Skills</Trans>
               )}
@@ -173,8 +186,13 @@ export function CustomizeOverlay({
           </DialogHeader>
           {section === null ? <CustomizeList onSelect={selectSection} /> : null}
           <div className={sectionClass("integrations")}>
-            <PluginsOverlay activeBotId={activeBotId} onOpenMcp={onOpenMcp} />
+            <PluginsOverlay activeBotId={activeBotId} />
           </div>
+          {customAppsVisited ? (
+            <div className={sectionClass("custom-apps")}>
+              <CustomApps declared={declared} />
+            </div>
+          ) : null}
           {skillsVisited ? (
             <div className={sectionClass("skills")}>
               <SkillsOverlay botId={activeBotId} onSkillsChanged={onSkillsChanged} />

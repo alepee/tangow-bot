@@ -32,7 +32,6 @@ import { currentAccessHeaders, loadAccess, saveAccess } from "./access-store";
 import { defaultApiBase, type EndpointResult, normalizeApiBase } from "./endpoint";
 import { t } from "./i18n";
 import { resumeLiveNotifications } from "./live-notifications";
-import { clearMainBotCache } from "./main-bot-cache";
 import { serverError } from "./server-error";
 import {
   clearSessionToken,
@@ -550,7 +549,6 @@ export async function signOut() {
   }
   const sessionCleared = await clearSessionToken();
   const spaceCleared = await clearSpace();
-  await clearMainBotCache();
   if (!sessionCleared || !spaceCleared) throw new Error(t("Could not clear the local session"));
 }
 
@@ -592,7 +590,6 @@ export async function deleteAccount(password: string) {
   }
   await clearSessionToken();
   await clearSpace();
-  await clearMainBotCache();
 }
 
 export async function rpc<T>(
@@ -729,6 +726,7 @@ export type MobileBot = Pick<
   | "title"
   | "color"
   | "shapeSeed"
+  | "avatarCharacter"
   | "notifyOnFinish"
   | "threadId"
   | "pinned"
@@ -756,7 +754,6 @@ export type MobileMe = Pick<
   | "defaultProvider"
   | "defaultModel"
   | "needsModel"
-  | "avatarStyle"
   | "isDeploymentOwner"
 >;
 

@@ -400,7 +400,7 @@ export class McpOAuthBroker {
     redirectUri: string;
   }): Promise<
     | { status: "authorization_required"; sessionId: string; authorizationUrl: string }
-    | { status: "already_connected" | "authorization_not_requested" }
+    | { status: "already_connected" | "authorization_not_requested" | "token_required" }
   > {
     const server = await this.prisma.mcpServer.findFirst({
       where: {
@@ -443,22 +443,37 @@ export class McpOAuthBroker {
     // invalidates dead tokens when a refresh is rejected with invalid_grant.
     const endpoint = new URL(server.endpoint);
     const networkFetch = oauthFetch(server.endpoint, this.network, loaded.material);
+    // The endpoint answering 401 while it publishes no OAuth metadata means it wants a token.
+    let refused = false;
+    let offersOAuth = false;
     const transport = new StreamableHTTPClientTransport(endpoint, {
       requestInit: { headers: networkFetch.headers },
       authProvider: provider,
-      fetch: networkFetch.fetch,
+      fetch: async (request, init) => {
+        const response = await networkFetch.fetch(request, init);
+        const href = request instanceof Request ? request.url : String(request);
+        if (response.status === 401 && href === endpoint.href) refused = true;
+        if (
+          (response.ok && new URL(href).pathname.startsWith("/.well-known/oauth-")) ||
+          /resource_metadata=/i.test(response.headers.get("www-authenticate") ?? "")
+        ) {
+          offersOAuth = true;
+        }
+        return response;
+      },
     });
     const client = new Client({ name: "tangow-oauth", version: "0.1.0" });
     const signal = AbortSignal.timeout(15_000);
     try {
       await client.connect(transport, { signal, timeout: 15_000 });
     } catch (error) {
-      if (!authorizationUrl) throw error;
+      if (!authorizationUrl && (!refused || offersOAuth)) throw error;
     } finally {
       await client.close().catch(() => undefined);
       await networkFetch.close().catch(() => undefined);
     }
     if (!authorizationUrl) {
+      if (refused && !offersOAuth) return { status: "token_required" };
       if (provider.tokens()) {
         return { status: "already_connected" };
       }

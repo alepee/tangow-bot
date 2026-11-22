@@ -1,9 +1,8 @@
-import { botColors } from "@tangow/ui-tokens";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { StackedAvatars } from "./stacked-avatars.js";
 
-const BOTS = botColors.slice(0, 5).map((color, index) => ({ color, identity: `bot-${index}` }));
+const BOTS = Array.from({ length: 5 }, (_, index) => ({ identity: `bot-${index}` }));
 
 describe("StackedAvatars", () => {
   it("overlaps the avatars of a group", () => {
@@ -34,17 +33,15 @@ describe("StackedAvatars", () => {
 
   it("marks a working bot on its avatar", () => {
     const html = renderToString(
-      <StackedAvatars
-        items={[{ color: botColors[0], identity: "bot-0", working: true }]}
-        size={20}
-      />,
+      <StackedAvatars items={[{ identity: "bot-0", working: true }]} size={20} />,
     );
     expect(html).toContain('data-working="true"');
   });
 
   it("is decoration unless it is given a name", () => {
     // Only the wrapper's own attributes matter; the avatars inside carry their own.
-    const rootTag = (html: string) => html.slice(0, html.indexOf(">") + 1);
+    const rootTag = (html: string) =>
+      html.match(/<span data-slot="stacked-avatars"[^>]*>/)?.[0] ?? "";
 
     const bare = rootTag(renderToString(<StackedAvatars items={BOTS.slice(0, 2)} size={20} />));
     expect(bare).toContain('aria-hidden="true"');

@@ -1,29 +1,6 @@
-import type { IncomingHttpHeaders } from "node:http";
-
 const SENSITIVE_RESPONSE_HEADERS = new Set(["clear-site-data", "set-cookie", "set-cookie2"]);
-const SCREEN_SANDBOX = "sandbox allow-scripts allow-pointer-lock";
 
-/** Screen listeners are untrusted even when their capability URL is opened outside an iframe. */
-export function safeScreenProxyResponseHeaders(headers: IncomingHttpHeaders) {
-  const safe: IncomingHttpHeaders = {};
-  const policies: string[] = [];
-  for (const [key, value] of Object.entries(headers)) {
-    const name = key.toLowerCase();
-    if (value == null || name.startsWith(":") || SENSITIVE_RESPONSE_HEADERS.has(name)) continue;
-    if (name === "content-security-policy") {
-      policies.push(...(Array.isArray(value) ? value : [value]));
-    } else {
-      safe[name] = value;
-    }
-  }
-  // Separate CSP policies intersect. An upstream allow-same-origin cannot relax this sandbox,
-  // and existing provider restrictions (including frame-ancestors) remain in force.
-  safe["content-security-policy"] = [...policies, SCREEN_SANDBOX];
-  // Module imports from the opaque sandbox origin still need access to noVNC assets.
-  safe["access-control-allow-origin"] = "*";
-  return safe;
-}
-
+/** The computer is untrusted: it may never set or clear Tangow's cookies through its socket. */
 export function stripSensitiveHandshakeHeaders(response: Buffer) {
   const end = response.indexOf("\r\n\r\n");
   if (end < 0) return null;

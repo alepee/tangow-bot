@@ -1,6 +1,5 @@
 import { botColors } from "@tangow/ui-tokens";
 import {
-  AvatarStyleProvider,
   BotAvatar,
   Button,
   ComposerAttachment,
@@ -110,7 +109,7 @@ function Kitchen() {
 
       <Section title="messages">
         <MessageRow
-          avatar={<BotAvatar color={MAYA.color} identity="maya" size={26} />}
+          avatar={<BotAvatar size={26} />}
           author="Maya"
           trailing={
             <HoverPill>
@@ -142,14 +141,14 @@ function Kitchen() {
           Maya asked Atlas for the room list · 40s
         </Interstitial>
         <WorkingLine
-          avatar={<BotAvatar color={MAYA.color} identity="maya" size={26} status="running" />}
+          avatar={<BotAvatar size={26} status="running" />}
           label="Maya is drafting the recap"
           startedAt={Date.now() - 41_300}
         />
         {/* A long live activity line, laid out like the transcript's working row. */}
         <div className="flex min-h-10 items-center px-1" data-testid="working-line-long">
           <WorkingLine
-            avatar={<BotAvatar color={MAYA.color} identity="maya" size={26} status="running" />}
+            avatar={<BotAvatar size={26} status="running" />}
             label="Searching the web: Club Med Marrakech OR Agadir OR Palmyre OR Djerba OR Opio OR Grand Massif baby club toussaint"
             startedAt={Date.now() - 12_000}
           />
@@ -301,7 +300,7 @@ function Kitchen() {
         </ComposerShell>
         <ComposerShell
           state="speaking"
-          leading={<BotAvatar color={IVY.color} identity="ivy" size={26} status="running" />}
+          leading={<BotAvatar size={26} status="running" />}
           trailing={
             <Button variant="capsuleSecondary" size="capsule">
               Stop
@@ -344,8 +343,4 @@ function Kitchen() {
   );
 }
 
-createRoot(document.getElementById("root")!).render(
-  <AvatarStyleProvider value="organic">
-    <Kitchen />
-  </AvatarStyleProvider>,
-);
+createRoot(document.getElementById("root")!).render(<Kitchen />);

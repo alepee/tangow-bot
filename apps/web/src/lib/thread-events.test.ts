@@ -310,6 +310,7 @@ describe("thread event reduction", () => {
           name: "Member",
           color: "#8B5CF6",
           shapeSeed: null,
+          avatarCharacter: null,
           status: "idle",
           canUse: true,
         },

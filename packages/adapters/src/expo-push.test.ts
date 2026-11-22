@@ -154,7 +154,7 @@ describe("expo push", () => {
     });
   });
 
-  it("marks an avatar push mutable so the iOS extension can draw the bot", async () => {
+  it("marks an avatar push mutable so the iOS extension can show the bot", async () => {
     const dataDir = await mkdtemp(path.join(tmpdir(), "tangow-push-"));
     dirs.push(dataDir);
     await savePushToken(dataDir, "user-1", "ExponentPushToken[test]");
@@ -170,7 +170,7 @@ describe("expo push", () => {
         body: "ok",
         botId: "b",
         threadId: "t",
-        avatar: { color: "#E5484D", shape: 3 },
+        avatar: { character: "atlas", color: "#8287AD", shape: 3 },
       },
       notifyContext,
     );
@@ -182,7 +182,12 @@ describe("expo push", () => {
       JSON.parse(String((init as RequestInit).body)),
     );
     expect(withAvatar.mutableContent).toBe(true);
-    expect(withAvatar.data).toMatchObject({ avatarColor: "#E5484D", avatarShape: 3 });
+    // The old color and shape stay for apps that predate characters.
+    expect(withAvatar.data).toMatchObject({
+      avatarCharacter: "atlas",
+      avatarColor: "#8287AD",
+      avatarShape: 3,
+    });
     expect(plain).not.toHaveProperty("mutableContent");
     expect(plain.data).not.toHaveProperty("avatarColor");
   });

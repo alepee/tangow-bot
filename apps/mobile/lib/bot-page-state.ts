@@ -1,4 +1,4 @@
-import type { Me, VoiceInfo } from "@tangow/contracts";
+import type { Bot, Me, VoiceInfo } from "@tangow/contracts";
 import { createSaveStore, type ModelCatalog } from "@tangow/core";
 import { createBotRecords } from "./bot-records";
 import { createRoutineRecords } from "./routine-records";
@@ -49,6 +49,33 @@ export function subscribeBotRunEnds(listener: () => void): () => void {
   return () => {
     runEndListeners.delete(listener);
   };
+}
+
+const savedBotListeners = new Set<(bot: Bot) => void>();
+
+/** The bot page saved a bot: screens already open take its avatar now, not on their next read. */
+export function noteBotSaved(bot: Bot): void {
+  for (const listener of savedBotListeners) listener(bot);
+}
+
+export function subscribeBotSaved(listener: (bot: Bot) => void): () => void {
+  savedBotListeners.add(listener);
+  return () => {
+    savedBotListeners.delete(listener);
+  };
+}
+
+/** `bots` with the saved bot's character and colour, the same array when it is not among them. */
+export function withSavedAvatar<T extends Pick<Bot, "id" | "avatarCharacter" | "color">>(
+  bots: T[],
+  saved: Bot,
+): T[] {
+  if (!bots.some((bot) => bot.id === saved.id)) return bots;
+  return bots.map((bot) =>
+    bot.id === saved.id
+      ? { ...bot, avatarCharacter: saved.avatarCharacter, color: saved.color }
+      : bot,
+  );
 }
 
 /** Sign-out: nothing of the last person's bots, routines, saves or drafts stays in memory. */

@@ -1,17 +1,8 @@
 import { useLingui } from "@lingui/react/macro";
-import type {
-  CapabilityInstall,
-  Connection,
-  ConnectionCatalogItem,
-  IntegrationCatalogResult,
-  IntegrationCatalogSurface,
-} from "@tangow/contracts";
+import type { Connection, ConnectionCatalogItem } from "@tangow/contracts";
 import { abortableDelay } from "@tangow/core";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { optionalCatalogFeedProbe } from "../../lib/optional-catalog-feed";
 import { rpc } from "../../lib/rpc";
-
-type SourceKind = "treg" | "executor" | "mcp";
 
 type ConnectionTool = { name: string; description: string };
 
@@ -51,23 +42,8 @@ export function useIntegrations({ activeBotId }: { activeBotId?: string }) {
   const [catalog, setCatalog] = useState<ConnectionCatalogItem[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [labelDrafts, setLabelDrafts] = useState<Record<string, string>>({});
-  const [sources, setSources] = useState<CapabilityInstall[]>([]);
-  const [sourceKind, setSourceKind] = useState<SourceKind | null>(null);
-  const [sourceName, setSourceName] = useState("");
-  const [sourceUrl, setSourceUrl] = useState("");
-  const [credential, setCredential] = useState("");
-  const [authType, setAuthType] = useState<"none" | "bearer" | "header">("bearer");
-  const [authName, setAuthName] = useState("x-api-key");
   const [pending, setPending] = useState<string | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
-  const [sourceError, setSourceError] = useState<string | null>(null);
-  const [sourceHint, setSourceHint] = useState<string | null>(null);
-  const [catalogFeedEnabled, setCatalogFeedEnabled] = useState(false);
-  const [catalogFeedQuery, setCatalogFeedQuery] = useState("");
-  const [catalogFeedResults, setCatalogFeedResults] = useState<IntegrationCatalogResult[]>([]);
-  const [catalogFeedError, setCatalogFeedError] = useState<string | null>(null);
-  const [catalogFeedPending, setCatalogFeedPending] = useState(false);
-  const [catalogFeedSearched, setCatalogFeedSearched] = useState(false);
   const [loading, setLoading] = useState(true);
   const [detailKey, setDetailKey] = useState<{ connectorId: string; slug: string } | null>(null);
   const [tools, setTools] = useState<ConnectionTool[]>([]);
@@ -77,12 +53,7 @@ export function useIntegrations({ activeBotId }: { activeBotId?: string }) {
   const connectionAttempt = useRef<AbortController | null>(null);
 
   async function refresh() {
-    const [items, installs, rows, catalogFeed] = await Promise.all([
-      rpc.connections.catalog({}),
-      rpc.capabilities.list(),
-      rpc.connections.list(),
-      optionalCatalogFeedProbe(rpc.capabilities.catalogSearch({ query: "" })),
-    ]);
+    const [items, rows] = await Promise.all([rpc.connections.catalog({}), rpc.connections.list()]);
     setCatalog(items);
     setConnections(rows);
     setLabelDrafts((current) => {
@@ -94,8 +65,6 @@ export function useIntegrations({ activeBotId }: { activeBotId?: string }) {
       }
       return next;
     });
-    setSources(installs.filter((install) => install.kind === "mcp"));
-    setCatalogFeedEnabled(catalogFeed.enabled);
     return items;
   }
 
@@ -299,134 +268,14 @@ export function useIntegrations({ activeBotId }: { activeBotId?: string }) {
     }
   }
 
-  function beginSource(kind: SourceKind) {
-    setSourceKind(kind);
-    setSourceError(null);
-    setSourceHint(null);
-    setSourceName(kind === "treg" ? "Treg" : kind === "executor" ? "Executor" : "");
-    setSourceUrl(kind === "treg" ? "https://treg.to/mcp/" : "");
-    setCredential("");
-    setAuthType(kind === "treg" || kind === "executor" ? "bearer" : "none");
-    setAuthName("x-api-key");
-  }
-
-  async function searchCatalogFeed() {
-    setCatalogFeedError(null);
-    setCatalogFeedPending(true);
-    setCatalogFeedSearched(false);
-    setCatalogFeedResults([]);
-    try {
-      const response = await rpc.capabilities.catalogSearch({ query: catalogFeedQuery });
-      setCatalogFeedResults(response.results);
-      setCatalogFeedSearched(true);
-    } catch (err) {
-      setCatalogFeedError(err instanceof Error ? err.message : t`Could not search catalog`);
-    } finally {
-      setCatalogFeedPending(false);
-    }
-  }
-
-  function beginCatalogSurface(
-    result: IntegrationCatalogResult,
-    surface: IntegrationCatalogSurface,
-  ) {
-    if (!surface.source || surface.kind !== "mcp") return;
-    setSourceKind("mcp");
-    setSourceName(result.name);
-    setSourceUrl(surface.source);
-    setCredential("");
-    setAuthType(surface.auth?.type ?? "none");
-    setAuthName(surface.auth?.headerName ?? "x-api-key");
-    setSourceHint(surface.auth?.note ?? null);
-    setSourceError(null);
-  }
-
-  async function installSource() {
-    if (!sourceKind) return;
-    setSourceError(null);
-    setPending("install-source");
-    try {
-      const auth = {
-        type: authType,
-        ...(authType === "header" ? { name: authName.trim() } : {}),
-      };
-      await rpc.capabilities.install({
-        kind: "mcp",
-        name:
-          sourceName.trim() ||
-          (sourceKind === "treg"
-            ? "Treg"
-            : sourceKind === "executor"
-              ? "Executor"
-              : "Custom connector"),
-        source: sourceUrl.trim(),
-        credential: credential.trim() || undefined,
-        config:
-          sourceKind === "treg"
-            ? { preset: "treg", auth: { type: "bearer" } }
-            : {
-                preset: "custom",
-                auth: sourceKind === "executor" ? { type: "bearer" } : auth,
-              },
-      });
-      setCredential("");
-      setSourceKind(null);
-      await refresh();
-    } catch (err) {
-      setSourceError(err instanceof Error ? err.message : t`Could not install connector`);
-    } finally {
-      setPending(null);
-    }
-  }
-
-  async function removeSource(install: CapabilityInstall) {
-    setPending(install.id);
-    setSourceError(null);
-    try {
-      await rpc.capabilities.remove({ id: install.id });
-      setSources((current) => current.filter((source) => source.id !== install.id));
-    } catch (err) {
-      setSourceError(err instanceof Error ? err.message : t`Could not remove connector`);
-    } finally {
-      setPending(null);
-    }
-  }
-
   return {
     catalog,
     connections,
     labelDrafts,
     setLabelDrafts,
-    sources,
-    sourceKind,
-    setSourceKind,
-    sourceName,
-    setSourceName,
-    sourceUrl,
-    setSourceUrl,
-    credential,
-    setCredential,
-    authType,
-    setAuthType,
-    authName,
-    setAuthName,
     pending,
     catalogError,
     setCatalogError,
-    sourceError,
-    setSourceError,
-    sourceHint,
-    setSourceHint,
-    catalogFeedEnabled,
-    catalogFeedQuery,
-    setCatalogFeedQuery,
-    catalogFeedResults,
-    setCatalogFeedResults,
-    catalogFeedError,
-    setCatalogFeedError,
-    catalogFeedPending,
-    catalogFeedSearched,
-    setCatalogFeedSearched,
     loading,
     detailItem,
     tools,
@@ -442,11 +291,6 @@ export function useIntegrations({ activeBotId }: { activeBotId?: string }) {
     revokeAccount,
     uninstall,
     renameAccount,
-    beginSource,
-    searchCatalogFeed,
-    beginCatalogSurface,
-    installSource,
-    removeSource,
   };
 }
 

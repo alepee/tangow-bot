@@ -38,7 +38,7 @@ export function parseScreenLinkMessage(data: unknown): ScreenLinkState | null {
   return SCREEN_LINK_STATES.find((state) => state === value.state) ?? null;
 }
 
-/** `embed` is our page in the computer image, which reports its state; `plain` never does. */
+/** `embed` is Tangow's own viewer page, which reports its state; `plain` never does. */
 export type ScreenLinkChannel = "embed" | "plain";
 
 const CAPABILITY_DIRECTORY = /^\/novnc\/session\/(?:view|control)\/\d+\.[A-Za-z0-9_-]+\//;

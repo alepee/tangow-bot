@@ -15,7 +15,12 @@ import {
 } from "node:fs";
 import path from "node:path";
 import { buildComputers } from "./tangow-builds.mjs";
-import { runMigrations, validateConfiguration, workerImage } from "./tangow-deployment.mjs";
+import {
+  composeArgs,
+  runMigrations,
+  validateConfiguration,
+  workerImage,
+} from "./tangow-deployment.mjs";
 
 export const dockerMigrationJournal = ".env.tangow.docker.json";
 
@@ -63,10 +68,10 @@ export async function migrateProviderToDocker({
     throw new Error("Checkout has local changes; migrate from a clean revision");
   if (state && state.revision !== sha())
     throw new Error("Resume Docker migration from its original checkout revision");
-  const base = ["compose", "--env-file", ".env", "-f", "infra/compose/docker-compose.yml"];
-  const targetComp = (label, args, options) => dock(label, [...base, ...args], options);
-  const sourceComp = (label, args, options) =>
-    dock(label, [...base, "-f", sourceOverride, ...args], options);
+  const target = composeArgs(root);
+  const source = composeArgs(root, sourceOverride);
+  const targetComp = (label, args, options) => dock(label, [...target, ...args], options);
+  const sourceComp = (label, args, options) => dock(label, [...source, ...args], options);
   validateConfiguration(targetComp, "docker");
   console.log("Building Docker application, supervisor and worker images...");
   targetComp("Docker migration images", [
@@ -137,11 +142,10 @@ export async function migrateProviderToDocker({
   const persist = () => writePrivate(journal, `${JSON.stringify(state)}\n`);
   const docker = values.sudo ? ["sudo", "-n", "docker"] : ["docker"];
   const backupCommand = (args, stdio) => {
-    const result = spawnSync(
-      docker[0],
-      [...docker.slice(1), ...base, "-f", sourceOverride, ...args],
-      { cwd: root, stdio },
-    );
+    const result = spawnSync(docker[0], [...docker.slice(1), ...source, ...args], {
+      cwd: root,
+      stdio,
+    });
     if (result.error || result.status !== 0)
       throw new Error("Database backup or verification failed; services remain stopped");
   };

@@ -139,11 +139,6 @@ COPY --chmod=644 fluxbox.init /etc/tangow/fluxbox/init
 COPY --chmod=644 fluxbox.apps /etc/tangow/fluxbox/apps
 COPY --chmod=644 fluxbox.menu /etc/tangow/fluxbox/menu
 COPY --chmod=644 libreoffice.xcd /usr/lib/libreoffice/share/registry/tangow.xcd
-COPY --chmod=644 embed.html /usr/share/novnc/embed.html
-COPY --chmod=644 clipboard-bridge.js /usr/share/novnc/clipboard-bridge.js
-COPY --chmod=644 mobile-keyboard.js /usr/share/novnc/mobile-keyboard.js
-COPY --chmod=644 screen-link-machine.js /usr/share/novnc/screen-link-machine.js
-COPY --chmod=644 screen-link-session.js /usr/share/novnc/screen-link-session.js
 # Strip CR so shebangs work even if the build context came from a CRLF checkout.
 RUN ldconfig \
   && sed -i 's/\r$//' /usr/local/bin/tangow-computer /usr/local/bin/tangow-computer-control /usr/local/bin/tangow-browser /usr/local/bin/tangow-page-browser \

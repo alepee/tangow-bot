@@ -1,4 +1,3 @@
-import { botColors } from "@tangow/ui-tokens";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { Interstitial } from "./interstitial.js";
@@ -7,7 +6,7 @@ import { StackedAvatars } from "./stacked-avatars.js";
 describe("Interstitial", () => {
   it("centres a quiet handoff line", () => {
     const html = renderToString(
-      <Interstitial avatars={<StackedAvatars items={[{ color: botColors[0] }]} size={17} />}>
+      <Interstitial avatars={<StackedAvatars items={[{ identity: "maya" }]} size={17} />}>
         Maya asked GitHub for the diff · 40s
       </Interstitial>,
     );

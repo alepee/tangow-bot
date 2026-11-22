@@ -1,23 +1,17 @@
 import { useLingui } from "@lingui/react/macro";
-import type { Bot } from "@tangow/contracts";
+import type { AvatarCharacterId, Bot } from "@tangow/contracts";
 import {
+  AVATAR_CHARACTERS,
   BOT_NAME_MAX_LENGTH,
   BOT_TITLE_MAX_LENGTH,
-  SELECTABLE_BOT_COLORS,
+  characterById,
 } from "@tangow/contracts";
 import type { FieldSaveState } from "@tangow/core";
-import { SHAPES } from "@tangow/core";
-import {
-  BotAvatar,
-  type FieldSave,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-  SaveMeta,
-  TextSettingField,
-  useAvatarStyle,
-} from "@tangow/ui-web";
-import { Pencil } from "lucide-react";
+import type { FieldSave } from "@tangow/ui-web";
+import { BotAvatar, SaveMeta, TextSettingField } from "@tangow/ui-web";
+import { Check, Pencil } from "lucide-react";
+import type { KeyboardEvent } from "react";
+import { useId, useRef, useState } from "react";
 import { type BotPageContext, useBotField, useSaveLabels } from "./page-kit";
 
 /** Read-only (an archived bot), the name and title still read as text, not as greyed fields. */
@@ -31,19 +25,21 @@ export function BotHero({ page }: { page: BotPageContext }) {
   const { bot, readOnly } = page;
   const name = useBotField(page, "name", bot.name, (value) => ({ name: value }));
   const title = useBotField(page, "title", bot.title, (value) => ({ title: value }));
-  const color = useBotField(page, "color", bot.color, (value) => ({ color: value }));
-  const shape = useBotField(page, "shapeSeed", bot.shapeSeed, (value) => ({ shapeSeed: value }));
-  const meta = heroMeta([name, title, color, shape]);
+  const character = useBotField(
+    page,
+    "avatarCharacter",
+    characterById(bot.avatarCharacter).id,
+    (value) => ({ avatarCharacter: value }),
+  );
+  const meta = heroMeta([name, title, character]);
 
   return (
     <section className="flex flex-col items-center gap-1 px-5 pt-2.5 text-center">
-      <AppearancePicker
+      <CharacterPicker
         bot={bot}
-        color={color.value}
-        shapeSeed={shape.value}
+        character={character.value}
         disabled={readOnly}
-        onColor={(value) => void color.save(value)}
-        onShape={(value) => void shape.save(value)}
+        onCharacter={(value) => void character.save(value)}
       />
       <TextSettingField
         label={<span className="sr-only">{t`Name`}</span>}
@@ -98,40 +94,50 @@ function savedAt(state: FieldSaveState<unknown>): number {
   return state.kind === "saved" ? state.at : 0;
 }
 
-/** Avatar popover: the bot colour, and its organic shape when that avatar style is on. */
-function AppearancePicker({
+/** The catalogue, one row per shape, so the family reads in rhythm: balls, capsules, blocks. */
+const PICKER_CHARACTERS = (["ball", "capsule", "block"] as const).flatMap((shape) =>
+  AVATAR_CHARACTERS.filter((entry) => entry.shape === shape),
+);
+
+/** The avatar unfolds the catalogue of clay characters under it; one tap chooses. */
+function CharacterPicker({
   bot,
-  color,
-  shapeSeed,
+  character,
   disabled,
-  onColor,
-  onShape,
+  onCharacter,
 }: {
   bot: Bot;
-  color: string;
-  shapeSeed: number | null;
+  character: AvatarCharacterId;
   disabled: boolean;
-  onColor: (color: string) => void;
-  onShape: (shapeSeed: number | null) => void;
+  onCharacter: (character: AvatarCharacterId) => void;
 }) {
   const { t } = useLingui();
-  const avatarStyle = useAvatarStyle();
+  const [open, setOpen] = useState(false);
+  const [swaps, setSwaps] = useState(0);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelId = useId();
+  const closeOnEscape = (event: KeyboardEvent) => {
+    if (event.key !== "Escape" || !open) return;
+    setOpen(false);
+    triggerRef.current?.focus();
+  };
   return (
-    <Popover>
-      <PopoverTrigger
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
         data-testid="bot-appearance-trigger"
         aria-label={t`Appearance`}
+        aria-expanded={open}
+        aria-controls={panelId}
         disabled={disabled}
+        onClick={() => setOpen((value) => !value)}
+        onKeyDown={closeOnEscape}
         className="group relative rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       >
-        <BotAvatar
-          color={color}
-          identity={bot.id}
-          shapeSeed={shapeSeed}
-          size={80}
-          status={bot.status}
-          followPointer
-        />
+        <span key={swaps} className={swaps > 0 ? "block animate-swap" : "block"}>
+          <BotAvatar character={character} size={80} status={bot.status} live />
+        </span>
         {disabled ? null : (
           <span
             aria-hidden
@@ -140,54 +146,43 @@ function AppearancePicker({
             <Pencil className="size-3" strokeWidth={2} />
           </span>
         )}
-      </PopoverTrigger>
-      <PopoverContent data-testid="bot-appearance-picker" aria-label={t`Appearance`}>
-        {avatarStyle === "organic" ? (
-          <div className="grid grid-cols-4 gap-1">
-            {[null, ...SHAPES.map((_, index) => index)].map((seed) => (
-              <button
-                key={seed ?? "auto"}
-                type="button"
-                aria-pressed={shapeSeed === seed}
-                aria-label={seed === null ? t`Automatic shape` : t`Shape ${seed + 1}`}
-                onClick={() => onShape(seed)}
-                className={`flex h-14.5 items-center justify-center rounded-row border duration-(--duration-hover) ease-quiet ${
-                  shapeSeed === seed
-                    ? "border-ring bg-muted"
-                    : "border-transparent hover:border-ring/60"
-                }`}
-              >
-                {seed === null ? (
-                  <span className="text-time text-muted-foreground">{t`Auto`}</span>
-                ) : (
-                  <BotAvatar
-                    color={color}
-                    identity={bot.id}
-                    shapeSeed={seed}
-                    size={36}
-                    variant="organic"
-                  />
-                )}
-              </button>
-            ))}
-          </div>
-        ) : null}
-        <div className="flex flex-wrap justify-center gap-3">
-          {SELECTABLE_BOT_COLORS.map((swatch, index) => (
+      </button>
+      {open && !disabled ? (
+        <fieldset
+          id={panelId}
+          data-testid="bot-appearance-picker"
+          aria-label={t`Appearance`}
+          onKeyDown={closeOnEscape}
+          className="mt-3 grid animate-arrive grid-cols-4 justify-items-center gap-y-3.5 self-stretch -mx-1 rounded-card bg-group p-4 shadow-group"
+        >
+          {PICKER_CHARACTERS.map(({ id, name, shape }, index) => (
             <button
-              key={swatch}
+              key={id}
               type="button"
-              aria-pressed={color === swatch}
-              aria-label={t`Color ${index + 1}`}
-              onClick={() => onColor(swatch)}
-              style={{ background: swatch }}
-              className={`size-7 rounded-full border border-outline ${
-                color === swatch ? "ring-1 ring-ring ring-offset-2 ring-offset-popover" : ""
+              aria-pressed={character === id}
+              aria-label={name}
+              onClick={() => {
+                if (id === character) return;
+                setSwaps((value) => value + 1);
+                onCharacter(id);
+              }}
+              className={`relative rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${
+                PICKER_CHARACTERS[index - 1]?.shape !== shape ? "col-start-1" : ""
               }`}
-            />
+            >
+              <BotAvatar character={id} size={64} />
+              {character === id ? (
+                <span
+                  aria-hidden
+                  className="absolute end-0 bottom-0 grid size-5 place-items-center rounded-full bg-foreground text-background shadow-row ring-2 ring-group"
+                >
+                  <Check className="size-3" strokeWidth={3} />
+                </span>
+              ) : null}
+            </button>
           ))}
-        </div>
-      </PopoverContent>
-    </Popover>
+        </fieldset>
+      ) : null}
+    </>
   );
 }

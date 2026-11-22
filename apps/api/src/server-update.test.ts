@@ -60,7 +60,7 @@ describe("server update install kind", () => {
     });
     expect(status.installKind).toBe("compose");
     expect(status.supported).toBe(false);
-    expect(status.manualCommands[0]).toMatch(/docker compose .*pull api worker web/);
+    expect(status.manualCommands.at(-1)).toMatch(/docker compose .*--build api worker web/);
     expect(status.manualCommands[1]).toMatch(/up -d --wait --pull never/);
   });
 
@@ -92,7 +92,7 @@ describe("server update install kind", () => {
       if (href.endsWith("/state")) {
         return new Response(
           JSON.stringify({
-            image: "ghcr.io/elie222/rakazo/app",
+            image: "tangow/app",
             currentTag: "sha-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             previousTag: "sha-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             running: false,
@@ -100,7 +100,7 @@ describe("server update install kind", () => {
               present: true,
               commit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
               branch: "main",
-              remoteUrl: "https://github.com/elie222/rakazo",
+              remoteUrl: "https://github.com/tangow-ai/tangow-bot",
               dirty: false,
               dirtyPaths: [],
             },
@@ -136,7 +136,7 @@ describe("server update install kind", () => {
       fromTag: "sha-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       toTag: "sha-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       strategy: "pull",
-      repoUrl: "https://github.com/elie222/rakazo",
+      repoUrl: "https://github.com/tangow-ai/tangow-bot",
       branch: "main",
       restart: "not-required",
       restartAdvice: "Recreate failed; prior image restored, env pin not restored.",
@@ -151,7 +151,7 @@ describe("server update install kind", () => {
       if (href.endsWith("/state")) {
         return new Response(
           JSON.stringify({
-            image: "ghcr.io/elie222/rakazo/app",
+            image: "tangow/app",
             currentTag: "sha-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             previousTag: "sha-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             running: false,
@@ -160,7 +160,7 @@ describe("server update install kind", () => {
               present: true,
               commit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
               branch: "main",
-              remoteUrl: "https://github.com/elie222/rakazo",
+              remoteUrl: "https://github.com/tangow-ai/tangow-bot",
               dirty: false,
               dirtyPaths: [],
             },

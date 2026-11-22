@@ -72,13 +72,7 @@ export function SidebarArchived({
                 }}
                 className="flex min-w-0 flex-1 items-center gap-2 rounded-chip text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
               >
-                <BotAvatar
-                  color={bot.color}
-                  identity={bot.id}
-                  shapeSeed={bot.shapeSeed}
-                  size={28}
-                  status={bot.status}
-                />
+                <BotAvatar character={bot.avatarCharacter} size={28} status={bot.status} />
                 <span
                   className="min-w-0 flex-1 truncate text-capsule text-foreground/75 hover:text-foreground"
                   dir="auto"

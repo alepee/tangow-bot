@@ -15,7 +15,6 @@ COPY apps/desktop/package.json apps/desktop/
 COPY apps/mobile/package.json apps/mobile/
 COPY apps/web/package.json apps/web/
 COPY apps/worker/package.json apps/worker/
-COPY apps/www/package.json apps/www/
 COPY packages/adapter-kit/package.json packages/adapter-kit/
 COPY packages/adapters/package.json packages/adapters/
 COPY packages/auth/package.json packages/auth/
@@ -34,8 +33,8 @@ COPY infra/updater/package.json infra/updater/
 # the app image is started as @tangow/api, @tangow/worker, @tangow/web
 # and @tangow/sandbox-supervisor, plus scripts/backfill-session-log.ts and @tangow/db's
 # prisma CLI it runs to migrate, and scripts/migrate-docker-homes.ts;
-# the desktop, mobile, www and testkit projects only add electron, expo, react-native
-# and the astro toolchain to an image that never builds them. `tangow` is the
+# the desktop, mobile and testkit projects only add electron, expo and react-native
+# to an image that never builds them. `tangow` is the
 # workspace root: `start` is `tsx src/index.ts`, and tsx, turbo and cross-env are root
 # devDependencies resolved through /app/node_modules/.bin.
 # The skip-download vars cover any postinstall that survives a future filter change.

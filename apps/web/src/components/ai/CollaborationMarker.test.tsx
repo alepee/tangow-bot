@@ -1,4 +1,3 @@
-import { botColors } from "@tangow/ui-tokens";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ActiveBotGlyph, CollaborationMarker } from "./CollaborationMarker";
@@ -8,10 +7,7 @@ describe("collaboration transcript markers", () => {
     const html = renderToString(
       <CollaborationMarker
         ariaLabel="Message from Research"
-        bots={[
-          { color: botColors[0], identity: "chief" },
-          { color: botColors[1], identity: "research" },
-        ]}
+        bots={[{ identity: "chief" }, { identity: "research" }]}
         label="Message from Research"
         onClick={() => undefined}
       />,
@@ -25,7 +21,7 @@ describe("collaboration transcript markers", () => {
     expect(html).toContain('data-size="17"');
     // The button already carries the name; the stack stays decoration.
     expect(html).toContain('data-slot="stacked-avatars" data-size="17" aria-hidden="true"');
-    expect(html.match(/tangow-organic-avatar/g)?.length).toBeGreaterThan(1);
+    expect(html.match(/tangow-clay-avatar/g)?.length).toBeGreaterThan(1);
     expect(html).toContain("Message from Research");
     expect(html).not.toContain("{peer}");
   });
@@ -33,7 +29,7 @@ describe("collaboration transcript markers", () => {
   it("animates the active bot glyph from its run status", () => {
     const html = renderToString(
       <ActiveBotGlyph
-        bots={[{ botId: "research", color: botColors[1], status: "running" }]}
+        bots={[{ botId: "research", status: "running" }]}
         label="Research is working"
       />,
     );

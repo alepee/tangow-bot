@@ -9,10 +9,9 @@ export type StackedAvatarSize = 14 | 16 | 17 | 20;
 const OVERLAP: Record<StackedAvatarSize, number> = { 14: 3, 16: 4, 17: 4, 20: 5 };
 
 export interface StackedAvatarItem {
-  color: string;
   identity?: string;
   working?: boolean;
-  shapeSeed?: number | null;
+  character?: string | null;
 }
 
 export interface StackedAvatarsProps extends Omit<ComponentPropsWithoutRef<"span">, "children"> {
@@ -54,14 +53,12 @@ export function StackedAvatars({
     >
       {shown.map((item, index) => (
         <span
-          key={item.identity ?? `${item.color}-${index}`}
+          key={item.identity ?? index}
           className="inline-flex"
           style={index === 0 ? undefined : { marginInlineStart: -OVERLAP[size] }}
         >
           <BotAvatar
-            color={item.color}
-            identity={item.identity}
-            shapeSeed={item.shapeSeed}
+            character={item.character}
             size={size}
             status={item.working ? "running" : undefined}
           />

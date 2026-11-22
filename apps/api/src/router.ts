@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import type { Router } from "@orpc/server";
 import { implement, ORPCError } from "@orpc/server";
 import type {
   AdapterContext,
@@ -26,7 +27,7 @@ import type {
   IntegrationProviderSettings,
   MemoryProviderResolver,
   PiOAuthLogins,
-  RemoteConnectorDependencies,
+  RemoteTransportDependencies,
   SkillOwnerLock,
   WorkerLifecycle,
 } from "@tangow/adapters";
@@ -83,7 +84,6 @@ import {
   touchRunningComputer,
   updateRoutine,
   validateConnectedModelChoice,
-  verifyMcpInstall,
 } from "@tangow/adapters";
 import type { Auth } from "@tangow/auth";
 import type {
@@ -100,6 +100,7 @@ import type {
 } from "@tangow/contracts";
 import {
   appContract,
+  botDisplayColor,
   IntegrationProviderIdSchema,
   ModelCategorySchema,
   OPENAI_COMPATIBLE_PROVIDER_ID,
@@ -109,7 +110,6 @@ import {
 import {
   ACTIVE_RUN_STATUSES,
   AttachmentValidationError,
-  containsSecret,
   expandSkillReferencesInPrompt,
   groupLeadBotId,
   hasMixedOneShotSchedule,
@@ -212,7 +212,6 @@ import {
   serializeSpaceDecisionConfig,
 } from "./decision-provider-config.js";
 import { addDeclaredMcp, declaresSecretAddress, getDeclaredMcp } from "./declared-mcp.js";
-import { searchIntegrationCatalog } from "./integration-catalog.js";
 import type { LinkPreviewApiDeps } from "./link-preview.js";
 import { previewLinkForComposer, removeMessageLinkPreview } from "./link-preview.js";
 import { buildMcpUpdateMaterial } from "./mcp-material.js";
@@ -248,6 +247,7 @@ import {
   forwardedThreadEvent,
   loadChain,
   loadEntryPage,
+  loadPeerPage,
   threadSessionId,
   withoutHiddenPeerRuns,
 } from "./thread-message-pages.js";
@@ -481,7 +481,7 @@ export interface RouterDeps {
   composio?: ComposioProvider;
   mcpOAuth?: McpOAuthBroker;
   connectors: ConnectorRegistry;
-  remoteConnectors?: RemoteConnectorDependencies;
+  remoteConnectors?: RemoteTransportDependencies;
   artifacts: ArtifactStore;
   /** Test seams of the link preview reader. */
   linkPreview?: LinkPreviewApiDeps["linkPreview"];
@@ -504,7 +504,6 @@ export interface RouterDeps {
     updaterUrl?: string;
     updaterToken?: string;
     imageTag?: string;
-    integrationsCatalogUrl?: string;
     mcpStdioEnabled?: boolean;
     mcpStdioAllowedCommands?: string[];
   };
@@ -566,9 +565,11 @@ function mapSpaceLifecycleError(error: unknown): unknown {
   return error;
 }
 
-export function createRouter(deps: RouterDeps) {
+type RouterContext = { actor: Actor | null; signal?: AbortSignal };
+
+export function createRouter(deps: RouterDeps): Router<typeof appContract, RouterContext> {
   const os = implement(appContract)
-    .$context<{ actor: Actor | null; signal?: AbortSignal }>()
+    .$context<RouterContext>()
     .use(async ({ next }) => {
       try {
         return await next();
@@ -1417,6 +1418,7 @@ export function createRouter(deps: RouterDeps) {
             notifyOnFinish: input.notifyOnFinish,
             color: input.color,
             shapeSeed: input.shapeSeed,
+            avatarCharacter: input.avatarCharacter,
             pinned: input.pinned,
             memoryScope: input.memoryScope,
             sectionId: input.sectionId,
@@ -1719,6 +1721,13 @@ export function createRouter(deps: RouterDeps) {
         const target = await resolveThreadTarget(deps.prisma, context.actor, input);
         const sessionId = await threadSessionId(deps.prisma, target.threadId);
         return loadEntryPage(deps, { threadId: target.threadId, sessionId }, input);
+      }),
+      peerMessages: authed.threads.peerMessages.handler(async ({ context, input }) => {
+        const target = await resolveThreadTarget(deps.prisma, context.actor, {
+          botId: input.botId,
+        });
+        const sessionId = await threadSessionId(deps.prisma, target.threadId);
+        return loadPeerPage(deps.prisma, { threadId: target.threadId, sessionId }, input);
       }),
       subscribe: authed.threads.subscribe.handler(async function* ({ context, input }) {
         const target = await resolveThreadTarget(deps.prisma, context.actor, input);
@@ -3132,11 +3141,15 @@ export function createRouter(deps: RouterDeps) {
     capabilities: {
       list: authed.capabilities.list.handler(async ({ context }) => {
         const rows = await deps.prisma.capabilityInstall.findMany({
-          where: { spaceId: context.actor.spaceId, userId: context.actor.userId },
+          where: {
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+            kind: { not: "mcp" },
+          },
         });
         return rows.map((row) => ({
           id: row.id,
-          kind: row.kind as "skill" | "plugin" | "mcp" | "connection",
+          kind: row.kind as "skill" | "plugin" | "connection",
           name: row.name,
           source: row.source,
           version: row.version,
@@ -3146,91 +3159,16 @@ export function createRouter(deps: RouterDeps) {
           createdAt: row.createdAt.toISOString(),
         }));
       }),
-      catalogSearch: authed.capabilities.catalogSearch.handler(async ({ context, input }) => {
-        const baseUrl =
-          deps.env.integrationsCatalogUrl ??
-          (input.usePublicCatalog ? "https://integrations.sh" : undefined);
-        if (!baseUrl) return { enabled: false, results: [] };
-        try {
-          const results = await searchIntegrationCatalog({
-            baseUrl,
-            query: input.query,
-            signal: context.signal ?? new AbortController().signal,
-            fetch: deps.remoteConnectors?.fetch,
-          });
-          return { enabled: true, results };
-        } catch (error) {
-          throw new ORPCError("BAD_GATEWAY", {
-            message: error instanceof Error ? error.message : "Integration catalog search failed",
-          });
-        }
-      }),
       install: authed.capabilities.install.handler(async ({ context, input }) => {
-        let source = input.source.trim();
-        let config = input.config;
-        const credential = input.credential?.trim() || undefined;
-        if (
-          credential &&
-          credential.length >= 8 &&
-          (source.includes(credential) || containsSecret(config, [credential]))
-        ) {
-          throw new ORPCError("BAD_REQUEST", {
-            message: "Put credentials only in the encrypted credential field",
-          });
-        }
+        const source = input.source.trim();
+        const config = input.config;
         if (JSON.stringify(config).length > 2_000_000) {
           throw new ORPCError("BAD_REQUEST", { message: "Capability configuration is too large" });
         }
-        if (credential && input.kind !== "mcp") {
-          throw new ORPCError("BAD_REQUEST", {
-            message: "Credentials are only accepted for MCP tool sources",
-          });
-        }
-        try {
-          if (input.kind === "mcp") {
-            if (config.preset === "treg") {
-              source = "https://treg.to/mcp/";
-              config = { ...config, preset: "treg", auth: { type: "bearer" } };
-            }
-            const verified = await verifyMcpInstall({
-              source,
-              config,
-              credential,
-              signal: context.signal,
-              remote: deps.remoteConnectors,
-            });
-            config = verified.config;
-          }
-        } catch (error) {
-          const message = sanitizeComposioError(error);
-          throw new ORPCError("BAD_REQUEST", {
-            message: credential ? message.split(credential).join("[redacted]") : message,
-          });
-        }
-        const stored = credential
-          ? await deps.secrets.put(credential, {
-              operationId: "capabilities.install",
-              traceId: "capabilities.install",
-              spaceId: context.actor.spaceId,
-              userId: context.actor.userId,
-              signal: context.signal ?? new AbortController().signal,
-            })
-          : undefined;
         const digest = `sha256:${createHash("sha256")
           .update(JSON.stringify({ kind: input.kind, source, config }))
           .digest("hex")}`;
         const row = await deps.prisma.$transaction(async (tx) => {
-          if (stored) {
-            await tx.secret.create({
-              data: {
-                id: stored.id,
-                spaceId: context.actor.spaceId,
-                userId: context.actor.userId,
-                kind: "connector",
-                ciphertext: stored.ciphertext,
-              },
-            });
-          }
           return tx.capabilityInstall.create({
             data: {
               spaceId: context.actor.spaceId,
@@ -3238,7 +3176,6 @@ export function createRouter(deps: RouterDeps) {
               kind: input.kind,
               name: input.name.trim(),
               source,
-              secretId: stored?.id,
               config: config as Prisma.InputJsonValue,
               digest,
               version: "1.0.0",
@@ -3247,7 +3184,7 @@ export function createRouter(deps: RouterDeps) {
         });
         return {
           id: row.id,
-          kind: row.kind as "skill" | "plugin" | "mcp" | "connection",
+          kind: row.kind as "skill" | "plugin" | "connection",
           name: row.name,
           source: row.source,
           version: row.version,
@@ -3316,7 +3253,25 @@ export function createRouter(deps: RouterDeps) {
           );
         }),
         create: authed.mcp.servers.create.handler(async ({ context, input }) => {
-          const row = await createMcpServer(deps, context.actor, input);
+          const row = await createMcpServer(deps, context.actor, input, async (tx, server) => {
+            for (const botId of new Set(input.botIds ?? [])) {
+              const bot = await tx.bot.findFirst({
+                where: { id: botId, spaceId: context.actor.spaceId, userId: context.actor.userId },
+                select: { id: true },
+              });
+              if (!bot) throw new IsolationError();
+              await tx.botMcpServer.create({
+                data: {
+                  spaceId: context.actor.spaceId,
+                  userId: context.actor.userId,
+                  botId,
+                  serverId: server.id,
+                  allowAllTools: true,
+                  allowedTools: [],
+                },
+              });
+            }
+          });
           return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
         }),
         update: authed.mcp.servers.update.handler(async ({ context, input }) => {
@@ -3685,6 +3640,7 @@ export function createRouter(deps: RouterDeps) {
           : [];
         return {
           canConfigure,
+          mcpStdioEnabled: Boolean(deps.env.mcpStdioEnabled),
           needsSetup: canConfigure && !providers.some((provider) => provider.configured),
           webUrl: new URL("/integrations/setup", deps.env.webOrigin).toString(),
           providers,
@@ -5186,8 +5142,9 @@ async function spaceNavigationDto(
           spaceId: bot.spaceId,
           name: bot.name,
           title: bot.title,
-          color: bot.color,
+          color: botDisplayColor(bot),
           shapeSeed: bot.shapeSeed,
+          avatarCharacter: bot.avatarCharacter,
           notifyOnFinish: bot.notifyOnFinish,
           pinned: bot.pinned,
           sectionId: bot.sectionId,

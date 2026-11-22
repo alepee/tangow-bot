@@ -52,31 +52,6 @@ describe("account preferences", () => {
     return { update, deps, actor, handler: new RPCHandler(createRouter(deps)) };
   }
 
-  it("keeps an unconfigured catalog offline unless explicitly requested", async () => {
-    const { actor, deps } = preferencesDeps("robot");
-    const fetch = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ results: [] }), {
-        headers: { "content-type": "application/json" },
-      }),
-    );
-    deps.remoteConnectors = { fetch } as RouterDeps["remoteConnectors"];
-    const handler = new RPCHandler(createRouter(deps));
-    const request = async (usePublicCatalog?: boolean) =>
-      handler.handle(
-        new Request("http://127.0.0.1/rpc/capabilities/catalogSearch", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ json: { query: "notion", usePublicCatalog } }),
-        }),
-        { prefix: "/rpc", context: { actor } },
-      );
-    const { response } = await request();
-    await expect(response.json()).resolves.toEqual({ json: { enabled: false, results: [] } });
-    expect(fetch).not.toHaveBeenCalled();
-    await request(true);
-    expect(fetch).toHaveBeenCalled();
-  });
-
   it("persists and returns the selected avatar style", async () => {
     const { update, actor, handler } = preferencesDeps("organic");
 
@@ -1670,5 +1645,77 @@ describe("an archived bot's page", () => {
     const other = await call("user-2", "bots/activity", { botId: archived.id });
     expect(other.ok).toBe(false);
     expect(await other.text()).not.toContain("Scout");
+  });
+});
+
+describe("MCP creation with agent access", () => {
+  it.each([true, false])("requires ownership of each assigned bot (owned: %s)", async (owned) => {
+    const assignment = vi.fn().mockResolvedValue({});
+    const tx = {
+      bot: {
+        findFirst: vi.fn(async ({ where }) =>
+          owned && where.id === "bot-1" && where.userId === "user-1" && where.spaceId === "space-1"
+            ? { id: "bot-1" }
+            : null,
+        ),
+      },
+      botMcpServer: { create: assignment },
+      mcpServer: {
+        create: vi.fn(async ({ data }) => ({
+          ...data,
+          id: "server-1",
+          secretId: null,
+          revision: 1,
+          createdAt: new Date("2026-11-16"),
+          updatedAt: new Date("2026-11-16"),
+        })),
+      },
+    };
+    const deps = {
+      prisma: {
+        $transaction: async (action: (client: typeof tx) => Promise<unknown>) => action(tx),
+      },
+      env: { webOrigin: "https://example.test", sandboxProvider: "fake" },
+      dataDir: "/tmp/tangow-router-test",
+    } as unknown as RouterDeps;
+    const actor = {
+      spaceId: "space-1",
+      userId: "user-1",
+      email: "user@example.test",
+      isDeploymentOwner: false,
+    } satisfies Actor;
+    const handler = new RPCHandler(createRouter(deps));
+    const { response } = await handler.handle(
+      new Request("https://example.test/rpc/mcp/servers/create", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          json: {
+            name: "Linear",
+            slug: "linear",
+            transport: "streamable_http",
+            endpoint: "https://mcp.example.test/mcp",
+            botIds: ["bot-1"],
+          },
+        }),
+      }),
+      { prefix: "/rpc", context: { actor } },
+    );
+    if (owned) {
+      expect(response.status).toBe(200);
+      expect(assignment).toHaveBeenCalledWith({
+        data: {
+          spaceId: "space-1",
+          userId: "user-1",
+          botId: "bot-1",
+          serverId: "server-1",
+          allowAllTools: true,
+          allowedTools: [],
+        },
+      });
+    } else {
+      expect(response.status).toBe(404);
+      expect(assignment).not.toHaveBeenCalled();
+    }
   });
 });

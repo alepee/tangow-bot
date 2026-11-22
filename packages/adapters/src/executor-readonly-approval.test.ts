@@ -1815,7 +1815,7 @@ describe("connector calls classified by the decision model", () => {
     });
   });
 
-  it("stops before executing when the run is cancelled during classification", async () => {
+  it("on shutdown during classification, stops before executing and hands the run back", async () => {
     const shutdown = new AbortController();
     const decision = new FakeDecisionProvider({
       script: [
@@ -1836,6 +1836,11 @@ describe("connector calls classified by the decision model", () => {
     expect(decision.calls).toHaveLength(1);
     expect(f.execute).not.toHaveBeenCalled();
     expect(runAutoReviewJudge).not.toHaveBeenCalled();
+    // Not failed: its lease is already over, so the reconciler resumes it on another worker.
+    expect(f.events.finalizeRun).not.toHaveBeenCalled();
+    const { status, leaseExpiresAt } = f.runRow as { status: string; leaseExpiresAt?: Date };
+    expect(status).toBe("running");
+    expect(leaseExpiresAt!.getTime()).toBeLessThanOrEqual(Date.now());
   });
 
   it.each([

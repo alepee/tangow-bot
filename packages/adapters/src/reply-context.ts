@@ -24,7 +24,7 @@ export async function loadReplyContext(
           sessionId: source.sessionId,
           runId: target.runId,
           id: { not: target.id },
-          type: { in: ["assistant.text", "assistant.ask", "assistant.choice"] },
+          type: { in: ["assistant.text", "assistant.ask", "assistant.choice", "routine.finished"] },
         },
       })
     : [];

@@ -82,13 +82,13 @@ describe("approved effect replay", () => {
   it("still recognizes the full catalog envelope as a catalog replay", () => {
     const marker = "__tangowCatalogTool";
     const approved = catalogApprovalRequest(
-      "installed_execute_tool",
-      { id: "install-A:notes.write", arguments: { text: "approved" } },
+      "mcp_execute_tool",
+      { id: "server-A:notes.write", arguments: { text: "approved" } },
       marker,
     );
     expect(catalogApprovalDetails(approved, marker)).toEqual({
-      toolName: "installed_execute_tool",
-      args: { id: "install-A:notes.write", arguments: { text: "approved" } },
+      toolName: "mcp_execute_tool",
+      args: { id: "server-A:notes.write", arguments: { text: "approved" } },
     });
     expect(approvedReplayArgs(approved, { text: "approved", mode: "fast" }, marker)).toEqual({
       text: "approved",
@@ -99,41 +99,39 @@ describe("approved effect replay", () => {
   it("does not inject catalog envelope args onto a non-wrapper tool call", () => {
     const marker = "__tangowCatalogTool";
     const catalog = catalogApprovalRequest(
-      "installed_execute_tool",
-      { id: "install-A:installed_execute_tool", arguments: { text: "approved" } },
+      "mcp_execute_tool",
+      { id: "server-A:mcp_execute_tool", arguments: { text: "approved" } },
       marker,
     );
-    const queue = createApprovedEffectReplayQueue([
-      { kind: "installed_execute_tool", request: catalog },
-    ]);
+    const queue = createApprovedEffectReplayQueue([{ kind: "mcp_execute_tool", request: catalog }]);
 
     // Direct invocation must not receive the wrapper {id,arguments} envelope.
-    expect(approvedCatalogReplay(queue, "installed_execute_tool", marker, false)).toEqual({});
-    expect(approvedCatalogReplay(queue, "installed_execute_tool", marker, true)).toEqual({
-      args: { id: "install-A:installed_execute_tool", arguments: { text: "approved" } },
+    expect(approvedCatalogReplay(queue, "mcp_execute_tool", marker, false)).toEqual({});
+    expect(approvedCatalogReplay(queue, "mcp_execute_tool", marker, true)).toEqual({
+      args: { id: "server-A:mcp_execute_tool", arguments: { text: "approved" } },
     });
   });
 
   it("rejects cross-path replay when a catalog approval is invoked as a direct tool", () => {
     const marker = "__tangowCatalogTool";
     const direct = boundDirectApprovalRequest(
-      { connectorId: "installed", resourceId: "install-A", toolName: "notes.write" },
+      { connectorId: "mcp", resourceId: "server-A", toolName: "notes.write" },
       { text: "approved exactly" },
       marker,
     );
     const catalog = catalogApprovalRequest(
-      "installed_execute_tool",
-      { id: "install-A:notes.write", arguments: { text: "catalog" } },
+      "mcp_execute_tool",
+      { id: "server-A:notes.write", arguments: { text: "catalog" } },
       marker,
     );
     const matching = {
-      connectorId: "installed",
-      resourceId: "install-A",
+      connectorId: "mcp",
+      resourceId: "server-A",
       toolName: "notes.write",
     };
     const other = {
-      connectorId: "installed",
-      resourceId: "install-B",
+      connectorId: "mcp",
+      resourceId: "server-B",
       toolName: "notes.write",
     };
 
@@ -153,12 +151,12 @@ describe("approved effect replay", () => {
       }),
     ).toMatch(/must be replayed via its catalog execute tool/);
     const boundCatalog = catalogApprovalRequest(
-      "installed_execute_tool",
-      { id: "install-A:notes.write", arguments: { text: "catalog" } },
+      "mcp_execute_tool",
+      { id: "server-A:notes.write", arguments: { text: "catalog" } },
       marker,
       {
-        connectorId: "installed",
-        resourceId: "install-A",
+        connectorId: "mcp",
+        resourceId: "server-A",
         resourceRevision: 1,
         toolName: "notes.write",
       },
@@ -184,8 +182,8 @@ describe("approved effect replay", () => {
     const marker = "__tangowCatalogTool";
     const approved = boundDirectApprovalRequest(
       {
-        connectorId: "installed",
-        resourceId: "install-A",
+        connectorId: "mcp",
+        resourceId: "server-A",
         resourceRevision: 1,
         toolName: "notes.write",
       },
@@ -193,27 +191,27 @@ describe("approved effect replay", () => {
       marker,
     );
     const same = {
-      connectorId: "installed",
-      resourceId: "install-A",
+      connectorId: "mcp",
+      resourceId: "server-A",
       resourceRevision: 1,
       toolName: "notes.write",
     };
     const other = {
-      connectorId: "installed",
-      resourceId: "install-B",
+      connectorId: "mcp",
+      resourceId: "server-B",
       resourceRevision: 1,
       toolName: "notes.write",
     };
     // Quiet token refresh keeps revision; OAuth reauth increments it.
     const quietRefresh = {
-      connectorId: "installed",
-      resourceId: "install-A",
+      connectorId: "mcp",
+      resourceId: "server-A",
       resourceRevision: 1,
       toolName: "notes.write",
     };
     const reauthorized = {
-      connectorId: "installed",
-      resourceId: "install-A",
+      connectorId: "mcp",
+      resourceId: "server-A",
       resourceRevision: 2,
       toolName: "notes.write",
     };

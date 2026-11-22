@@ -69,10 +69,7 @@ final class ShareModel: ObservableObject {
   /// conversation id is the target id the extension reads back when a suggestion is tapped.
   private static func donate(_ target: ShareTarget) async {
     let group = target.kind == .group
-    let image = target.color.flatMap(UIColor.init(hex:)).flatMap { color in
-      AvatarRenderer.png(
-        shape: AvatarRenderer.shape(seed: target.shapeSeed, botId: target.targetId), color: color)
-    }
+    let image = target.avatar?.pngData()
     let bot = INPerson(
       personHandle: INPersonHandle(value: target.targetId, type: .unknown), nameComponents: nil,
       displayName: target.name, image: image.map { INImage(imageData: $0) },
@@ -245,19 +242,14 @@ private struct TargetName: View {
   }
 }
 
-/// A bot wears its bloub, as in the app; a group gets a neutral glyph.
+/// A bot wears its character, as in the app; a group gets a neutral glyph.
 private struct TargetAvatar: View {
   let target: ShareTarget
   let size: CGFloat
 
   var body: some View {
-    if target.kind == .bot, let color = target.color.flatMap(UIColor.init(hex:)) {
-      Image(
-        uiImage: AvatarRenderer.image(
-          shape: AvatarRenderer.shape(seed: target.shapeSeed, botId: target.targetId),
-          color: color, side: size, bodyShare: 0.45, background: nil)
-      )
-      .frame(width: size, height: size)
+    if let image = target.avatar {
+      Image(uiImage: image).resizable().frame(width: size, height: size).clipShape(Circle())
     } else {
       Circle().fill(Tokens.well).frame(width: size, height: size)
         .overlay(
@@ -329,5 +321,12 @@ extension UIColor {
     self.init(
       red: CGFloat((rgb >> 16) & 0xFF) / 255, green: CGFloat((rgb >> 8) & 0xFF) / 255,
       blue: CGFloat(rgb & 0xFF) / 255, alpha: 1)
+  }
+}
+
+extension ShareTarget {
+  /// The bot's character, the neutral one when the server sent none. Groups have none.
+  var avatar: UIImage? {
+    kind == .bot ? AvatarRenderer.character(character) : nil
   }
 }

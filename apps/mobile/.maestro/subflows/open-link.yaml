@@ -1,0 +1,17 @@
+appId: com.romainjeff.tangow
+---
+- openLink: ${LINK}
+# iOS asks before opening the app's own link, at least the first time.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible: "Open"
+          timeout: 2000
+          optional: true
+      - runFlow:
+          when:
+            visible: "Open"
+          commands:
+            - tapOn: "Open"

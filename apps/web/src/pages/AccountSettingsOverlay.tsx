@@ -1,6 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { AvatarStyle } from "@tangow/contracts";
-import { BotAvatar, Switch, Toggle } from "@tangow/ui-web";
+import { Switch, Toggle } from "@tangow/ui-web";
 import { ChevronDown } from "lucide-react";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
@@ -26,8 +25,6 @@ export type ProfileSettingsProps = {
   email?: string | null;
   name: string;
   initials: string;
-  avatarStyle: AvatarStyle;
-  onAvatarStyleChange: (style: AvatarStyle) => Promise<void>;
   isDeploymentOwner?: boolean;
 };
 
@@ -35,8 +32,6 @@ export function ProfileSettingsPanels({
   email,
   name,
   initials,
-  avatarStyle,
-  onAvatarStyleChange,
   isDeploymentOwner = false,
 }: ProfileSettingsProps) {
   const { t } = useLingui();
@@ -46,8 +41,6 @@ export function ProfileSettingsPanels({
     getUiAppearancePreference(),
   );
   const [debug, setDebug] = useState<boolean>(() => getDebugMode());
-  const [avatarPending, setAvatarPending] = useState(false);
-  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   function chooseLocale(next: UiLocale) {
     if (next === locale) return;
@@ -57,19 +50,6 @@ export function ProfileSettingsPanels({
       if (requestId !== localeRequestRef.current) return;
       setLocale(activated);
     });
-  }
-
-  async function chooseAvatarStyle(next: AvatarStyle) {
-    if (avatarPending || next === avatarStyle) return;
-    setAvatarPending(true);
-    setAvatarError(null);
-    try {
-      await onAvatarStyleChange(next);
-    } catch {
-      setAvatarError(t`Couldn't update avatars`);
-    } finally {
-      setAvatarPending(false);
-    }
   }
 
   return (
@@ -125,37 +105,6 @@ export function ProfileSettingsPanels({
           <Trans>Language</Trans>
         </h3>
         <UiLocalePicker value={locale} onChange={chooseLocale} />
-      </section>
-
-      <section className="rounded-card bg-group shadow-group px-4 py-4">
-        <h3 className="text-[15px] font-medium text-foreground">
-          <Trans>Avatars</Trans>
-        </h3>
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          {(["robot", "organic"] as const).map((style) => (
-            <Toggle
-              key={style}
-              variant="outline"
-              pressed={style === avatarStyle}
-              disabled={avatarPending}
-              onPressedChange={() => void chooseAvatarStyle(style)}
-              className="h-auto justify-start gap-3 px-3.5 py-3 text-[14px] font-normal"
-            >
-              <BotAvatar
-                color="#E45C9C"
-                identity="avatar-style-preview"
-                size={32}
-                variant={style}
-              />
-              <span>{style === "robot" ? <Trans>Robot</Trans> : <Trans>Organic</Trans>}</span>
-            </Toggle>
-          ))}
-        </div>
-        {avatarError ? (
-          <p role="alert" className="mt-3 text-[12.5px] text-destructive">
-            {avatarError}
-          </p>
-        ) : null}
       </section>
 
       {isDeploymentOwner ? (

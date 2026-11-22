@@ -8,6 +8,7 @@ export type IntegrationProviderConfig = z.infer<typeof IntegrationProviderConfig
 export type IntegrationProviderId = z.infer<typeof IntegrationProviderIdSchema>;
 export const IntegrationSetupStateSchema = z.object({
   canConfigure: z.boolean(),
+  mcpStdioEnabled: z.boolean().default(false),
   needsSetup: z.boolean(),
   webUrl: z.string().url(),
   providers: z.array(z.object({ id: IntegrationProviderIdSchema, configured: z.boolean() })),

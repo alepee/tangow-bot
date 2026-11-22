@@ -174,7 +174,6 @@ async function main() {
         fetch: thirdParties.fetch,
         resolveHostname: thirdParties.resolveHostname,
       },
-      integrationsCatalogUrl: "https://catalog.example.test/",
     });
     let activeRequests = 0;
     const requestWaiters = new Set<() => void>();

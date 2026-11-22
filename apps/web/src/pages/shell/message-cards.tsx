@@ -11,8 +11,8 @@ import { connectMcpOauth } from "../../lib/mcp-connect";
 import { rpc } from "../../lib/rpc";
 import { useArtifactImageSrc } from "./use-artifact-image-src";
 
-const McpServersOverlay = lazy(() =>
-  import("../McpServersOverlay").then((module) => ({ default: module.McpServersOverlay })),
+const CustomizeOverlay = lazy(() =>
+  import("../CustomizeOverlay").then((module) => ({ default: module.CustomizeOverlay })),
 );
 
 export function ChoiceCard({
@@ -205,7 +205,8 @@ export function AppConnectCard({
       {error ? <p className="mt-2 text-time text-destructive">{error}</p> : null}
       {adding ? (
         <Suspense fallback={null}>
-          <McpServersOverlay
+          <CustomizeOverlay
+            initialSection="custom-apps"
             declared={{
               botId,
               serverId: block.provider,

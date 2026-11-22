@@ -15,7 +15,7 @@ import { startWorkerRun } from "./worker-run-fixture.js";
 
 const databaseAvailable = process.env.VERIFY_DATABASE === "1" && Boolean(process.env.DATABASE_URL);
 
-const TOOL = "acme_deliver_message";
+const TOOL = "mcp__acme__acme_deliver_message";
 
 const mailProposal = (address: string, body: string) => ({
   card: "mail",

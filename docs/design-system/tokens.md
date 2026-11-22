@@ -32,7 +32,7 @@ way: `sheet`, then its `group`s.
 | `chatBot` | `#FFFFFF` | `#2C2C2F` | the bot's paper: every bot bubble, and everything the bot produces |
 | `chatUser` | `#1D1D1F` | `#636366` | user bubble and avatar: ink in light, a clear step above the bot's paper in dark |
 | `chatUserForeground` | `#FFFFFF` | `#F5F5F7` | |
-| `mentionChip` | `#EDEDF0` | `#3A3A3D` | mention chip in the composer |
+| `mentionChip` | `#EDEDF0` | `#3A3A3D` | a mention token selected in the composer |
 | `mentionChipForeground` | `#1D1D1F` | `#F5F5F7` | |
 | `linkMentionTile` | `#F2F2F4` | `#444447` | the tile behind a link mention's icon in a bot bubble, a step off `chatBot` |
 | `muted` | `#E8E8EA` | `#2A2A2D` | segmented track |
@@ -45,7 +45,7 @@ way: `sheet`, then its `group`s.
 | `ring` | `#6E6E73` | `#AEAEB2` | focus |
 | `surface` | `#FFFFFF` | `#3C3C3F` | the one elevation: the decision card |
 | `sheet` | `#F5F5F7` | `#232326` | the opaque plane of the side panel and the overlay windows |
-| `group` | `#FFFFFF` | `#333336` | a settings group or an activity day on a sheet; at phone width, the bot list's search field |
+| `group` | `#FFFFFF` | `#333336` | a settings group or an activity day on a sheet |
 | `well` | `#EEEEF1` | `#4E4E50` | reading matter and fields inside a decision card; a file's or the computer's icon tile |
 | `sidebar` | `#F5F5F7` | `#2C2C2E` | the opaque fallback of the sidebar's glass |
 | `sidebarForeground` | `#1D1D1F` | `#F5F5F7` | |
@@ -196,7 +196,6 @@ not count as an elevation.
 | `arrive` | 240 ms, `translateY(6px)` → 0, 0 → 1 opacity | a message, block or capsule arriving (`animate-arrive`) |
 | `press` | 160 ms, `scale(0.96)` capsules (`rk-press`), `scale(0.94)` round controls (`rk-press-round`), `scale(0.985)` option tiles (`rk-press-tile`) | pressing |
 | `hover` | 160 ms | colour and fill on hover (`duration-(--duration-hover)`) |
-| `breathe` | 5.6 s | the idle avatar |
 | `caret` | 1 s step-end | the typing caret |
 | `pivot` | 320 ms, rotate -90° → 0 with scale and fade | the send arrow arriving with the first character |
 | `morph` | 260 ms, rotate 45° | the mobile + turning into × while its sheet is open |
@@ -210,7 +209,7 @@ not count as an elevation.
 ## Sizes
 
 Avatars: `receipt 14`, `stackXs 16`, `interstitial 17`, `chip 18`, `stack 20`,
-`message 26`, `row 28`, `call 120`. Controls: `hoverIcon 28`, `quickReply 32`,
+`message 32`, `row 28`, `call 120`. Controls: `hoverIcon 28`, `quickReply 32`,
 `composerIcon 34`, `capsule 36`, `mobileStack 44`, `callButton 52`. Mobile composer:
 `composerAttach 48` (the detached + bubble), `composerTarget 44` (a button's
 touch target in the capsule), `composerAction 36` (the send / stop disc).
@@ -224,7 +223,9 @@ height) and `linkCard 360` (its width on web, capped by the column),
 `linkThumb 56` (the compact format's thumbnail), `linkIconInset 8` (the space around
 a site icon inside that thumbnail, web and iOS), `linkPhotoMax 320` (the photo
 format's maximum height). Link mention: `linkMentionIcon 16` (the site icon in the
-text, web and iOS) and `linkMentionGap 5` (between that icon and the label).
+text, web and iOS) and `linkMentionGap 5` (between that icon and the label). Entity
+mention: `mentionGlyph 16` (a bot, group, everyone or skill glyph in the text, web and iOS)
+and `mentionGap 4` (between that glyph and the name).
 
 The sizes a primitive needs as a class are mapped into Tailwind's spacing
 namespace in `packages/ui-web/src/styles.css` — `--spacing-hover-icon`,

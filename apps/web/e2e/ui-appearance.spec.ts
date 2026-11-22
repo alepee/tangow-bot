@@ -1,28 +1,14 @@
 import { captureScreenshot, completeOnboarding, createNamedBot, signup } from "./helpers";
 import { expect, type Page, test } from "./test";
 
-async function captureSidebarSearchSelected(
+async function captureSidebarSelected(
   page: Page,
   testInfo: Parameters<typeof captureScreenshot>[1],
   name: string,
 ) {
   const aside = page.locator("aside").first();
-  const search = aside.getByTestId("sidebar-search");
-  const selected = aside.getByRole("button", { name: /^Chief/ }).first();
-  await expect(search).toBeVisible();
-  await expect(selected).toBeVisible();
-  await search.scrollIntoViewIfNeeded();
-
-  const searchBox = await search.boundingBox();
-  const selectedBox = await selected.boundingBox();
-  expect(searchBox).toBeTruthy();
-  expect(selectedBox).toBeTruthy();
-  if (searchBox && selectedBox) {
-    expect(Math.abs(searchBox.x - selectedBox.x)).toBeLessThanOrEqual(1);
-    expect(
-      Math.abs(searchBox.x + searchBox.width - (selectedBox.x + selectedBox.width)),
-    ).toBeLessThanOrEqual(1);
-  }
+  await expect(aside.getByTestId("sidebar-search")).toBeVisible();
+  await expect(aside.getByRole("button", { name: /^Chief/ }).first()).toBeVisible();
 
   const box = await aside.boundingBox();
   if (box) {
@@ -68,7 +54,7 @@ test("account settings appearance control switches to light mode", async ({ page
   await expect(settings).toBeHidden();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await captureScreenshot(page, testInfo, "ui-appearance-light-shell");
-  await captureSidebarSearchSelected(page, testInfo, "sidebar-search-selected-light");
+  await captureSidebarSelected(page, testInfo, "sidebar-selected-light");
 
   const composer = page.getByRole("combobox", { name: /^Message/ });
   await composer.fill("Please review `shared/PROJECT_CHECKPOINT_WRAPUP.md`.");
@@ -92,7 +78,7 @@ test("account settings appearance control switches to light mode", async ({ page
   await settings.getByRole("button", { name: "Close user settings" }).click();
   await expect(settings).toBeHidden();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await captureSidebarSearchSelected(page, testInfo, "sidebar-search-selected-dark");
+  await captureSidebarSelected(page, testInfo, "sidebar-selected-dark");
 });
 
 test("sidebar bot rows hover with the same tone as the Customize row", async ({

@@ -1,30 +1,12 @@
 import { MIGRATION_WAIT_TIMEOUT_S } from "@tangow/contracts";
-import {
-  DEFAULT_UPDATE_REMOTE,
-  isOfficialRepoUrl,
-  normalizeRepoUrl,
-  normalizeUpdateBranch,
-} from "./self-update.js";
+import { DEFAULT_UPDATE_REMOTE, normalizeRepoUrl, normalizeUpdateBranch } from "./self-update.js";
+
+/** The server image every deployment builds from its own checkout. One image runs api, worker, and web. */
+export const DEFAULT_SERVER_IMAGE = "tangow/app";
 
 /**
- * The GitHub repository whose CI fills the image namespace. `publish-server-image.yml` pushes to
- * `ghcr.io/${{ github.repository }}`, so the namespace always belongs to whichever repository ran
- * the workflow. Naming a different owner here points the deployment at packages nobody publishes.
- *
- * `OFFICIAL_REPO_URL` names the same repository, so the source commit selected from a release is
- * guaranteed to have been eligible for this repository's publishing workflow.
- */
-export const PUBLISHED_IMAGE_REPO = "elie222/rakazo";
-
-/** The published server image. One image runs api, worker, and web. */
-export const OFFICIAL_SERVER_IMAGE = `ghcr.io/${PUBLISHED_IMAGE_REPO}/app`;
-/** The updater sidecar's image, published alongside the server image but tagged independently. */
-export const OFFICIAL_UPDATER_IMAGE = `ghcr.io/${PUBLISHED_IMAGE_REPO}/updater`;
-
-/**
- * The tag a deployment that has never run an update is on. It is deliberately *not* `latest`: no
- * registry serves this tag, so `docker compose up --build` builds it from the checkout and a fresh
- * install works with an empty registry. `latest` only exists once a release has been published.
+ * The tag a deployment that has never run an update is on. `docker compose up --build` builds it
+ * from the checkout; each update then builds and pins `local-<commit>`.
  */
 export const LOCAL_IMAGE_TAG = "local";
 export const DEFAULT_IMAGE_TAG = LOCAL_IMAGE_TAG;
@@ -52,7 +34,6 @@ const IMAGE_HOST = /^[a-z0-9]+(?:[.-][a-z0-9]+)*(?::[0-9]{1,5})?$/;
 const COMMIT = /^[0-9a-f]{40,64}$/;
 const ENV_KEY = /^[A-Z][A-Z0-9_]*$/;
 const ENV_VALUE = /^[A-Za-z0-9._:/@+-]{0,256}$/;
-const RELEASE_TAG = /^v(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/;
 /** Compose project names must not start with `-`, or `-p` would treat them as a second flag. */
 const COMPOSE_PROJECT_NAME = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/;
 
@@ -60,7 +41,7 @@ export function isValidImageTag(tag: string): boolean {
   return IMAGE_TAG.test(tag);
 }
 
-/** A registry reference the updater is willing to hand to `docker compose` as one env value. */
+/** An image reference the updater is willing to hand to `docker compose` as one env value. */
 export function isValidImageName(name: string): boolean {
   if (name.length === 0 || name.length > 200) return false;
   const segments = name.split("/");
@@ -99,157 +80,10 @@ export function imageRef(name: string, tag: string): string {
   return `${name}:${tag}`;
 }
 
-/**
- * The tag a fork's build is stored under. Forks have no published images, so the tag has to be
- * local and distinguishable from anything the registry could serve, or a later `pull` of the same
- * name would silently replace the operator's own build.
- */
+/** The tag an update's build is stored under, one per source commit. */
 export function forkImageTag(commit: string): string {
-  if (!COMMIT.test(commit)) throw new Error("A fork build needs a resolved commit to tag.");
+  if (!COMMIT.test(commit)) throw new Error("A build needs a resolved commit to tag.");
   return `local-${commit}`;
-}
-
-/**
- * A tag that only exists on this host, so trying to pull it would fail rather than find nothing.
- * Covers both the per-commit fork builds (`local-<commit>`) and the bare `local` a fresh install
- * builds, because a rollback onto either has to skip `docker compose pull`.
- */
-export function isLocalImageTag(tag: string): boolean {
-  return tag === LOCAL_IMAGE_TAG || tag.startsWith(`${LOCAL_IMAGE_TAG}-`);
-}
-
-/**
- * The source-addressed per-commit tag the publish workflow pushes. This has to agree character for
- * character with `docker/metadata-action`'s `type=sha`. The workflow deliberately raises
- * `DOCKER_METADATA_SHORT_SHA_LENGTH` to 40 so source-addressed image tags cannot collide at the
- * action's unsafe seven-character default.
- */
-export function commitImageTag(commit: string): string {
-  if (!COMMIT.test(commit)) throw new Error("A commit tag needs a resolved commit.");
-  return `sha-${commit}`;
-}
-
-export interface ReleaseTag {
-  tag: string;
-  major: number;
-  minor: number;
-  patch: number;
-  prerelease: string | null;
-}
-
-export function parseReleaseTag(tag: string): ReleaseTag | null {
-  const match = RELEASE_TAG.exec(tag);
-  if (!match) return null;
-  return {
-    tag,
-    major: Number(match[1]),
-    minor: Number(match[2]),
-    patch: Number(match[3]),
-    prerelease: match[4] ?? null,
-  };
-}
-
-export function compareReleaseTags(a: ReleaseTag, b: ReleaseTag): number {
-  if (a.major !== b.major) return a.major - b.major;
-  if (a.minor !== b.minor) return a.minor - b.minor;
-  if (a.patch !== b.patch) return a.patch - b.patch;
-  if (a.prerelease === b.prerelease) return 0;
-  if (a.prerelease === null) return 1;
-  if (b.prerelease === null) return -1;
-  return a.prerelease < b.prerelease ? -1 : 1;
-}
-
-/** Reads `git ls-remote --tags <url>`, which is the tag list without cloning anything. */
-export function parseLsRemoteTags(stdout: string): string[] {
-  const tags = new Set<string>();
-  for (const line of stdout.split("\n")) {
-    const ref = line.split("\t")[1]?.trim();
-    if (!ref?.startsWith("refs/tags/")) continue;
-    const tag = ref.slice("refs/tags/".length).replace(/\^\{\}$/, "");
-    if (tag !== "" && isValidImageTag(tag)) tags.add(tag);
-  }
-  return [...tags];
-}
-
-export interface RemoteRelease {
-  tag: string;
-  /** The commit behind the tag, never the object id of an annotated tag. */
-  commit: string;
-}
-
-/**
- * Reads the source commit for each release. Annotated tags have two `ls-remote` rows; the peeled
- * `^{}` row wins so the image tag agrees with `github.sha` in the publishing workflow.
- */
-export function parseLsRemoteReleases(stdout: string): RemoteRelease[] {
-  const releases = new Map<string, { direct?: string; peeled?: string }>();
-  for (const line of stdout.split("\n")) {
-    const [commit = "", rawRef = ""] = line.trim().split(/\s+/, 2);
-    if (!COMMIT.test(commit) || !rawRef.startsWith("refs/tags/")) continue;
-    const peeled = rawRef.endsWith("^{}");
-    const tag = rawRef.slice("refs/tags/".length).replace(/\^\{\}$/, "");
-    if (tag === "" || !isValidImageTag(tag)) continue;
-    const entry = releases.get(tag) ?? {};
-    if (peeled) entry.peeled = commit;
-    else entry.direct = commit;
-    releases.set(tag, entry);
-  }
-  return [...releases].flatMap(([tag, commits]) => {
-    const commit = commits.peeled ?? commits.direct;
-    return commit === undefined ? [] : [{ tag, commit }];
-  });
-}
-
-/**
- * The newest stable release. Pre-releases are skipped because "update to latest" should not move a
- * deployment onto a release candidate, and there is no way to opt back out once it has recreated.
- */
-export function selectLatestReleaseTag(tags: readonly string[]): string | null {
-  let best: ReleaseTag | null = null;
-  for (const tag of tags) {
-    const parsed = parseReleaseTag(tag);
-    if (!parsed || parsed.prerelease !== null) continue;
-    if (best === null || compareReleaseTags(parsed, best) > 0) best = parsed;
-  }
-  return best?.tag ?? null;
-}
-
-/** Selects the newest stable release together with the commit-tagged image CI published for it. */
-export function selectLatestRelease(releases: readonly RemoteRelease[]): RemoteRelease | null {
-  let best: { release: ReleaseTag; commit: string } | null = null;
-  for (const candidate of releases) {
-    const parsed = parseReleaseTag(candidate.tag);
-    if (!parsed || parsed.prerelease !== null) continue;
-    if (best === null || compareReleaseTags(parsed, best.release) > 0) {
-      best = { release: parsed, commit: candidate.commit };
-    }
-  }
-  return best === null ? null : { tag: best.release.tag, commit: best.commit };
-}
-
-export type UpdateStrategy = "pull" | "build";
-
-export interface StrategyDecision {
-  strategy: UpdateStrategy;
-  reason: string;
-}
-
-/**
- * Only the official repository has published images. A fork has to be built where it is deployed,
- * which is minutes rather than seconds, so the choice is stated rather than guessed at call sites.
- */
-export function chooseUpdateStrategy(input: { official: boolean }): StrategyDecision {
-  if (input.official) {
-    return {
-      strategy: "pull",
-      reason: "Official releases are published as images, so the update is a download and restart.",
-    };
-  }
-  return {
-    strategy: "build",
-    reason:
-      "A fork has no published images, so the server builds this update itself. Expect minutes, not seconds.",
-  };
 }
 
 export type ExecutionMode = "sidecar" | "checkout" | "unavailable";
@@ -345,20 +179,11 @@ export function resolveInstallKind(input: {
   };
 }
 
-/** Exact host commands from docs/self-host.md for Compose on a published release tag. */
-export const COMPOSE_PULL_UPGRADE_COMMANDS = [
-  "docker compose --env-file .env -f infra/compose/docker-compose.prod.yml pull api worker web",
-  "docker compose --env-file .env -f infra/compose/docker-compose.prod.yml up -d --wait --pull never api worker web",
-] as const;
-
-/** Exact host commands from docs/self-host.md for Compose on the default `local` tag. */
-export const COMPOSE_LOCAL_BUILD_UPGRADE_COMMANDS = [
+/** Exact host commands from docs/self-host.md for a Compose install: rebuild from the checkout. */
+export const COMPOSE_UPGRADE_COMMANDS = [
   "git pull",
   "GIT_SHA=$(git rev-parse HEAD) docker compose --env-file .env -f infra/compose/docker-compose.prod.yml up -d --wait --pull never --build api worker web",
 ] as const;
-
-/** @deprecated Prefer {@link COMPOSE_PULL_UPGRADE_COMMANDS}; kept for call-site clarity in tests. */
-export const COMPOSE_MANUAL_UPGRADE_COMMANDS = COMPOSE_PULL_UPGRADE_COMMANDS;
 
 /** Exact host commands from docs/self-host.md for source / `pnpm dev` installs. */
 export const SOURCE_MANUAL_UPGRADE_COMMANDS = [
@@ -371,26 +196,11 @@ export const SOURCE_MANUAL_UPGRADE_COMMANDS = [
   "# Start the API and worker processes",
 ] as const;
 
-/**
- * Host commands Settings should show when the sidecar cannot apply.
- * Compose picks pull vs rebuild from the current image tag when known; otherwise both documented
- * paths from self-host.md so a `local` install is not told to `pull` a tag the registry never serves.
- */
-export function manualUpgradeCommands(
-  kind: InstallKind,
-  options: { imageTag?: string | null } = {},
-): readonly string[] {
+/** Host commands Settings should show when the sidecar cannot apply. */
+export function manualUpgradeCommands(kind: InstallKind): readonly string[] {
   if (kind === "source") return SOURCE_MANUAL_UPGRADE_COMMANDS;
-  if (kind !== "compose") return [];
-  const tag = options.imageTag?.trim() ?? "";
-  if (tag !== "" && isLocalImageTag(tag)) return COMPOSE_LOCAL_BUILD_UPGRADE_COMMANDS;
-  if (tag !== "" && !isLocalImageTag(tag)) return COMPOSE_PULL_UPGRADE_COMMANDS;
-  return [
-    "# Published release tag",
-    ...COMPOSE_PULL_UPGRADE_COMMANDS,
-    "# Local tag (rebuild from checkout)",
-    ...COMPOSE_LOCAL_BUILD_UPGRADE_COMMANDS,
-  ];
+  if (kind === "compose") return COMPOSE_UPGRADE_COMMANDS;
+  return [];
 }
 
 export interface ComposeInvocation {
@@ -409,7 +219,7 @@ export interface ComposeTarget {
   /** Passed as `docker compose -p <name>`. Defaults to {@link DEFAULT_COMPOSE_PROJECT_NAME}. */
   projectName?: string;
   /**
-   * Services to pull, recreate and roll back. Defaults to {@link RECREATED_SERVICES}. A deployment
+   * Services to recreate and roll back. Defaults to {@link RECREATED_SERVICES}. A deployment
    * whose overlay adds an app-image service has to recreate that one too, or the update leaves it
    * running the old code.
    */
@@ -433,13 +243,6 @@ function composeBase(target: ComposeTarget): string[] {
 function targetServices(target: ComposeTarget): readonly string[] {
   const services = target.services ?? [];
   return services.length > 0 ? services : RECREATED_SERVICES;
-}
-
-export function composePullArgv(
-  target: ComposeTarget,
-  services: readonly string[] = targetServices(target),
-): ComposeInvocation {
-  return { command: "docker", args: [...composeBase(target), "pull", ...services] };
 }
 
 const RESTORE_WAIT_TIMEOUT_S = 300;
@@ -625,9 +428,8 @@ export interface ComposeUpdateStep {
 }
 
 export interface ComposeUpdatePlanInput {
-  strategy: UpdateStrategy;
   target: ComposeTarget;
-  /** Only the build path touches the checkout, and only when the remote has to be re-pointed. */
+  /** Only used when the checkout's remote has to be re-pointed. */
   repoUrl?: string;
   branch?: string;
   repointRemote?: boolean;
@@ -645,62 +447,51 @@ export interface ComposeUpdatePlanInput {
  */
 export function composeUpdatePlan(input: ComposeUpdatePlanInput): ComposeUpdateStep[] {
   const steps: ComposeUpdateStep[] = [];
-  if (input.strategy === "build") {
-    const remote = input.remote ?? DEFAULT_UPDATE_REMOTE;
-    const branch = input.branch ?? "main";
-    if (input.repointRemote === true && input.repoUrl) {
-      steps.push({
-        id: "remote",
-        label: "Point the checkout at the chosen repository",
-        command: "git",
-        args: ["remote", "set-url", remote, input.repoUrl],
-      });
-    }
-    steps.push(
-      {
-        id: "fetch",
-        label: "Fetch the latest commits",
-        command: "git",
-        args: ["fetch", remote, branch],
-      },
-      {
-        id: "checkout",
-        label: `Check out ${branch}`,
-        command: "git",
-        args: ["checkout", branch],
-      },
-      {
-        id: "merge",
-        label: "Fast-forward to the fetched commit",
-        command: "git",
-        args: ["merge", "--ff-only", `${remote}/${branch}`],
-      },
-    );
-    const up = composeUpArgv(input.target, { build: true });
+  const remote = input.remote ?? DEFAULT_UPDATE_REMOTE;
+  const branch = input.branch ?? "main";
+  if (input.repointRemote === true && input.repoUrl) {
     steps.push({
-      id: "recreate",
-      label: "Build the new images and recreate the services",
-      command: up.command,
-      args: up.args,
+      id: "remote",
+      label: "Point the checkout at the chosen repository",
+      command: "git",
+      args: ["remote", "set-url", remote, input.repoUrl],
     });
-    return steps;
   }
-
-  const pull = composePullArgv(input.target);
-  const up = composeUpArgv(input.target);
   steps.push(
-    { id: "pull", label: "Download the new images", command: pull.command, args: pull.args },
-    { id: "recreate", label: "Recreate the services", command: up.command, args: up.args },
+    {
+      id: "fetch",
+      label: "Fetch the latest commits",
+      command: "git",
+      args: ["fetch", remote, branch],
+    },
+    {
+      id: "checkout",
+      label: `Check out ${branch}`,
+      command: "git",
+      args: ["checkout", branch],
+    },
+    {
+      id: "merge",
+      label: "Fast-forward to the fetched commit",
+      command: "git",
+      args: ["merge", "--ff-only", `${remote}/${branch}`],
+    },
   );
+  const up = composeUpArgv(input.target, { build: true });
+  steps.push({
+    id: "recreate",
+    label: "Build the new images and recreate the services",
+    command: up.command,
+    args: up.args,
+  });
   return steps;
 }
 
 export type RollbackDecision = { tag: string } | { error: string };
 
 /**
- * Rollback is "deploy the tag that was running before the last update". The updater reuses the
- * image already cached on this host instead of trusting that a mutable registry tag still points
- * at the same content.
+ * Rollback is "deploy the tag that was running before the last update", reusing the image already
+ * built on this host.
  */
 export function rollbackTarget(input: {
   currentTag: string | null;
@@ -755,7 +546,6 @@ export function upsertEnvAssignments(
 export interface UpdateRequest {
   repoUrl: string;
   branch: string;
-  official: boolean;
 }
 
 export type UpdateRequestResult = { request: UpdateRequest } | { error: string };
@@ -774,7 +564,5 @@ export function validateUpdateRequest(input: {
   if ("error" in url) return { error: url.error };
   const branch = normalizeUpdateBranch(input.branch);
   if ("error" in branch) return { error: branch.error };
-  return {
-    request: { repoUrl: url.url, branch: branch.branch, official: isOfficialRepoUrl(url.url) },
-  };
+  return { request: { repoUrl: url.url, branch: branch.branch } };
 }

@@ -41,9 +41,7 @@ test("setup exposes all integration choices and saves only the selected provider
   });
 });
 
-test("direct MCP connects a catalog result without asking for a URL and assigns it to the first bot", async ({
-  page,
-}, testInfo) => {
+test("direct MCP connects a URL and assigns it to the first bot", async ({ page }, testInfo) => {
   await page.route("**/rpc/integrationSetup/get", (route) =>
     route.fulfill({
       json: {
@@ -57,42 +55,15 @@ test("direct MCP connects a catalog result without asking for a URL and assigns 
     }),
   );
   let serverId = "";
-  await page.route("**/rpc/capabilities/catalogSearch", (route) =>
-    route.fulfill({
-      json: {
-        json: {
-          enabled: true,
-          results: [
-            {
-              domain: "notion.example.test",
-              name: "Notion",
-              description: "",
-              pageUrl: null,
-              surfaces: [
-                {
-                  kind: "mcp",
-                  slug: "notion",
-                  source: "https://mcp.notion.example.test/mcp",
-                  auth: null,
-                },
-              ],
-            },
-          ],
-        },
-      },
-    }),
-  );
   await page.route("**/rpc/mcp/oauth/begin", (route) => {
     serverId = route.request().postDataJSON().json.serverId;
     return route.fulfill({ json: { json: { status: "already_connected" } } });
   });
   await signup(page, `direct-mcp-setup-${Date.now()}@tangow.test`, "password12", "Direct MCP");
-  await page.getByRole("textbox", { name: "Search apps", exact: true }).fill("Notion");
-  await page.getByRole("button", { name: "Search integrations.sh", exact: true }).click();
-  await expect(page.getByText("Notion", { exact: true })).toBeVisible();
-  await expect(page.getByRole("textbox", { name: "Server URL" })).toBeHidden();
+  await page.getByText("Add server URL", { exact: true }).click();
+  await page.getByRole("textbox", { name: "Server URL" }).fill("https://mcp.example.test/mcp");
   await page.getByRole("button", { name: "Connect", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Connected", exact: true })).toBeVisible();
+  await expect.poll(() => serverId).not.toBe("");
   await captureScreenshot(page, testInfo, "integration-setup-direct-connected");
   let createCalls = 0;
   let releaseCreate!: () => void;
@@ -202,11 +173,11 @@ test("remote members skip server setup and keep direct MCP connections", async (
   await captureScreenshot(page, testInfo, "remote-member-onboarding");
   await completeOnboarding(page);
   await page.goto("/integrations/setup?mode=mcp");
-  await expect(page.getByRole("heading", { name: "Add MCP server" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Custom apps" })).toBeVisible();
   for (const name of ["Composio", "Executor"]) {
     await expect(page.getByRole("button", { name, exact: true })).toBeHidden();
   }
-  await expect(page.getByRole("textbox", { name: "Search apps", exact: true })).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "App URL", exact: true })).toBeVisible();
   await captureScreenshot(page, testInfo, "remote-member-mcp");
   await page.goto("/integrations/setup");
   await page.waitForURL(/\/app/);

@@ -227,70 +227,11 @@ test("takeover, routine, plugins, and export are reachable", async ({ page }, te
   await expect(page.getByTestId("connection-detail")).toHaveCount(0);
   await expect(githubRow.getByRole("button", { name: "Add", exact: true })).toBeVisible();
 
-  const advanced = page.getByTestId("integrations-advanced");
-  await advanced.evaluate((element) => {
-    (element as HTMLDetailsElement).open = true;
-  });
-  await expect(page.getByRole("button", { name: "Manage MCP servers", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add MCP server", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add Executor", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Add Treg", exact: true })).toBeVisible();
-  await expect(page.getByText("Tool sources", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "MCP servers", exact: true })).toBeHidden();
-  await expect(page.getByTestId("integrations-catalog-feed")).toBeVisible();
-  // Catalog Search is optional chrome; add buttons stay MCP → Executor → Treg.
-  const advancedActions = advanced.getByTestId("integrations-advanced-add").locator("button");
-  await expect(advancedActions).toHaveText(["Add MCP server", "Add Executor", "Add Treg"]);
-
-  const feed = page.getByTestId("integrations-catalog-feed");
-  await feed.getByRole("textbox", { name: "Integration domain" }).fill("github.com");
-  await feed.getByRole("button", { name: "Search", exact: true }).click();
-  await expect(feed.getByText("GitHub", { exact: true })).toBeVisible();
-  await expect(feed.getByRole("button", { name: "MCP · Add", exact: true })).toBeVisible();
-  await expect(feed.getByRole("button", { name: "OPENAPI · Manual", exact: true })).toBeDisabled();
-  await expect(feed.getByRole("button", { name: "GRAPHQL · Manual", exact: true })).toBeDisabled();
-  await expect(feed.getByRole("button", { name: "CLI · Manual", exact: true })).toBeDisabled();
-  // Editing the query must drop prior results so a stale Add cannot run for the old domain.
-  await feed.getByRole("textbox", { name: "Integration domain" }).fill("gitlab.com");
-  await expect(feed.getByText("GitHub", { exact: true })).toBeHidden();
-  await feed.getByRole("textbox", { name: "Integration domain" }).fill("github.com");
-  await feed.getByRole("button", { name: "Search", exact: true }).click();
-  await expect(feed.getByText("GitHub", { exact: true })).toBeVisible();
-  await captureScreenshot(page, testInfo, "11c-catalog-feed");
-
-  await feed.getByRole("button", { name: "MCP · Add", exact: true }).click();
-  await expect(page.getByPlaceholder("Display name")).toHaveValue("GitHub");
-  await expect(page.getByPlaceholder("https://example.com/mcp")).toHaveValue(
-    "https://mcp.example.test/mcp",
-  );
-  await expect(page.locator("select")).toHaveValue("bearer");
-  await page.getByRole("button", { name: "Cancel", exact: true }).click();
-
-  await page.getByRole("button", { name: "Add Treg", exact: true }).click();
-  await page.getByPlaceholder("Treg token").fill("fake-treg-browser-credential");
-  await page.getByRole("button", { name: "Verify and add", exact: true }).click();
-  await expect(page.getByText(/MCP · https:\/\/treg\.to\/mcp\/ · credential saved/)).toBeVisible();
-
-  await page.getByRole("button", { name: "Add MCP server", exact: true }).click();
-  await page.getByPlaceholder("Display name").fill("Browser MCP");
-  await page.getByPlaceholder("https://example.com/mcp").fill("https://mcp.example.test/mcp");
-  await page.getByRole("button", { name: "Verify and add", exact: true }).click();
-  await expect(page.getByText(/MCP · https:\/\/mcp\.example\.test\/mcp · no auth/)).toBeVisible();
-
-  await page.getByRole("button", { name: "Add Executor", exact: true }).click();
-  await expect(page.getByPlaceholder("Display name")).toHaveValue("Executor");
-  await page
-    .getByPlaceholder("https://executor.example/mcp")
-    .fill("https://executor.example.test/mcp");
-  await page.getByPlaceholder("Executor token").fill("fake-executor-browser-credential");
-  await page.getByRole("button", { name: "Verify and add", exact: true }).click();
-  await expect(
-    page.getByText(/MCP · https:\/\/executor\.example\.test\/mcp · credential saved/),
-  ).toBeVisible();
-  await captureScreenshot(page, testInfo, "11d-provider-emulators");
+  await expect(page.getByTestId("integrations-advanced")).toHaveCount(0);
+  await captureScreenshot(page, testInfo, "integrations-desktop");
   const desktopViewport = page.viewportSize();
   await page.setViewportSize({ width: 390, height: 844 });
-  await captureScreenshot(page, testInfo, "11d-provider-emulators-phone");
+  await captureScreenshot(page, testInfo, "integrations-phone");
   if (desktopViewport) await page.setViewportSize(desktopViewport);
 
   await page.getByRole("button", { name: "Close integrations" }).click();

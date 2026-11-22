@@ -6,8 +6,7 @@ import { UserAvatar } from "./user-avatar.js";
 export interface GroupAvatarMember {
   botId?: string;
   name?: string;
-  color: string;
-  shapeSeed?: number | null;
+  avatarCharacter?: string | null;
   status?: string;
 }
 
@@ -134,9 +133,7 @@ function renderTile(tile: Tile, size: number, className?: string) {
   if ("bot" in tile) {
     return (
       <BotAvatar
-        color={tile.bot.color}
-        identity={tile.bot.botId ?? tile.bot.name}
-        shapeSeed={tile.bot.shapeSeed}
+        character={tile.bot.avatarCharacter}
         size={size}
         status={tile.bot.status}
         className={className}

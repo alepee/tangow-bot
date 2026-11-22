@@ -91,17 +91,6 @@ describe("ui-web theme CSS matches the ui-tokens source", () => {
         expect(block, rule).toContain(rule);
       }
     });
-
-    it("never silences the idle eye animation, on either avatar variant", () => {
-      // The blink is the one motion the design contract keeps (§5).
-      for (const selectors of stoppedAnimationSelectors(block)) {
-        for (const selector of selectors) {
-          expect(selector, block).not.toMatch(/-eyes-idle\b/);
-          expect(selector, block).not.toMatch(/-eyes\s*$/);
-        }
-      }
-      expect(block).toContain(".tangow-bot-avatar-eyes-working");
-    });
   });
 });
 
@@ -117,19 +106,4 @@ function blockAfter(css: string, opener: string): string {
     }
   }
   throw new Error(`unbalanced block for ${opener}`);
-}
-
-/** Selector lists of every rule in `block` that sets `animation: none`. */
-function stoppedAnimationSelectors(block: string): string[][] {
-  const stopped: string[][] = [];
-  for (const match of block.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    if (!/animation:\s*none/.test(match[2] ?? "")) continue;
-    stopped.push(
-      (match[1] ?? "")
-        .split(",")
-        .map((selector) => selector.replace(/\/\*[\s\S]*?\*\//g, "").trim())
-        .filter(Boolean),
-    );
-  }
-  return stopped;
 }

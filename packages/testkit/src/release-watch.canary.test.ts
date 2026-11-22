@@ -110,7 +110,7 @@ describeLive("live release-watch eval (GPT 5.6 Luna + GitHub emulator)", () => {
     await rpc(handles.app, cookie, "threads/send", {
       botId: bot.id,
       text: [
-        "Create a daily task to watch for new releases of elie222/rakazo",
+        "Create a daily task to watch for new releases of tangow-ai/tangow-bot",
         "and stay current on the project's capabilities.",
       ].join(" "),
     });

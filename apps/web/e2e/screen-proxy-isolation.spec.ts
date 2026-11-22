@@ -1,17 +1,14 @@
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
-import {
-  createServer as createHttpServer,
-  request as httpRequest,
-  type IncomingHttpHeaders,
-  type Server,
-} from "node:http";
-import type { AddressInfo, Server as NetServer } from "node:net";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import type { IncomingHttpHeaders, Server } from "node:http";
+import { createServer as createHttpServer, request as httpRequest } from "node:http";
+import type { AddressInfo, Server as NetServer, Socket } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { openScreenCapability } from "@tangow/core/node/screen-capability";
-import { createServer, type Plugin, preview, type ViteDevServer } from "vite";
+import { createServer, preview } from "vite";
 import { addScreenProxyCapability } from "../../api/src/screen-proxy";
+import { captureScreenshot } from "./helpers";
 import { expect, test } from "./test";
 
 const scope = {
@@ -22,26 +19,16 @@ const scope = {
   controlLeaseId: null,
 };
 const secret = "fake-screen-proxy-browser-test-secret";
-const screenHtml = `<!doctype html><title>Fake screen</title>
-<script type="module">
-  import { loaded } from './core/rfb.js';
-  const attempt = (read) => { try { return read(); } catch { return 'blocked'; } };
-  const result = {
-    asset: loaded,
-    cookie: attempt(() => document.cookie),
-    storage: attempt(() => localStorage.getItem('app-data')),
-    parent: attempt(() => parent.document.title),
-    api: await fetch('/session', { credentials: 'include' }).then(r => r.text()).catch(() => 'blocked'),
-  };
-  const socketUrl = new URL('./websockify', location.href);
-  socketUrl.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const socket = new WebSocket(socketUrl);
-  socket.onmessage = (event) => {
-    result.socket = event.data;
-    socket.close();
-    document.body.textContent = JSON.stringify(result);
-  };
+const webRoot = path.resolve(import.meta.dirname, "..");
+// Preview serves a build; this stand-in for `dist/screen.html` only proves the routing.
+const builtViewer = `<!doctype html><title>Viewer</title><script type="module">
+  const url = new URL('websockify', location.href);
+  url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const socket = new WebSocket(url);
+  socket.onmessage = () => { document.body.textContent = 'socket ok'; socket.close(); };
 </script><body></body>`;
+const WIDTH = 64;
+const HEIGHT = 48;
 
 async function listen(server: NetServer) {
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -55,71 +42,96 @@ async function close(server: Server) {
   );
 }
 
+function wsFrame(payload: Buffer) {
+  const length = payload.length;
+  const header =
+    length < 126
+      ? Buffer.from([0x82, length])
+      : Buffer.from([0x82, 126, length >> 8, length & 0xff]);
+  return Buffer.concat([header, payload]);
+}
+
+/** The smallest VNC server noVNC accepts, behind a WebSocket: no auth, one white frame. */
+function serveFakeVnc(socket: Socket, keysyms: number[]) {
+  let pending = Buffer.alloc(0);
+  let stage = 0;
+  socket.write(wsFrame(Buffer.from("RFB 003.008\n")));
+  socket.on("data", (chunk: Buffer) => {
+    pending = Buffer.concat([pending, chunk]);
+    // Client frames are masked; noVNC's are small enough for the 7- and 16-bit length forms.
+    while (pending.length >= 6) {
+      const short = pending[1]! & 0x7f;
+      const offset = short === 126 ? 4 : 2;
+      const length = short === 126 ? pending.readUInt16BE(2) : short;
+      if (pending.length < offset + 4 + length) return;
+      const mask = pending.subarray(offset, offset + 4);
+      const data = Buffer.from(pending.subarray(offset + 4, offset + 4 + length));
+      for (let i = 0; i < data.length; i++) data[i]! ^= mask[i % 4]!;
+      const opcode = pending[0]! & 0x0f;
+      pending = pending.subarray(offset + 4 + length);
+      if (opcode === 8) {
+        socket.end();
+        return;
+      }
+      if (stage === 0)
+        socket.write(wsFrame(Buffer.from([1, 1]))); // one security type: None
+      else if (stage === 1)
+        socket.write(wsFrame(Buffer.alloc(4))); // SecurityResult: OK
+      else if (stage === 2) {
+        const init = Buffer.alloc(24);
+        init.writeUInt16BE(WIDTH, 0);
+        init.writeUInt16BE(HEIGHT, 2);
+        init.set([32, 24, 0, 1, 0, 255, 0, 255, 0, 255, 16, 8, 0], 4);
+        socket.write(wsFrame(init));
+        const update = Buffer.alloc(16 + WIDTH * HEIGHT * 4, 0xff);
+        update.writeUInt32BE(1, 0); // FramebufferUpdate with one Raw rectangle
+        update.writeUInt32BE(0, 4);
+        update.writeUInt16BE(WIDTH, 8);
+        update.writeUInt16BE(HEIGHT, 10);
+        update.writeInt32BE(0, 12);
+        socket.write(wsFrame(update));
+      } else if (data[0] === 4 && data[1] === 1 && data.length >= 8) {
+        keysyms.push(data.readUInt32BE(4)); // KeyEvent, key down
+      }
+      stage += 1;
+    }
+  });
+}
+
 for (const mode of ["development", "preview"] as const) {
-  test.describe(`screen response isolation in ${mode}`, () => {
+  test.describe(`screen viewer and socket proxy in ${mode}`, () => {
     let origin: string;
     let screenUrl: string;
     let stop: () => Promise<void>;
 
     let authorized = true;
-    let assetAttempts = 0;
-    const received: IncomingHttpHeaders[] = [];
+    let computerHttpRequests = 0;
+    const upgrades: IncomingHttpHeaders[] = [];
+    const keysyms: number[] = [];
     test.beforeAll(async () => {
-      const root = await mkdtemp(path.join(tmpdir(), "tangow-screen-test-"));
-      await mkdir(path.join(root, "dist"));
-      const upstream = createHttpServer((req, res) => {
-        received.push(req.headers);
-        // Even a listener explicitly requesting same-origin access cannot loosen the proxy policy.
-        res.setHeader(
-          "Content-Security-Policy",
-          `sandbox allow-scripts allow-same-origin allow-pointer-lock; frame-ancestors ${origin}`,
-        );
-        res.setHeader("Set-Cookie", "app-session=attacker; Path=/");
-        if (req.url === "/core/rfb.js") {
-          if (assetAttempts++ === 0) {
-            res.destroy();
-            return;
-          }
-          res.setHeader("Content-Type", "text/javascript");
-          res.end('export const loaded = "module loaded";');
-        } else {
-          res.setHeader("Content-Type", "text/html");
-          res.end(screenHtml);
-        }
+      const previewRoot = await mkdtemp(path.join(tmpdir(), "tangow-screen-test-"));
+      await mkdir(path.join(previewRoot, "dist"));
+      await writeFile(path.join(previewRoot, "dist", "screen.html"), builtViewer);
+      const computer = createHttpServer((_req, res) => {
+        computerHttpRequests += 1;
+        res.setHeader("Content-Type", "text/html");
+        res.end("<script>parent.document.title = 'computer'</script>");
       });
-      upstream.on("upgrade", (req, socket) => {
-        received.push(req.headers);
+      const sockets = new Set<Socket>();
+      computer.on("upgrade", (req, socket: Socket) => {
+        upgrades.push(req.headers);
+        sockets.add(socket);
         const accept = createHash("sha1")
           .update(`${req.headers["sec-websocket-key"]}258EAFA5-E914-47DA-95CA-C5AB0DC85B11`)
           .digest("base64");
         socket.write(
           `HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ${accept}\r\nSet-Cookie: app-session=attacker; Path=/\r\n\r\n`,
         );
-        socket.write(Buffer.from([0x81, 2, 111, 107]));
-        socket.on("data", () => socket.end(Buffer.from([0x88, 0])));
         socket.on("error", () => socket.destroy());
-        socket.on("end", () => socket.destroy());
+        serveFakeVnc(socket, keysyms);
       });
-      const upstreamOrigin = await listen(upstream);
+      const computerOrigin = await listen(computer);
 
-      const appFixture: Plugin = {
-        name: "fake-app-origin",
-        configureServer: installApp,
-        configurePreviewServer: installApp,
-      };
-      function installApp(server: Pick<ViteDevServer, "middlewares">) {
-        server.middlewares.use((req, res, next) => {
-          if (req.url === "/app") {
-            res.setHeader("Content-Type", "text/html");
-            res.end(
-              '<!doctype html><title>Fake app</title><body><script>localStorage.setItem("app-data", "private-app-data"); document.cookie = "app-session=fake-session; Path=/";</script></body>',
-            );
-          } else if (req.url === "/session") {
-            res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify({ cookie: req.headers.cookie ?? null }));
-          } else next();
-        });
-      }
       const authority = createHttpServer(async (req, res) => {
         const chunks: Buffer[] = [];
         for await (const chunk of req) chunks.push(Buffer.from(chunk));
@@ -139,10 +151,10 @@ for (const mode of ["development", "preview"] as const) {
       try {
         // Load the real configuration: both production and development hooks must install the policy.
         const config = {
-          root,
+          // Development serves the real viewer and noVNC; preview serves the stand-in build.
+          root: mode === "development" ? webRoot : previewRoot,
           configFile: path.resolve(import.meta.dirname, "../vite.config.ts"),
           mode: "test",
-          plugins: [appFixture],
           logLevel: "silent" as const,
           server: { host: "127.0.0.1", port: 0, hmr: false as const },
           preview: { host: "127.0.0.1", port: 0 },
@@ -152,12 +164,18 @@ for (const mode of ["development", "preview"] as const) {
         if ("listen" in server) await listen(server.httpServer!);
         origin = `http://127.0.0.1:${(server.httpServer!.address() as AddressInfo).port}`;
         // Exercise the same capability issuer used by the production API, with a configured web origin.
-        screenUrl = addScreenProxyCapability(`${upstreamOrigin}/embed.html`, secret, origin, scope);
+        screenUrl = addScreenProxyCapability(
+          `${computerOrigin}/embed.html?view_only=false&path=${encodeURIComponent("websockify?token=fake-token")}`,
+          secret,
+          origin,
+          scope,
+        );
         stop = async () => {
+          for (const socket of sockets) socket.destroy();
           await server.close();
-          await close(upstream);
+          await close(computer);
           await close(authority);
-          await rm(root, { recursive: true, force: true });
+          await rm(previewRoot, { recursive: true, force: true });
         };
       } finally {
         if (previousApi === undefined) delete process.env.API_PROXY_TARGET;
@@ -171,38 +189,78 @@ for (const mode of ["development", "preview"] as const) {
       await stop?.();
     });
 
-    test("direct navigation cannot read application data while assets and WebSockets work", async ({
+    test("Tangow serves the viewer and only its socket reaches the computer", async ({
       page,
-    }) => {
-      await page.goto(`${origin}/app`);
+    }, testInfo) => {
       const response = await page.goto(screenUrl);
-      await expect(page.locator("body")).toContainText('"socket":"ok"');
-      expect(assetAttempts).toBeGreaterThanOrEqual(2);
-      const result = JSON.parse(await page.locator("body").innerText());
-      expect(result).toMatchObject({
-        asset: "module loaded",
-        socket: "ok",
-        cookie: "blocked",
-        storage: "blocked",
-        api: "blocked",
-      });
-      expect(response?.headers()["content-security-policy"]).toContain(
-        "sandbox allow-scripts allow-pointer-lock",
-      );
+      expect(response?.status()).toBe(200);
+      expect(response?.headers()["content-security-policy"]).toBeUndefined();
+      if (mode === "development") {
+        // The bundled noVNC connects, paints the computer's frame and sends input to it.
+        const canvas = page.locator("#live canvas");
+        await expect(canvas).toBeVisible();
+        await expect
+          .poll(() =>
+            canvas.evaluate(
+              (element: HTMLCanvasElement) =>
+                element.getContext("2d")?.getImageData(1, 1, 1, 1).data[0],
+            ),
+          )
+          .toBe(255);
+        await canvas.click();
+        await page.keyboard.press("a");
+        await expect.poll(() => keysyms).toContain(0x61);
+        await captureScreenshot(page, testInfo, "screen-viewer");
+        await page.setViewportSize({ width: 390, height: 844 });
+        await captureScreenshot(page, testInfo, "screen-viewer-phone");
+      } else {
+        await expect(page.locator("body")).toHaveText("socket ok");
+      }
+      expect(computerHttpRequests).toBe(0);
+      expect(upgrades.at(-1)).toMatchObject({ upgrade: "websocket" });
       expect(
-        (await page.context().cookies(origin)).find((c) => c.name === "app-session")?.value,
-      ).toBe("fake-session");
+        (await page.context().cookies(origin)).find((cookie) => cookie.name === "app-session"),
+      ).toBeUndefined();
+    });
+
+    test("nothing else under a capability reaches the computer", async ({ request }) => {
+      const upgradesBefore = upgrades.length;
+      const base = screenUrl.replace(/embed\.html\?.*$/, "");
+      for (const file of ["core/rfb.js", "vnc.html", "websockify"]) {
+        expect((await request.get(`${base}${file}`)).status()).toBe(404);
+      }
+      expect((await request.post(screenUrl)).status()).toBe(404);
+      const refused = await new Promise<boolean>((resolve) => {
+        httpRequest(`${base}other`, {
+          headers: {
+            connection: "Upgrade",
+            upgrade: "websocket",
+            "sec-websocket-key": "dGhlIHNhbXBsZSBub25jZQ==",
+            "sec-websocket-version": "13",
+          },
+        })
+          .on("upgrade", (_response, socket) => {
+            socket.destroy();
+            resolve(false);
+          })
+          .on("response", () => resolve(false))
+          .on("error", () => resolve(true))
+          .end();
+      });
+      expect(refused).toBe(true);
+      expect(computerHttpRequests).toBe(0);
+      expect(upgrades).toHaveLength(upgradesBefore);
     });
 
     test("revocation blocks replay and closes an already connected socket", async ({
       page,
       request,
     }) => {
-      await page.goto(`${origin}/app`);
+      await page.goto(`${origin}/favicon.svg`);
       await page.evaluate(async (url) => {
-        const target = new URL(url);
+        const target = new URL("websockify", url);
         target.protocol = "ws:";
-        target.pathname = target.pathname.replace("/embed.html", "/hold");
+        target.search = "";
         const socket = new WebSocket(target);
         const state = window as unknown as { screenClosed: boolean };
         state.screenClosed = false;
@@ -227,7 +285,7 @@ for (const mode of ["development", "preview"] as const) {
       }
     });
 
-    test("credentials attached to the request never reach the computer", async ({ request }) => {
+    test("credentials attached to the socket request never reach the computer", async () => {
       const credentials = {
         cookie: "app-session=fake-session",
         authorization: "Bearer fake",
@@ -239,10 +297,8 @@ for (const mode of ["development", "preview"] as const) {
         "x-forwarded-user": "fake-user",
         "x-forwarded-email": "user@example.com",
       };
-      received.length = 0;
-      expect((await request.get(screenUrl, { headers: credentials })).status()).toBe(200);
-      const socketUrl = new URL(screenUrl);
-      socketUrl.pathname = socketUrl.pathname.replace("/embed.html", "/websockify");
+      const socketUrl = new URL("websockify", screenUrl);
+      socketUrl.search = "";
       await new Promise<void>((resolve, reject) => {
         httpRequest(socketUrl, {
           headers: {
@@ -261,39 +317,9 @@ for (const mode of ["development", "preview"] as const) {
           .on("error", reject)
           .end();
       });
-      // One entry per path: the HTTP relay, then the hand-written WebSocket upgrade.
-      const leaked = received.map((headers) =>
-        Object.keys(credentials).filter((name) => name in headers),
-      );
-      expect(leaked).toEqual([[], []]);
-      expect(received[1]).toMatchObject({ upgrade: "websocket", "sec-websocket-version": "13" });
+      const received = upgrades.at(-1)!;
+      expect(Object.keys(credentials).filter((name) => name in received)).toEqual([]);
+      expect(received).toMatchObject({ upgrade: "websocket", "sec-websocket-version": "13" });
     });
-
-    for (const sandbox of ["allow-scripts allow-pointer-lock", null]) {
-      test(`iframe remains isolated with sandbox attribute ${sandbox ?? "absent"}`, async ({
-        page,
-      }) => {
-        await page.goto(`${origin}/app`);
-        await page.evaluate(
-          ({ url, sandbox }) => {
-            const frame = document.createElement("iframe");
-            if (sandbox !== null) frame.setAttribute("sandbox", sandbox);
-            frame.src = url;
-            document.body.append(frame);
-          },
-          { url: screenUrl, sandbox },
-        );
-        const body = page.frameLocator("iframe").locator("body");
-        await expect(body).toContainText('"socket":"ok"');
-        expect(JSON.parse(await body.innerText())).toEqual({
-          asset: "module loaded",
-          socket: "ok",
-          cookie: "blocked",
-          storage: "blocked",
-          parent: "blocked",
-          api: "blocked",
-        });
-      });
-    }
   });
 }

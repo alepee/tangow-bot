@@ -1,11 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerabilities
-    url: https://github.com/elie222/rakazo/blob/main/SECURITY.md
-    about: Report security issues to security@rakazo.com — do not open a public issue.
-  - name: User support
-    url: mailto:support@rakazo.com
-    about: Questions about using Tangow or self-hosting help.
+    url: https://github.com/tangow-ai/tangow-bot/blob/main/SECURITY.md
+    about: Report security issues to security@tangow.app — do not open a public issue.
   - name: Maintainer
-    url: mailto:elie@rakazo.com
+    url: mailto:romainjeff@tangow.app
     about: Reach the maintainer directly.

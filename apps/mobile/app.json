@@ -1,10 +1,10 @@
 {
   "expo": {
     "name": "Tangow",
-    "slug": "rakazo",
+    "slug": "tangow",
     "owner": "tangow",
     "scheme": "tangow",
-    "version": "2026.11.7",
+    "version": "2026.11.13",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/icon.png",
@@ -101,14 +101,14 @@
       "router": {},
       "supportsRTL": true,
       "eas": {
-        "projectId": "34a6a060-dc5f-4588-99ee-8ec220e40fda"
+        "projectId": "31e56dbd-c4d1-4ff1-99d6-21e06a91fbb8"
       }
     },
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/34a6a060-dc5f-4588-99ee-8ec220e40fda"
+      "url": "https://u.expo.dev/31e56dbd-c4d1-4ff1-99d6-21e06a91fbb8"
     }
   }
 }

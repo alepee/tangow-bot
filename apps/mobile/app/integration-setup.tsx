@@ -21,7 +21,7 @@ export default function IntegrationSetup() {
   const { t } = useI18n();
   const styles = useThemedStyles(createStyles);
   const [state, setState] = useState<IntegrationSetupState | null>(null);
-  const [choice, setChoice] = useState("direct");
+  const [choice, setChoice] = useState("composio");
   const [key, setKey] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +37,6 @@ export default function IntegrationSetup() {
       .catch(() => setError(t("Could not load integrations")));
   }, []);
   const choices = [
-    { id: "direct", label: t("Direct MCP") },
     { id: "composio", label: "Composio" },
     { id: "executor", label: "Executor" },
   ];
@@ -115,16 +114,11 @@ export default function IntegrationSetup() {
         </>
       ) : (
         <>
-          <Text style={styles.text}>
-            {choice === "executor"
-              ? t("Set up Executor on your server in the web app.")
-              : t("Finish MCP authorization in the web app.")}
-          </Text>
+          <Text style={styles.text}>{t("Set up Executor on your server in the web app.")}</Text>
           {button(
             t("Open web app"),
             () => {
               const url = new URL(state.webUrl);
-              if (choice === "direct") url.searchParams.set("mode", "mcp");
               void Linking.openURL(url.toString());
             },
             !state,

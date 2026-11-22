@@ -4,12 +4,12 @@ import path from "node:path";
 import {
   ComposioEmulator,
   EncryptedSecretStore,
-  InstalledConnectorProvider,
   ThirdPartyConnectorEmulator,
 } from "@tangow/adapters";
 import type { Space } from "@tangow/contracts";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { createApp } from "../../../apps/api/src/app.ts";
+import { moveMcpSources } from "../../../apps/api/src/move-mcp-sources.js";
 import { sessionCookieHeader } from "./index.js";
 
 type App = { request: (input: string, init?: RequestInit) => Promise<Response> };
@@ -66,7 +66,8 @@ describeWithDatabase("Composio catalog reconciliation", () => {
     const ownerCookie = await signup(app, `owner-connections-${stamp}@tangow.test`, "Owner");
     const otherCookie = await signup(app, `other-connections-${stamp}@tangow.test`, "Other");
     const owner = await rpc<Actor>(app, ownerCookie, "me");
-    const other = await rpc<Actor>(app, otherCookie, "me");
+    const otherActor = await rpc<Actor>(app, otherCookie, "me");
+    const other = { spaceId: otherActor.spaceId, userId: otherActor.userId };
     await connectRemote(composio, owner, "GMAIL");
 
     const first = await createConnection(owner, "GMAIL");
@@ -321,116 +322,153 @@ describeWithDatabase("Composio catalog reconciliation", () => {
     );
   });
 
-  it("installs Treg, Executor, and custom MCP sources and routes their calls", async () => {
-    const cookie = await signup(app, `mcp-connectors-${stamp}@tangow.test`, "MCP Connectors");
-    const actor = await rpc<Actor>(app, cookie, "me");
-    const tregCredential = "fake-treg-credential-value";
-    const treg = await rpc<{ id: string; secretConfigured: boolean }>(
-      app,
-      cookie,
-      "capabilities/install",
-      {
-        kind: "mcp",
-        name: "Treg",
-        source: "https://treg.to/mcp/",
-        credential: tregCredential,
-        config: { preset: "treg", auth: { type: "bearer" } },
+  it("moves legacy MCP credentials and active owned-bot assignments once, preserving existing servers", async () => {
+    const cookie = await signup(app, `mcp-move-${stamp}@tangow.test`, "MCP migration");
+    const { spaceId, userId } = await rpc<Actor>(app, cookie, "me");
+    const owner = { spaceId, userId };
+    const otherCookie = await signup(app, `mcp-other-${stamp}@tangow.test`, "Other owner");
+    const otherActor = await rpc<Actor>(app, otherCookie, "me");
+    const other = { spaceId: otherActor.spaceId, userId: otherActor.userId };
+    const secrets = new EncryptedSecretStore(TEST_ENCRYPTION_KEY);
+    const active = await handles.prisma.bot.create({
+      data: { ...owner, name: "Active", color: "#123456" },
+    });
+    const archived = await handles.prisma.bot.create({
+      data: { ...owner, name: "Archived", color: "#123456", archivedAt: new Date() },
+    });
+    const otherBot = await handles.prisma.bot.create({
+      data: { ...other, name: "Other", color: "#123456" },
+    });
+    const existing = await handles.prisma.mcpServer.create({
+      data: {
+        ...owner,
+        name: "Existing",
+        slug: "legacy",
+        endpoint: "https://existing.example.test/mcp",
+        transport: "sse",
       },
-    );
-    const custom = await rpc<{ id: string; secretConfigured: boolean }>(
-      app,
-      cookie,
-      "capabilities/install",
-      {
-        kind: "mcp",
-        name: "Custom MCP",
-        source: "https://mcp.example.test/mcp",
-        config: { preset: "custom", auth: { type: "none" } },
+    });
+    await handles.prisma.botMcpServer.create({
+      data: {
+        ...owner,
+        botId: active.id,
+        serverId: existing.id,
+        allowAllTools: false,
+        allowedTools: ["read"],
       },
-    );
-    const executorCredential = "fake-executor-credential-value";
-    const executor = await rpc<{ id: string; secretConfigured: boolean }>(
-      app,
-      cookie,
-      "capabilities/install",
-      {
-        kind: "mcp",
-        name: "Executor",
-        source: "https://executor.example.test/mcp",
-        credential: executorCredential,
-        config: { preset: "custom", auth: { type: "bearer" } },
-      },
-    );
-    expect(treg.secretConfigured).toBe(true);
-    expect(custom.secretConfigured).toBe(false);
-    expect(executor.secretConfigured).toBe(true);
-    expect(JSON.stringify(treg)).not.toContain(tregCredential);
-    expect(JSON.stringify(executor)).not.toContain(executorCredential);
-
-    const provider = new InstalledConnectorProvider(
-      handles.prisma,
-      new EncryptedSecretStore(TEST_ENCRYPTION_KEY),
-      { fetch: thirdParties.fetch, resolveHostname: thirdParties.resolveHostname },
-    );
-    const context = {
-      operationId: "mcp-product-test",
-      traceId: "mcp-product-test",
-      spaceId: actor.spaceId,
-      userId: actor.userId,
+    });
+    const takenSecret = await secrets.put(JSON.stringify({ secret: "fake-oauth-token" }), {
+      ...owner,
+      operationId: "test",
+      traceId: "test",
       signal: new AbortController().signal,
-    };
-    const tools = await provider.discoverTools(context);
-    // All three installs expose the same MCP tool name, so approval kinds are disambiguated.
-    expect(tools.filter((tool) => tool.route?.toolName === "notes.write")).toHaveLength(3);
-    expect(new Set(tools.map((tool) => tool.name)).size).toBe(tools.length);
-    for (const install of [treg, executor, custom]) {
-      const tool = tools.find((candidate) => candidate.route?.resourceId === install.id);
-      expect(tool?.name).toBe(`installed__${install.id}__notes.write`);
-      const events = [];
-      for await (const event of provider.execute(
-        {
-          tool: tool!.name,
-          args: { text: `mcp-${install.id}` },
-          executionId: `mcp-${install.id}`,
-          route: tool!.route,
-        },
-        context,
-      )) {
-        events.push(event);
+    });
+    await handles.prisma.secret.create({ data: { ...owner, ...takenSecret, kind: "mcp" } });
+    const taken = await handles.prisma.mcpServer.create({
+      data: {
+        ...owner,
+        name: "Taken",
+        slug: "taken",
+        endpoint: "https://taken.example.test/mcp",
+        transport: "streamable_http",
+        secretId: takenSecret.id,
+      },
+    });
+    const oldSecrets: string[] = [];
+    for (const type of ["bearer", "header", "none", "existing", "taken", "broken"] as const) {
+      const stored =
+        type === "none"
+          ? null
+          : await secrets.put(`fake-${type}-token`, {
+              ...owner,
+              operationId: "test",
+              traceId: "test",
+              signal: new AbortController().signal,
+            });
+      if (stored) {
+        oldSecrets.push(stored.id);
+        await handles.prisma.secret.create({
+          data: {
+            ...owner,
+            ...stored,
+            ciphertext: type === "broken" ? "v2:invalid" : stored.ciphertext,
+            kind: "connector",
+          },
+        });
       }
-      expect(events).toContainEqual(expect.objectContaining({ type: "result" }));
+      await handles.prisma.capabilityInstall.create({
+        data: {
+          ...owner,
+          kind: "mcp",
+          name: "Legacy",
+          source: `https://${type}.example.test/mcp`,
+          secretId: stored?.id,
+          config: {
+            auth: {
+              type: type === "existing" || type === "taken" || type === "broken" ? "bearer" : type,
+              name: "X-Api-Key",
+            },
+            ...(type === "header" ? { headers: { "X-Region": "test" } } : {}),
+          },
+        },
+      });
     }
-    expect(thirdParties.records).toContainEqual(
-      expect.objectContaining({ provider: "mcp", operation: "notes.write", host: "treg.to" }),
-    );
-    expect(thirdParties.records).toContainEqual(
-      expect.objectContaining({
-        provider: "mcp",
-        operation: "notes.write",
-        host: "executor.example.test",
-        authenticated: true,
-      }),
-    );
-    expect(JSON.stringify(thirdParties.records)).not.toContain(executorCredential);
-    expect(thirdParties.records).toContainEqual(
-      expect.objectContaining({
-        provider: "mcp",
-        operation: "notes.write",
-        host: "mcp.example.test",
-      }),
-    );
-
-    const { secretId } = await handles.prisma.capabilityInstall.findUniqueOrThrow({
-      where: { id: executor.id },
+    const warn = vi.fn();
+    await moveMcpSources(handles.prisma, secrets, warn);
+    const servers = await handles.prisma.mcpServer.findMany({
+      where: owner,
+      include: { secret: true, assignments: true },
     });
-    const storedSecret = await handles.prisma.secret.findUniqueOrThrow({
-      where: { id: secretId! },
+    expect(servers).toHaveLength(6);
+    expect(new Set(servers.map((row) => row.slug)).size).toBe(6);
+    const byHost = (host: string) =>
+      servers.find(
+        (row) => row.endpoint === `https://${host}.example.test/mcp` && row.id !== taken.id,
+      )!;
+    const credential = (row: (typeof servers)[number]) =>
+      JSON.parse(secrets.load(row.secret!.ciphertext, row.secret!.id));
+    expect(
+      JSON.parse(secrets.load(byHost("bearer").secret!.ciphertext, byHost("bearer").secret!.id)),
+    ).toEqual({ secret: "fake-bearer-token", env: {}, headers: {} });
+    expect(
+      JSON.parse(secrets.load(byHost("header").secret!.ciphertext, byHost("header").secret!.id)),
+    ).toEqual({ env: {}, headers: { "X-Api-Key": "fake-header-token", "X-Region": "test" } });
+    expect(byHost("none").secretId).toBeNull();
+    expect(byHost("existing").id).toBe(existing.id);
+    expect(byHost("existing").transport).toBe("sse");
+    expect(credential(byHost("existing"))).toEqual({
+      secret: "fake-existing-token",
+      env: {},
+      headers: {},
     });
-    expect(storedSecret.ciphertext).not.toContain(executorCredential);
-    await rpc(app, cookie, "capabilities/remove", { id: executor.id });
-    await expect(
-      handles.prisma.secret.findUnique({ where: { id: storedSecret.id } }),
-    ).resolves.toBeNull();
+    expect(credential(servers.find((row) => row.id === taken.id)!)).toEqual({
+      secret: "fake-oauth-token",
+    });
+    expect(credential(byHost("taken"))).toMatchObject({ secret: "fake-taken-token" });
+    expect(byHost("existing").assignments).toContainEqual(
+      expect.objectContaining({ botId: active.id, allowAllTools: false, allowedTools: ["read"] }),
+    );
+    for (const row of servers.filter((row) => row.id !== existing.id && row.id !== taken.id)) {
+      expect(row.assignments).toContainEqual(
+        expect.objectContaining({ botId: active.id, allowAllTools: true }),
+      );
+      expect(
+        row.assignments.some((link) => link.botId === archived.id || link.botId === otherBot.id),
+      ).toBe(false);
+    }
+    expect(await handles.prisma.secret.count({ where: { id: { in: oldSecrets } } })).toBe(1);
+    expect(await handles.prisma.capabilityInstall.count({ where: { ...owner, kind: "mcp" } })).toBe(
+      1,
+    );
+    expect(warn).toHaveBeenCalledOnce();
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("token");
+    await moveMcpSources(handles.prisma, secrets, warn);
+    expect(
+      await handles.prisma.mcpServer.findMany({
+        where: owner,
+        include: { secret: true, assignments: true },
+      }),
+    ).toEqual(servers);
   });
 
   async function createConnection(owner: Actor, provider: string) {

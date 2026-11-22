@@ -2,8 +2,22 @@ import type { UsageCell } from "@tangow/contracts";
 import { describe, expect, it } from "vitest";
 import { pivotUsage, usageAverage, usageDimensions } from "./usage-breakdown.js";
 
-const atlas = { id: "atlas", name: "Atlas", color: "#5B5BD6", shapeSeed: 1, deleted: false };
-const juno = { id: "juno", name: "Juno", color: null, shapeSeed: null, deleted: true };
+const atlas = {
+  id: "atlas",
+  name: "Atlas",
+  color: "#5B5BD6",
+  shapeSeed: 1,
+  avatarCharacter: null,
+  deleted: false,
+};
+const juno = {
+  id: "juno",
+  name: "Juno",
+  color: null,
+  shapeSeed: null,
+  avatarCharacter: null,
+  deleted: true,
+};
 
 function cell(fields: Partial<UsageCell> & Pick<UsageCell, "inputTokens" | "outputTokens">) {
   return {

@@ -14,16 +14,6 @@ export interface ScreenLinkHandlers {
   onFailed(url: string): void;
 }
 
-function screenIframeSandbox(url: string) {
-  try {
-    return new URL(url, window.location.href).pathname.startsWith("/novnc/")
-      ? "allow-scripts allow-pointer-lock"
-      : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 export function ScreenLinkOverlay({ view }: { view: "connecting" | "reconnecting" }) {
   const { t } = useLingui();
   return (
@@ -100,7 +90,7 @@ export function ScreenFrame({
       hiddenAt = null;
       link.returned(hiddenForMs);
     };
-    // The sandboxed frame has an opaque origin, so the sending window is the only proof of origin.
+    // Only the frame this component rendered may report the screen's state.
     const onMessage = (event: MessageEvent) => {
       const frame = frameRef.current?.contentWindow;
       if (frame && event.source === frame) link.message(event.data);
@@ -124,7 +114,6 @@ export function ScreenFrame({
         ref={frameRef}
         title={title}
         src={url}
-        sandbox={screenIframeSandbox(url)}
         className="h-full w-full border-0 bg-black"
         allow={allow}
         onLoad={() => linkRef.current?.loaded()}

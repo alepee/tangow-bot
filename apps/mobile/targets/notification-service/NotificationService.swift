@@ -50,23 +50,17 @@ final class NotificationService: UNNotificationServiceExtension {
 struct BotSender {
   let botId: String
   let name: String
-  let color: UIColor
-  let shape: AvatarShape
+  let image: Data
 
   init?(_ content: UNNotificationContent) {
     let data = BotSender.payload(content.userInfo)
-    guard
-      let botId = data["botId"] as? String,
-      let hex = data["avatarColor"] as? String,
-      let color = UIColor(hex: hex),
-      let index = (data["avatarShape"] as? NSNumber)?.intValue,
-      avatarShapes.indices.contains(index),
+    guard let botId = data["botId"] as? String,
+      let image = AvatarRenderer.character(data["avatarCharacter"] as? String)?.pngData(),
       !content.title.isEmpty
     else { return nil }
     self.botId = botId
     self.name = content.subtitle.isEmpty ? content.title : "\(content.title) · \(content.subtitle)"
-    self.color = color
-    self.shape = avatarShapes[index]
+    self.image = image
   }
 
   private static func payload(_ userInfo: [AnyHashable: Any]) -> [String: Any] {
@@ -83,7 +77,7 @@ struct BotSender {
   }
 
   func messageIntent(body: String) -> INSendMessageIntent {
-    let image = AvatarRenderer.png(shape: shape, color: color).map { INImage(imageData: $0) }
+    let image = INImage(imageData: self.image)
     let person = INPerson(
       personHandle: INPersonHandle(value: botId, type: .unknown),
       nameComponents: nil,
@@ -103,7 +97,7 @@ struct BotSender {
       sender: person,
       attachments: nil
     )
-    if let image { intent.setImage(image, forParameterNamed: \.sender) }
+    intent.setImage(image, forParameterNamed: \.sender)
     return intent
   }
 }

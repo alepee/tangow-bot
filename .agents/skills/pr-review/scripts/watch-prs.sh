@@ -6,7 +6,7 @@
 # Exit 0: new activity, printed as one JSON object per line. Exit 2: no news in this
 # 9-minute slice, call again with the same arguments. Exit 3: deadline reached.
 set -euo pipefail
-repo=${PR_REVIEW_REPO:-RomainJeff/tangow-bot}
+repo=${PR_REVIEW_REPO:-tangow-ai/tangow-bot}
 since=$1 deadline=$2; shift 2
 slice_end=$(( $(date +%s) + 540 ))
 filter='.[]

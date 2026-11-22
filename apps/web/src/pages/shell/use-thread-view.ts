@@ -21,7 +21,6 @@ import { activeThreadRuns } from "../../lib/thread-events";
 import type { CardAnswerTarget, MessageItem } from "../../lib/thread-items";
 import type { CallThread } from "../CallView";
 import { memberName } from "../GroupPanel";
-import { FALLBACK_BOT_COLOR } from "./layout";
 import type { Roster } from "./use-roster";
 
 export function isWorking(
@@ -169,8 +168,7 @@ export function useThreadView(snapshot: ThreadState | null, roster: Roster) {
     const bot = resolveTranscriptBot(run.botId);
     return {
       botId: run.botId,
-      color: bot?.color ?? FALLBACK_BOT_COLOR,
-      shapeSeed: bot?.shapeSeed,
+      avatarCharacter: bot?.avatarCharacter,
       name: bot?.name,
       status: run.status,
     };

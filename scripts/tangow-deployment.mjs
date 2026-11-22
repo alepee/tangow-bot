@@ -1,3 +1,20 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
+
+const localComposeOverride = ".env.tangow.compose.yml";
+
+// Compose arguments for a deployed checkout. The operator's untracked local
+// override, when present, is always the last file so it wins over every other.
+export function composeArgs(root, ...overrides) {
+  const local = existsSync(path.join(root, localComposeOverride)) ? [localComposeOverride] : [];
+  return [
+    "compose",
+    "--env-file",
+    ".env",
+    ...["infra/compose/docker-compose.yml", ...overrides, ...local].flatMap((file) => ["-f", file]),
+  ];
+}
+
 function report(comp, script) {
   const result = comp("Home migration inspection", [
     "run",

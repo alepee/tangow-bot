@@ -129,17 +129,6 @@ export function catalogEntries(tools: ConnectorTool[]): CatalogEntry[] {
     );
 }
 
-export function catalogGroupLabel(
-  name: string | null | undefined,
-  kind: string,
-  id: string,
-): string {
-  const trimmed = name?.trim();
-  if (trimmed) return trimmed.slice(0, MAX_GROUP_LENGTH);
-  const shortId = id.slice(0, 8) || "unknown";
-  return `${kind}-${shortId}`.slice(0, MAX_GROUP_LENGTH);
-}
-
 export function searchCatalog(
   entries: CatalogEntry[],
   args: Record<string, unknown>,
@@ -300,21 +289,6 @@ export async function* executeLazyCatalogControl(
   }
   const resolved = resolveCatalogCall(call, entries);
   yield* executeResolved(resolved.call);
-}
-
-export function uniquifyInstalledToolName(installId: string, toolName: string): string {
-  return `installed__${installId}__${toolName}`;
-}
-
-/** Prefix only when the same exposed name appears on more than one install. */
-export function disambiguateInstalledToolNames(tools: ConnectorTool[]): ConnectorTool[] {
-  const counts = new Map<string, number>();
-  for (const tool of tools) counts.set(tool.name, (counts.get(tool.name) ?? 0) + 1);
-  return tools.map((tool) => {
-    const resourceId = tool.route?.resourceId;
-    if (!resourceId || (counts.get(tool.name) ?? 0) < 2) return tool;
-    return { ...tool, name: uniquifyInstalledToolName(resourceId, tool.name) };
-  });
 }
 
 export function catalogIndexText(tools: ConnectorTool[]): string {

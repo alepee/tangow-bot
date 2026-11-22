@@ -24,8 +24,9 @@ arrangement belongs in a primitive.
 - Messages are bubbles, not cards. Bot prose sits on the `chatBot` paper, the
   person's words in the dark `chatUser` bubble; the thread elevates exactly one
   thing: a decision only a person can make.
-- Ink everywhere. A bot's colour lives in its avatar and nowhere else. Red is
-  for failures only.
+- Ink everywhere. A bot's colour is its character's clay colour
+  (`botDisplayColor`), used only where a surface borrows it, such as the call
+  background and the Stop contour. Red is for failures only.
 - Glass on navigation and controls, never on content: bubbles, cards and
   panels stay opaque.
 - One elevation in the thread: the decision card. Glass is not an elevation.
@@ -60,13 +61,15 @@ Bot widgets use the shared [widget kit](../packages/core/src/widget/kit.ts) and 
 - `animate-arrive` for a message, block or capsule entering; capsules in one row
   stagger 60 ms apart.
 - `rk-press` on anything pressable; `duration-(--duration-hover)` for hover.
-- **Nothing loops continuously except the avatar of a bot that is working**, and
-  its idle breathing.
+- **Nothing loops continuously except a live clay face**: always on the bot
+  page hero and in the conversation header, elsewhere only while its bot works
+  and for its brief end-of-run reaction, never at 20 px and below. On web all
+  live faces share one frame loop, which stops when none is left; on iPhone
+  each face runs native animations that stop when it unmounts.
 - `prefers-reduced-motion: reduce` stops `animate-arrive`, `rk-press`,
-  `rk-press-round`, `rk-press-tile`, `rk-bar`, `rk-dot`, `rk-shimmer`, the avatar morph and body
-  and the working eye loop, and freezes every `useElapsed` duration. **The idle
-  eye blink keeps running** on both avatar variants — it is the one motion the
-  contract preserves — and the working glow stays, static.
+  `rk-press-round`, `rk-press-tile`, `rk-bar`, `rk-dot` and `rk-shimmer`, freezes every `useElapsed`
+  duration and holds every live face still: no blink or glance, and an
+  expression changes without a fade.
 - `prefers-reduced-transparency: reduce` (Reduce Transparency on macOS and
   iOS, `AccessibilityInfo.isReduceTransparencyEnabled` on iPhone) turns every
   material opaque (see [Material](design-system/materials.md#material)). The ambient light and the layout stay.

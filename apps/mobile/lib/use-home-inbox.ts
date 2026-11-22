@@ -13,6 +13,7 @@ import type {
   MobileSpaceNavigation,
 } from "./api";
 import { fetchProfileImage, loadSessionToken, rpc, selectInitialSpace } from "./api";
+import { subscribeBotSaved, withSavedAvatar } from "./bot-page-state";
 import { useI18n } from "./i18n";
 import { filterBots } from "./inbox";
 import type { InboxSpace, InboxSpaceItem } from "./inbox-spaces";
@@ -25,7 +26,6 @@ import {
   unreadConversationCount,
 } from "./inbox-spaces";
 import { syncAppBadge } from "./live-notifications";
-import { saveMainBotCache } from "./main-bot-cache";
 import { setProfilePhoto } from "./profile-photo";
 import { registerPushToken } from "./push";
 import { querySpaceSearch } from "./search";
@@ -88,7 +88,6 @@ export function useHomeInbox() {
       }
       if (requestId !== inboxRequestId.current) return;
       setBots(navigation.current.bots);
-      void saveMainBotCache(navigation.current.bots);
       setBotSections(navigation.current.botSections);
       setGroups(navigation.current.groups);
       setSpaces(navigation.spaces);
@@ -112,6 +111,11 @@ export function useHomeInbox() {
       setRefreshing(false);
     }
   }, [loadBots]);
+
+  useEffect(
+    () => subscribeBotSaved((saved) => setBots((list) => withSavedAvatar(list, saved))),
+    [],
+  );
 
   useEffect(() => {
     void loadSessionToken().then((token) => {
