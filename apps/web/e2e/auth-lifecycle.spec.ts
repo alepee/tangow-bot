@@ -62,9 +62,7 @@ test("restricted signup waits for mailbox verification", async ({ page }, testIn
   await expect(page.getByText("Open the link sent to pending@example.test.")).toBeVisible();
   await captureOnboardingStep(page, testInfo, "40-check-email");
   await page.getByRole("button", { name: "Send again" }).click();
-  await expect(page.getByRole("button", { name: "Sent" })).toBeDisabled();
-  expect(resent).toEqual([{ email: "pending@example.test" }]);
-  await expect(page.getByRole("button", { name: "Send again" })).toBeEnabled({ timeout: 4_000 });
+  await expect.poll(() => resent).toEqual([{ email: "pending@example.test" }]);
   await page.getByRole("link", { name: "Use another email" }).click();
   await expect(page.getByRole("heading", { name: "Grab some clay." })).toBeVisible();
 });

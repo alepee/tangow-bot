@@ -40,13 +40,14 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
       ? pendingEmail
       : null;
 
+  // undefined while the capabilities request is in flight; null when it failed.
+  const [reset, setReset] = useState<PasswordResetCapabilities | null>();
+
   useEffect(() => {
     if (!verificationSent) return;
     const timer = setTimeout(() => setVerificationSent(false), SENT_MS);
     return () => clearTimeout(timer);
   }, [verificationSent]);
-  // undefined while the capabilities request is in flight; null when it failed.
-  const [reset, setReset] = useState<PasswordResetCapabilities | null>();
 
   useEffect(() => {
     if (mode === "up") return;
