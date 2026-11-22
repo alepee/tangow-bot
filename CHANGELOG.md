@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 #### Fixed
 
 - Mentioning a group with @ now keeps your message in the current chat and only tells the bot which group you mean, on web, desktop and mobile, instead of sending it to that group; in a bot's chat, @ only offers the groups that bot is in.
+- On a Docker-hosted Team Computer, a screen that fails to start now shows an error with Retry screen instead of staying on Connecting forever.
 
 ### 2026-11-21
 
