@@ -15,6 +15,8 @@ export type OnboardingFrameProps = {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   /** The desktop app's window controls, laid in a draggable band across the window's top. */
   chrome?: ReactNode;
+  /** The title is a poster statement (the welcome step). */
+  poster?: boolean;
 };
 
 /**
@@ -30,11 +32,17 @@ export function OnboardingFrame({
   actions,
   onSubmit,
   chrome,
+  poster = false,
 }: OnboardingFrameProps) {
   const frame = useRef<HTMLDivElement>(null);
   useKeyboardInset(frame);
   return (
-    <div ref={frame} className="rk-onboarding" data-slot="onboarding-frame">
+    <div
+      ref={frame}
+      className="rk-onboarding"
+      data-slot="onboarding-frame"
+      data-poster={poster || undefined}
+    >
       {chrome ? <div className="rk-onboarding-chrome">{chrome}</div> : null}
       <div className="rk-onboarding-top">
         <svg

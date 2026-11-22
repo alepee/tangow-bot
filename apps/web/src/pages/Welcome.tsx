@@ -8,6 +8,7 @@ export function WelcomePage() {
     <div className="contents" data-tangow-surface="welcome">
       <OnboardingScreen
         onSubmit={(event) => event.preventDefault()}
+        poster
         title={
           <Trans>
             Mold a bot.
