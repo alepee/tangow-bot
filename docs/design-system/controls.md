@@ -68,16 +68,17 @@ ring layered on top. Bottom-aligned (`items-end`) so its buttons stay on the las
 while the field grows; at least `min-h-12` (48 px) even empty.
 
 Props: `attach?` (the attach button — the capsule's **leading edge**, before
-any chip: `+ · [chips] · text · [mic] · action(s)`), `leading?` (a
-mention/skill chip, or the speaking bot's avatar), `children` (the field),
+the field: `+ · text · [mic] · action(s)`; picked mentions and skills sit
+inline in the text, see [EntityMention](primitives.md#entitymention)), `leading?`
+(the speaking bot's avatar), `children` (the field),
 `trailing?` (round-icon buttons: dictate, then send / stop), `attachments?` (a
 row of `ComposerAttachment`, rendered **above** the input line, inside the
 capsule — pending attachments and rewind artifacts both land here, wrapping on
 web), `state?: idle | typing | dictating | speaking`.
 
 **Dictation mode** (`state="dictating"`): the capsule swaps its ambient
-`shadow-composer-rest`/`-focus` for a 1.5 px `foreground` ring (`+` and any
-chip stay in place, just inactive — the caller disables them). Two new props
+`shadow-composer-rest`/`-focus` for a 1.5 px `foreground` ring (`+` stays in
+place, just inactive — the caller disables them). Two new props
 draw a row **under** the field: `dictationCancel?` (×, start) and
 `dictationConfirm?` (✓ — plus Stop when a reply is running — end), with this
 component's own four bars in between as the waveform (`data-slot="composer-
@@ -94,7 +95,7 @@ is composed from the slots, so its label stays translatable.
 progress is now carried by the Stop button's own contour (`StopContour`), not
 by chrome inside the capsule.
 
-Do: show Send only when the draft or a chip is non-empty; put the attach
+Do: show Send only when the draft is non-empty; put the attach
 button in `attach`, never in `trailing`; dictation and the call never fight
 over the composer — the call moved to the thread header (a phone icon labelled `Voice`, 1:1
 only; the mic always means dictation) and cancels a dictation in progress before it opens. Don't: put a second

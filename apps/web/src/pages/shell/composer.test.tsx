@@ -136,7 +136,8 @@ vi.mock("@tangow/ui-web", () => {
       </div>
     );
   });
-  return { Button, ComposerAttachment, ComposerShell, StopContour, BotAvatar };
+  const cn = (...classes: unknown[]) => classes.filter(Boolean).join(" ");
+  return { Button, ComposerAttachment, ComposerShell, StopContour, BotAvatar, cn };
 });
 
 import { Composer } from "./composer.js";

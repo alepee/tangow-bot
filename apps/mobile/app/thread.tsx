@@ -3,7 +3,6 @@ import {
   ChatMarkdown,
   hasMarkdownTable,
   LinkifiedText,
-  TableActionsProvider,
   truncateMarkdownForRender,
 } from "@tangow/chat-ui/native";
 import type {
@@ -35,11 +34,14 @@ import {
   buildComposerMentionOptions,
   type ComposerMention,
   canEditSpawnBotCard,
+  caretAfterEdit,
+  composerSegments,
   drawsNothing,
   editedWaitingDraft,
   failureSinceLabel,
   groupLeadBotId,
   imagesOf,
+  insertMentionToken,
   isApprovalAskBlock,
   isAsideOnlyMessage,
   isRunTerminalEvent,
@@ -49,6 +51,8 @@ import {
   linkMentionsKey,
   linkMentionsOf,
   mentionChipKey,
+  mentionQueryAt,
+  mentionsInDraft,
   projectThreadView,
   type RoutineItem,
   resolveComposerSendPlan,
@@ -58,6 +62,7 @@ import {
   type SlashActionId,
   selectedAskActionLabel,
   serializeComposerPrompt,
+  skillInDraft,
   skillSourcesOf,
   slashSkillOptions as slashSkills,
   type ThreadRow,
@@ -101,7 +106,6 @@ import {
   TextInput,
   type TextProps,
   View,
-  type ViewStyle,
 } from "react-native";
 import { KeyboardAvoidingView, useKeyboardState } from "react-native-keyboard-controller";
 import Animated, {
@@ -154,6 +158,7 @@ import { StackedAvatars } from "../components/stacked-avatars";
 import { StopContour } from "../components/stop-contour";
 import { Surface } from "../components/surface";
 import { TablePreview } from "../components/table-preview";
+import { ThreadProviders } from "../components/thread-providers";
 import { TypingBubble } from "../components/typing-bubble";
 import { UserAvatar } from "../components/user-avatar";
 import { UserBubble } from "../components/user-bubble";
@@ -293,18 +298,6 @@ const WITHIN_GROUP_GAP = 3;
  * reactions, and a card's indent, line up under its group's prose in multi.
  * 0 in mono, which has no avatar column. */
 const FRAMED_INDENT = sizes.message + 8;
-
-/** The 30 pt capsule a mention or a skill rides in, inside the composer. */
-const composerChip: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  gap: 6,
-  height: 30,
-  borderRadius: radii.pill,
-  paddingStart: 5,
-  paddingEnd: 10,
-  maxWidth: "100%",
-};
 
 function newClientNonce(): string {
   const webCrypto = globalThis.crypto;
@@ -514,6 +507,8 @@ function Thread() {
   const [draft, setDraft] = useState("");
   const [composerFocused, setComposerFocused] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  /** The `@query` being typed: where its `@` sits, and the caret after it. */
+  const [mentionRange, setMentionRange] = useState<{ start: number; caret: number } | null>(null);
   const [slashQuery, setSlashQuery] = useState<string | null>(null);
   const [agentSkills, setAgentSkills] = useState<AgentSkillCatalogEntry[]>([]);
   const [mentionBots, setMentionBots] = useState<MobileBot[]>([]);
@@ -635,6 +630,7 @@ function Thread() {
         query: "",
         includeEveryone: inGroup,
         currentGroupId: groupId,
+        currentBotId: groupId ? null : botId,
         bots: mentionBots.map((bot) => ({
           id: bot.id,
           name: bot.name,
@@ -1403,36 +1399,48 @@ function Thread() {
     textInputRef.current?.clear();
   }
 
+  /**
+   * A picked skill or mention lives as long as its token text: editing it away drops it. The
+   * caret is read off the edit itself, since iOS reports the selection after the text.
+   */
   function updateDraft(value: string) {
+    const caret = caretAfterEdit(draft, value);
     setDraft(value);
-    const match = /(?:^|\s)@([\w-]*)$/.exec(value);
-    setMentionQuery(match ? (match[1] ?? "") : null);
-    const slashMatch = selectedSkill === null ? /^\/([^\n]*)$/.exec(value) : null;
+    const mentions = mentionsInDraft(value, selectedMentions);
+    if (mentions.length !== selectedMentions.length) setSelectedMentions(mentions);
+    const skill = skillInDraft(value, selectedSkill);
+    if (skill !== selectedSkill) setSelectedSkill(skill);
+    const mention = mentionQueryAt(value, caret, mentions);
+    setMentionQuery(mention?.query ?? null);
+    setMentionRange(mention ? { start: mention.start, caret } : null);
+    const slashMatch = skill === null ? /^\/([^\n]*)$/.exec(value) : null;
     setSlashQuery(slashMatch ? (slashMatch[1] ?? "") : null);
   }
 
+  function placeCaret(caret: number) {
+    requestAnimationFrame(() => textInputRef.current?.setSelection(caret, caret));
+  }
+
   function insertMention(mention: ComposerMention) {
-    setDraft((current) => current.replace(/@([\w-]*)$/, ""));
+    const range = mentionRange ?? { start: draft.length, caret: draft.length };
+    const next = insertMentionToken(draft, range.start, range.caret, mention.name);
+    setDraft(next.draft);
     setMentionQuery(null);
+    setMentionRange(null);
     setSelectedMentions((current) =>
       current.some((selected) => mentionChipKey(selected) === mentionChipKey(mention))
         ? current
         : [...current, mention],
     );
+    placeCaret(next.caret);
   }
 
   function insertSkill(skill: AgentSkillCatalogEntry) {
+    const next = `/${skill.name} `;
     setSelectedSkill(skill);
-    clearDraft();
+    setDraft(next);
     setSlashQuery(null);
-  }
-
-  function removeLastChip() {
-    if (selectedMentions.length > 0) {
-      setSelectedMentions((current) => current.slice(0, -1));
-      return;
-    }
-    if (selectedSkill) setSelectedSkill(null);
+    placeCaret(next.length);
   }
 
   // Entering dictation closes and disables both pickers — a draft starting
@@ -1473,7 +1481,7 @@ function Thread() {
   }
 
   function serializeComposerPromptText(): string {
-    return serializeComposerPrompt(draft, selectedSkill, selectedMentions);
+    return serializeComposerPrompt(draft, selectedSkill);
   }
 
   function runSlashAction(action: SlashActionId) {
@@ -1490,11 +1498,7 @@ function Thread() {
     router.push(action === "settings-usage" ? "/usage" : "/account");
   }
 
-  const canSend =
-    Boolean(draft.trim()) ||
-    selectedSkill !== null ||
-    selectedMentions.length > 0 ||
-    activePendingAttachments.length > 0;
+  const canSend = Boolean(draft.trim()) || activePendingAttachments.length > 0;
 
   // Stop contour colour: the answering bot's own identity colour in a 1:1
   // thread. A group (several bots may be working), an unknown colour, or one
@@ -2595,7 +2599,11 @@ function Thread() {
     ) : null;
 
   return (
-    <TableActionsProvider value={tableActions}>
+    <ThreadProviders
+      tableActions={tableActions}
+      mentions={composerMentionTargets}
+      skills={agentSkills}
+    >
       <AmbientBackground />
       <AnimatedKeyboardAvoidingView
         behavior="height"
@@ -3025,99 +3033,6 @@ function Thread() {
                   </ScrollView>
                 ) : undefined
               }
-              leading={
-                selectedSkill || selectedMentions.length > 0 ? (
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      flexWrap: "wrap",
-                      alignItems: "center",
-                      gap: 6,
-                      flexShrink: 1,
-                      maxWidth: "60%",
-                    }}
-                  >
-                    {selectedSkill ? (
-                      <View
-                        testID="skill-chip"
-                        style={[composerChip, { backgroundColor: tokens.accent }]}
-                      >
-                        <NativeSymbol
-                          ios="cube"
-                          android="cube-outline"
-                          size={14}
-                          color={tokens.mutedForeground}
-                        />
-                        <Text
-                          numberOfLines={1}
-                          style={{
-                            color: tokens.foreground,
-                            flexShrink: 1,
-                            ...nativeTextStyle("capsule"),
-                          }}
-                        >
-                          {selectedSkill.name}
-                        </Text>
-                        <Pressable
-                          accessibilityLabel={t("Remove skill {name}", {
-                            name: selectedSkill.name,
-                          })}
-                          hitSlop={8}
-                          disabled={dictation.dictating}
-                          onPress={() => setSelectedSkill(null)}
-                        >
-                          <NativeSymbol
-                            ios="xmark"
-                            android="close"
-                            size={12}
-                            color={tokens.mutedForeground}
-                          />
-                        </Pressable>
-                      </View>
-                    ) : null}
-                    {selectedMentions.map((mention) => (
-                      <View
-                        key={mentionChipKey(mention)}
-                        testID="mention-chip"
-                        style={[composerChip, { backgroundColor: tokens.mentionChip }]}
-                      >
-                        <MentionChipIcon mention={mention} />
-                        <Text
-                          numberOfLines={1}
-                          style={{
-                            color: tokens.mentionChipForeground,
-                            flexShrink: 1,
-                            ...nativeTextStyle("capsule"),
-                          }}
-                        >
-                          {mention.name}
-                        </Text>
-                        <Pressable
-                          accessibilityLabel={t("Remove mention {name}", {
-                            name: mention.name,
-                          })}
-                          hitSlop={8}
-                          disabled={dictation.dictating}
-                          onPress={() =>
-                            setSelectedMentions((current) =>
-                              current.filter(
-                                (selected) => mentionChipKey(selected) !== mentionChipKey(mention),
-                              ),
-                            )
-                          }
-                        >
-                          <NativeSymbol
-                            ios="xmark"
-                            android="close"
-                            size={12}
-                            color={tokens.mutedForeground}
-                          />
-                        </Pressable>
-                      </View>
-                    ))}
-                  </View>
-                ) : undefined
-              }
               trailing={
                 dictation.dictating ? undefined : (
                   <>
@@ -3232,24 +3147,12 @@ function Thread() {
               ) : (
                 <TextInput
                   ref={textInputRef}
-                  value={draft}
                   onChangeText={updateDraft}
                   accessibilityLabel={composerName(t, displayName, answerName)}
-                  onKeyPress={(event) => {
-                    if (
-                      event.nativeEvent.key === "Backspace" &&
-                      draft.length === 0 &&
-                      (selectedSkill !== null || selectedMentions.length > 0)
-                    ) {
-                      removeLastChip();
-                    }
-                  }}
                   placeholder={
-                    selectedSkill || selectedMentions.length
-                      ? undefined
-                      : displayName || answerName
-                        ? composerName(t, displayName, answerName)
-                        : t("Message…")
+                    displayName || answerName
+                      ? composerName(t, displayName, answerName)
+                      : t("Message…")
                   }
                   placeholderTextColor={tokens.mutedForeground}
                   selectionColor={tokens.foreground}
@@ -3278,7 +3181,21 @@ function Thread() {
                       ? { lineHeight: undefined, paddingVertical: 11 }
                       : { paddingVertical: 4 }),
                   }}
-                />
+                >
+                  {/* A field cannot hold a view: a picked token is its own styled text. */}
+                  {composerSegments(draft, selectedMentions, selectedSkill).map((segment) =>
+                    segment.kind === "text" ? (
+                      <Text key={segment.start}>{segment.text}</Text>
+                    ) : (
+                      <Text key={segment.start} style={{ fontWeight: "600" }}>
+                        <Text style={{ color: tokens.mutedForeground, fontWeight: "500" }}>
+                          {segment.text.slice(0, 1)}
+                        </Text>
+                        {segment.text.slice(1)}
+                      </Text>
+                    ),
+                  )}
+                </TextInput>
               )}
             </ComposerShell>
           </View>
@@ -3365,7 +3282,7 @@ function Thread() {
         ) : null}
       </AnimatedKeyboardAvoidingView>
       {barTransparent ? <ThreadScrollEdge height={headerHeight + 40} /> : null}
-    </TableActionsProvider>
+    </ThreadProviders>
   );
 }
 
@@ -3523,44 +3440,6 @@ function ComposerButton({
       </Animated.View>
     </Pressable>
   );
-}
-
-function MentionChipIcon({ mention }: { mention: ComposerMention }) {
-  const tokens = useMobileTokens();
-  if (mention.kind === "routine") {
-    return (
-      <NativeSymbol ios="clock" android="time-outline" size={13} color={tokens.mutedForeground} />
-    );
-  }
-  if (mention.kind === "connector") {
-    return (
-      <NativeSymbol
-        ios="puzzlepiece.extension"
-        android="extension-puzzle-outline"
-        size={13}
-        color={tokens.mutedForeground}
-      />
-    );
-  }
-  if (mention.kind === "group" || mention.kind === "everyone") {
-    return (
-      <View
-        style={{
-          width: 14,
-          height: 14,
-          borderRadius: 7,
-          backgroundColor: tokens.muted,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Text style={{ color: tokens.foreground, fontSize: 9 }}>
-          {mention.kind === "group" ? "G" : "@"}
-        </Text>
-      </View>
-    );
-  }
-  return <BotAvatar character={mention.avatarCharacter} size={sizes.chip} />;
 }
 
 function previewMessageText(message: MobileMessage): string {
