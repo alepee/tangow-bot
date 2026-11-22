@@ -255,7 +255,7 @@ msgstr "30d"
 msgid "7d"
 msgstr "7d"
 
-#: src/pages/Auth.tsx:198
+#: src/pages/Auth.tsx:207
 msgid "A new key is on its way."
 msgstr "A new key is on its way."
 
@@ -459,7 +459,7 @@ msgstr "Allow writing"
 msgid "Allowed once"
 msgstr "Allowed once"
 
-#: src/pages/Auth.tsx:311
+#: src/pages/Auth.tsx:320
 msgid "Already have an account?"
 msgstr "Already have an account?"
 
@@ -691,10 +691,10 @@ msgstr "Back"
 msgid "Back to all usage"
 msgstr "Back to all usage"
 
-#: src/pages/Auth.tsx:213
-#: src/pages/Auth.tsx:247
-#: src/pages/Auth.tsx:371
-#: src/pages/Auth.tsx:380
+#: src/pages/Auth.tsx:222
+#: src/pages/Auth.tsx:256
+#: src/pages/Auth.tsx:383
+#: src/pages/Auth.tsx:392
 msgid "Back to sign in"
 msgstr "Back to sign in"
 
@@ -897,7 +897,7 @@ msgstr "Check for updates"
 msgid "Check in."
 msgstr "Check in."
 
-#: src/pages/Auth.tsx:242
+#: src/pages/Auth.tsx:251
 msgid "Check your email"
 msgstr "Check your email"
 
@@ -1093,7 +1093,7 @@ msgid "Confirm delete"
 msgstr "Confirm delete"
 
 #: src/pages/AccountProfileSettings.tsx:206
-#: src/pages/Auth.tsx:416
+#: src/pages/Auth.tsx:428
 msgid "Confirm password"
 msgstr "Confirm password"
 
@@ -1295,7 +1295,7 @@ msgstr "Could not connect this voice provider"
 msgid "Could not connect to the computer screen"
 msgstr "Could not connect to the computer screen"
 
-#: src/pages/Auth.tsx:108
+#: src/pages/Auth.tsx:116
 #: src/pages/shell/use-computer-control.ts:203
 msgid "Could not continue"
 msgstr "Could not continue"
@@ -1485,7 +1485,7 @@ msgstr "Could not rename connection"
 msgid "Could not rename section"
 msgstr "Could not rename section"
 
-#: src/pages/Auth.tsx:351
+#: src/pages/Auth.tsx:360
 msgid "Could not reset password"
 msgstr "Could not reset password"
 
@@ -1537,7 +1537,7 @@ msgstr "Could not save that voice"
 msgid "Could not save this choice"
 msgstr "Could not save this choice"
 
-#: src/pages/Auth.tsx:90
+#: src/pages/Auth.tsx:98
 msgid "Could not send reset email"
 msgstr "Could not send reset email"
 
@@ -1614,8 +1614,8 @@ msgstr "Couldn't load members"
 msgid "Couldn't load messaging settings"
 msgstr "Couldn't load messaging settings"
 
-#: src/pages/Auth.tsx:120
-#: src/pages/Auth.tsx:354
+#: src/pages/Auth.tsx:128
+#: src/pages/Auth.tsx:363
 msgid "Couldn't reach the server."
 msgstr "Couldn't reach the server."
 
@@ -1657,7 +1657,7 @@ msgstr "Create"
 msgid "Create a section and move {0} into it."
 msgstr "Create a section and move {0} into it."
 
-#: src/pages/Auth.tsx:308
+#: src/pages/Auth.tsx:317
 msgid "Create account"
 msgstr "Create account"
 
@@ -1695,7 +1695,7 @@ msgstr "Create routine"
 msgid "Create space"
 msgstr "Create space"
 
-#: src/pages/Auth.tsx:242
+#: src/pages/Auth.tsx:251
 msgid "Create your Tangow"
 msgstr "Create your Tangow"
 
@@ -1934,7 +1934,7 @@ msgstr "Dismissed. Reconnect anytime from MCP settings."
 msgid "Do not type passwords into the demo. Use Take control for credentials."
 msgstr "Do not type passwords into the demo. Use Take control for credentials."
 
-#: src/pages/Auth.tsx:157
+#: src/pages/Auth.tsx:165
 msgid "Don’t have an account?"
 msgstr "Don’t have an account?"
 
@@ -2028,9 +2028,9 @@ msgstr "Editing message from {rewindTime} · {0} messages after it will be remov
 msgid "Effort"
 msgstr "Effort"
 
-#: src/pages/Auth.tsx:168
-#: src/pages/Auth.tsx:226
-#: src/pages/Auth.tsx:268
+#: src/pages/Auth.tsx:176
+#: src/pages/Auth.tsx:235
+#: src/pages/Auth.tsx:277
 msgid "Email"
 msgstr "Email"
 
@@ -2222,7 +2222,7 @@ msgstr "Finishing MCP connection…"
 msgid "Fixed"
 msgstr "Fixed"
 
-#: src/pages/Auth.tsx:153
+#: src/pages/Auth.tsx:161
 msgid "Forgot password?"
 msgstr "Forgot password?"
 
@@ -2264,7 +2264,7 @@ msgstr "Git event"
 msgid "Global"
 msgstr "Global"
 
-#: src/pages/Auth.tsx:144
+#: src/pages/Auth.tsx:152
 msgid "Got the key?"
 msgstr "Got the key?"
 
@@ -2320,7 +2320,7 @@ msgstr "Hide bots"
 msgid "Hide key"
 msgstr "Hide key"
 
-#: src/pages/Auth.tsx:132
+#: src/pages/Auth.tsx:140
 msgid "Hide password"
 msgstr "Hide password"
 
@@ -2364,8 +2364,12 @@ msgid "I’m done"
 msgstr "I’m done"
 
 #: src/pages/Auth.tsx:220
-msgid "If {email} has an account, the link is in its inbox."
-msgstr "If {email} has an account, the link is in its inbox."
+#~ msgid "If {email} has an account, the link is in its inbox."
+#~ msgstr "If {email} has an account, the link is in its inbox."
+
+#: src/pages/Auth.tsx:229
+msgid "If {sentTo} has an account, the link is in its inbox."
+msgstr "If {sentTo} has an account, the link is in its inbox."
 
 #: src/pages/VoiceSettingsOverlay.tsx:123
 msgid "If you heard that, voice is ready."
@@ -2629,7 +2633,7 @@ msgstr "Local"
 msgid "Log out"
 msgstr "Log out"
 
-#: src/pages/Auth.tsx:198
+#: src/pages/Auth.tsx:207
 msgid "Lost the key?"
 msgstr "Lost the key?"
 
@@ -2874,7 +2878,7 @@ msgstr "Mute"
 
 #: src/components/AskCard.tsx:351
 #: src/components/teach/SkillDraftCard.tsx:79
-#: src/pages/Auth.tsx:254
+#: src/pages/Auth.tsx:263
 #: src/pages/bot-page/BotHero.tsx:45
 #: src/pages/bot-page/RoutineCreateForm.tsx:74
 #: src/pages/bot-page/RoutineDetail.tsx:111
@@ -2925,7 +2929,7 @@ msgid "New open-work item"
 msgstr "New open-work item"
 
 #: src/pages/AccountProfileSettings.tsx:200
-#: src/pages/Auth.tsx:405
+#: src/pages/Auth.tsx:417
 msgid "New password"
 msgstr "New password"
 
@@ -3259,23 +3263,23 @@ msgstr "Park"
 
 #: src/components/AskCard.tsx:122
 #: src/pages/AccountProfileSettings.tsx:180
-#: src/pages/Auth.tsx:178
-#: src/pages/Auth.tsx:284
+#: src/pages/Auth.tsx:186
 #: src/pages/Auth.tsx:293
+#: src/pages/Auth.tsx:302
 msgid "Password"
 msgstr "Password"
 
-#: src/pages/Auth.tsx:82
+#: src/pages/Auth.tsx:90
 msgid "Password recovery is not configured for this server"
 msgstr "Password recovery is not configured for this server"
 
 #: src/pages/AccountProfileSettings.tsx:225
-#: src/pages/Auth.tsx:394
+#: src/pages/Auth.tsx:406
 msgid "Password updated"
 msgstr "Password updated"
 
 #: src/pages/AccountProfileSettings.tsx:150
-#: src/pages/Auth.tsx:343
+#: src/pages/Auth.tsx:352
 msgid "Passwords do not match"
 msgstr "Passwords do not match"
 
@@ -3627,11 +3631,11 @@ msgstr "Reset computer"
 msgid "Reset computer?"
 msgstr "Reset computer?"
 
-#: src/pages/Auth.tsx:377
+#: src/pages/Auth.tsx:389
 msgid "Reset password"
 msgstr "Reset password"
 
-#: src/pages/Auth.tsx:388
+#: src/pages/Auth.tsx:400
 msgid "Reset your password"
 msgstr "Reset your password"
 
@@ -3882,11 +3886,11 @@ msgstr "Send"
 msgid "Send <0>{linkCode}</0> to the line from your chat app within 10 minutes. You'll get a confirmation reply once linked."
 msgstr "Send <0>{linkCode}</0> to the line from your chat app within 10 minutes. You'll get a confirmation reply once linked."
 
-#: src/pages/Auth.tsx:368
+#: src/pages/Auth.tsx:380
 msgid "Send a new link"
 msgstr "Send a new link"
 
-#: src/pages/Auth.tsx:209
+#: src/pages/Auth.tsx:218
 msgid "Send reset link"
 msgstr "Send reset link"
 
@@ -4003,14 +4007,14 @@ msgstr "Show less"
 msgid "Show more"
 msgstr "Show more"
 
-#: src/pages/Auth.tsx:132
+#: src/pages/Auth.tsx:140
 msgid "Show password"
 msgstr "Show password"
 
 #: src/lib/localized-provider-hint.ts:7
-#: src/pages/Auth.tsx:149
-#: src/pages/Auth.tsx:313
-#: src/pages/Auth.tsx:363
+#: src/pages/Auth.tsx:157
+#: src/pages/Auth.tsx:322
+#: src/pages/Auth.tsx:372
 #: src/pages/model-settings/subscription-sign-in.tsx:101
 #: src/pages/Onboarding.tsx:187
 msgid "Sign in"
@@ -4020,7 +4024,7 @@ msgstr "Sign in"
 #~ msgid "Sign in to Tangow"
 #~ msgstr "Sign in to Tangow"
 
-#: src/pages/Auth.tsx:159
+#: src/pages/Auth.tsx:167
 #: src/pages/Welcome.tsx:32
 msgid "Sign up"
 msgstr "Sign up"
@@ -4301,7 +4305,7 @@ msgstr "This invite is for {0}."
 msgid "This invite link has expired or was already used."
 msgstr "This invite link has expired or was already used."
 
-#: src/pages/Auth.tsx:398
+#: src/pages/Auth.tsx:410
 msgid "This link has expired or was already used."
 msgstr "This link has expired or was already used."
 
@@ -4310,8 +4314,8 @@ msgid "This permanently removes every message and stops current work. The chat r
 msgstr "This permanently removes every message and stops current work. The chat remains available."
 
 #: src/pages/Auth.tsx:334
-msgid "This reset link is invalid or expired"
-msgstr "This reset link is invalid or expired"
+#~ msgid "This reset link is invalid or expired"
+#~ msgstr "This reset link is invalid or expired"
 
 #: src/pages/shell/message-cards.tsx:248
 msgid "This server cannot be assigned without a bot."
@@ -4612,7 +4616,7 @@ msgstr "When to run"
 msgid "When to use"
 msgstr "When to use"
 
-#: src/pages/Auth.tsx:308
+#: src/pages/Auth.tsx:317
 msgid "Working…"
 msgstr "Working…"
 
@@ -4624,7 +4628,7 @@ msgstr "Workspace root"
 msgid "Write its first instructions"
 msgstr "Write its first instructions"
 
-#: src/pages/Auth.tsx:108
+#: src/pages/Auth.tsx:116
 msgid "Wrong email or password."
 msgstr "Wrong email or password."
 
@@ -4667,11 +4671,11 @@ msgstr "You'll be asked to confirm actions flagged as dangerous."
 msgid "Your answer: {answer}"
 msgstr "Your answer: {answer}"
 
-#: src/pages/Auth.tsx:276
+#: src/pages/Auth.tsx:285
 msgid "Your email address"
 msgstr "Your email address"
 
-#: src/pages/Auth.tsx:262
+#: src/pages/Auth.tsx:271
 msgid "Your name"
 msgstr "Your name"
 

@@ -200,6 +200,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   }
 
   if (mode === "forgot") {
+    const sentTo = email.trim();
     return (
       <OnboardingFrame
         onSubmit={submit}
@@ -225,7 +226,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
       >
         {resetSent ? (
           <p role="status">
-            <Trans>If {email} has an account, the link is in its inbox.</Trans>
+            <Trans>If {sentTo} has an account, the link is in its inbox.</Trans>
           </p>
         ) : (
           <FloatingField
@@ -333,14 +334,12 @@ export function PasswordResetPage() {
   const { t } = useLingui();
   const [params] = useSearchParams();
   const token = params.get("token");
-  const [step, setStep] = useState<ResetStep>(params.get("error") ? "expired" : "form");
+  const [step, setStep] = useState<ResetStep>(params.get("error") || !token ? "expired" : "form");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [pending, setPending] = useState(false);
   const [mismatch, setMismatch] = useState(false);
-  const [error, setError] = useState<string | null>(
-    token ? null : t`This reset link is invalid or expired`,
-  );
+  const [error, setError] = useState<string | null>(null);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -384,7 +383,7 @@ export function PasswordResetPage() {
       </>
     ) : (
       <>
-        <Button type="submit" size="full" disabled={pending || !token} aria-busy={pending}>
+        <Button type="submit" size="full" disabled={pending} aria-busy={pending}>
           <Trans>Reset password</Trans>
         </Button>
         <Link to="/sign-in">
