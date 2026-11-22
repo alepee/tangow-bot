@@ -1,6 +1,8 @@
 import { Trans, useLingui } from "@lingui/react/macro";
+import pave800 from "@tangow/avatars/onboarding/pave-800.webp";
+import pave1600 from "@tangow/avatars/onboarding/pave-1600.webp";
 import { readBoundedJsonResponse, signupRequiresEmailVerification } from "@tangow/core";
-import { Button, Input, Label } from "@tangow/ui-web";
+import { Button, FloatingField, Input, Label, OnboardingFrame } from "@tangow/ui-web";
 import { Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -30,11 +32,8 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   const sent = resetSent || searchParams.get("verify") === "email";
   // undefined while the capabilities request is in flight; null when it failed.
   const [reset, setReset] = useState<PasswordResetCapabilities | null>();
-  const passwordFieldId = mode === "in" ? "current-password" : "new-password";
   const title = sent ? (
     <Trans>Check your email</Trans>
-  ) : mode === "in" ? (
-    <Trans>Sign in to Tangow</Trans>
   ) : mode === "up" ? (
     <Trans>Create your Tangow</Trans>
   ) : (
@@ -99,7 +98,11 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
             })
           : await authClient.signIn.email({ email, password });
       if (result.error) {
-        setError(result.error.message ?? t`Could not continue`);
+        setError(
+          result.error.code === "INVALID_EMAIL_OR_PASSWORD"
+            ? t`Wrong email or password.`
+            : (result.error.message ?? t`Could not continue`),
+        );
         return;
       }
       if (mode === "up" && signupRequiresEmailVerification(result.data)) {
@@ -110,10 +113,84 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
       // The session refetch that follows sign-in/sign-up lets the route redirect; navigating
       // first would reach a guarded route without a user and flash the sign-in page.
     } catch {
-      setError(t`Could not reach the server`);
+      setError(t`Couldn't reach the server.`);
     } finally {
       setPending(false);
     }
+  }
+
+  const passwordToggle = (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      onClick={() => setShowPassword((shown) => !shown)}
+      aria-label={showPassword ? t`Hide password` : t`Show password`}
+      aria-pressed={showPassword}
+      className="absolute inset-y-0 end-2 my-auto text-muted-foreground"
+    >
+      {showPassword ? <EyeOff /> : <Eye />}
+    </Button>
+  );
+
+  if (mode === "in") {
+    return (
+      <OnboardingFrame
+        onSubmit={submit}
+        title={<Trans>Got the key?</Trans>}
+        scene={
+          <img
+            src={pave800}
+            srcSet={`${pave800} 800w, ${pave1600} 1600w`}
+            sizes="(max-width: 860px) calc(100vw - 32px), 55vw"
+            alt=""
+          />
+        }
+        actions={
+          <>
+            <Button type="submit" size="full" disabled={pending} aria-busy={pending}>
+              <Trans>Sign in</Trans>
+            </Button>
+            {reset?.passwordReset ? (
+              <Link to="/forgot-password">
+                <Trans>Forgot password?</Trans>
+              </Link>
+            ) : null}
+            <p>
+              <Trans>Don’t have an account?</Trans>{" "}
+              <Link to="/sign-up">
+                <Trans>Sign up</Trans>
+              </Link>
+            </p>
+          </>
+        }
+      >
+        <FloatingField
+          id="email"
+          name="email"
+          label={<Trans>Email</Trans>}
+          autoComplete="username"
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <FloatingField
+          id="current-password"
+          name="password"
+          label={<Trans>Password</Trans>}
+          autoComplete="current-password"
+          type={showPassword ? "text" : "password"}
+          required
+          minLength={8}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          error={error}
+        >
+          {passwordToggle}
+        </FloatingField>
+      </OnboardingFrame>
+    );
   }
 
   return (
@@ -158,16 +235,16 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
               className={fieldClass}
             />
           </div>
-          {mode !== "forgot" ? (
+          {mode === "up" ? (
             <div className="mt-4 w-full">
-              <Label htmlFor={passwordFieldId} className="text-muted-foreground">
+              <Label htmlFor="new-password" className="text-muted-foreground">
                 <Trans>Password</Trans>
               </Label>
               <div className="relative">
                 <Input
-                  id={passwordFieldId}
+                  id="new-password"
                   name="password"
-                  autoComplete={mode === "in" ? "current-password" : "new-password"}
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={t`Password`}
@@ -176,25 +253,8 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                   minLength={8}
                   className={`${fieldClass} pr-12`}
                 />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowPassword((shown) => !shown)}
-                  aria-label={showPassword ? t`Hide password` : t`Show password`}
-                  aria-pressed={showPassword}
-                  className="absolute inset-y-0 right-2 my-auto text-muted-foreground"
-                >
-                  {showPassword ? <EyeOff /> : <Eye />}
-                </Button>
+                {passwordToggle}
               </div>
-              {mode === "in" && reset?.passwordReset ? (
-                <div className="mt-2 text-right text-sm">
-                  <Link to="/forgot-password" className="font-medium text-foreground">
-                    <Trans>Forgot password?</Trans>
-                  </Link>
-                </div>
-              ) : null}
             </div>
           ) : null}
           {error ? (
@@ -210,8 +270,6 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
           >
             {pending ? (
               <Trans>Working…</Trans>
-            ) : mode === "in" ? (
-              <Trans>Continue with email</Trans>
             ) : mode === "forgot" ? (
               <Trans>Send reset link</Trans>
             ) : (
@@ -219,14 +277,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
             )}
           </Button>
           <p className="mt-8 text-muted-foreground">
-            {mode === "in" ? (
-              <>
-                <Trans>Don’t have an account?</Trans>{" "}
-                <Link to="/sign-up" className="font-medium text-foreground">
-                  <Trans>Sign up</Trans>
-                </Link>
-              </>
-            ) : mode === "up" ? (
+            {mode === "up" ? (
               <>
                 <Trans>Already have an account?</Trans>{" "}
                 <Link to="/sign-in" className="font-medium text-foreground">
