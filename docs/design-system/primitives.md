@@ -62,6 +62,8 @@ with its actions anchored at the foot so the title and the main button land at
 the same place on every step. Under 860 px wide the card sits above the box and
 the actions sit under the thumb; while a phone keyboard is up only the main
 button shows, just above it. Under 760 px tall the form tightens (`fieldShort`).
+A step with no field, such as a sent link, says its sentence in a `p` under the
+title (body size, `muted-foreground`).
 
 `FloatingField` is a Base UI `Field`: its real `<label>` is the accessible name,
 sits inside the empty field at 16 px and rises to 12 px on focus or once filled

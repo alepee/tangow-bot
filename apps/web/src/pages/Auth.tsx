@@ -2,7 +2,15 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import pave800 from "@tangow/avatars/onboarding/pave-800.webp";
 import pave1600 from "@tangow/avatars/onboarding/pave-1600.webp";
 import { readBoundedJsonResponse, signupRequiresEmailVerification } from "@tangow/core";
-import { Button, FloatingField, Input, Label, OnboardingFrame } from "@tangow/ui-web";
+import {
+  Button,
+  buttonVariants,
+  cn,
+  FloatingField,
+  Input,
+  Label,
+  OnboardingFrame,
+} from "@tangow/ui-web";
 import { Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -18,6 +26,15 @@ const submitClass = "mt-3 h-12 w-full rounded-full text-base";
 const AUTH_CAPABILITIES_TIMEOUT_MS = 8_000;
 const MAX_AUTH_CAPABILITIES_RESPONSE_BYTES = 64 * 1024;
 
+const paveScene = (
+  <img
+    src={pave800}
+    srcSet={`${pave800} 800w, ${pave1600} 1600w`}
+    sizes="(max-width: 860px) calc(100vw - 32px), 55vw"
+    alt=""
+  />
+);
+
 export function AuthPage({ mode }: { mode: AuthMode }) {
   const { t } = useLingui();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -30,16 +47,9 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   const [pending, setPending] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   // Signup triggers a session refresh that remounts the anonymous auth page.
-  const sent = resetSent || searchParams.get("verify") === "email";
+  const verifying = searchParams.get("verify") === "email";
   // undefined while the capabilities request is in flight; null when it failed.
   const [reset, setReset] = useState<PasswordResetCapabilities | null>();
-  const title = sent ? (
-    <Trans>Check your email</Trans>
-  ) : mode === "up" ? (
-    <Trans>Create your Tangow</Trans>
-  ) : (
-    <Trans>Reset your password</Trans>
-  );
 
   useEffect(() => {
     if (mode === "up") return;
@@ -140,14 +150,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
       <OnboardingFrame
         onSubmit={submit}
         title={<Trans>Got the key?</Trans>}
-        scene={
-          <img
-            src={pave800}
-            srcSet={`${pave800} 800w, ${pave1600} 1600w`}
-            sizes="(max-width: 860px) calc(100vw - 32px), 55vw"
-            alt=""
-          />
-        }
+        scene={paveScene}
         actions={
           <>
             <Button type="submit" size="full" disabled={pending} aria-busy={pending}>
@@ -196,9 +199,58 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
     );
   }
 
+  if (mode === "forgot") {
+    const sentTo = email.trim();
+    return (
+      <OnboardingFrame
+        onSubmit={submit}
+        title={resetSent ? <Trans>A new key is on its way.</Trans> : <Trans>Lost the key?</Trans>}
+        scene={paveScene}
+        actions={
+          <>
+            {resetSent ? null : (
+              <Button
+                type="submit"
+                size="full"
+                disabled={pending || reset === undefined}
+                aria-busy={pending}
+              >
+                <Trans>Send reset link</Trans>
+              </Button>
+            )}
+            <Link to="/sign-in">
+              <Trans>Back to sign in</Trans>
+            </Link>
+          </>
+        }
+      >
+        {resetSent ? (
+          <p role="status">
+            <Trans>If {sentTo} has an account, the link is in its inbox.</Trans>
+          </p>
+        ) : (
+          <FloatingField
+            id="email"
+            name="email"
+            label={<Trans>Email</Trans>}
+            autoComplete="username"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            error={error}
+          />
+        )}
+      </OnboardingFrame>
+    );
+  }
+
   return (
-    <AuthFrame onSubmit={submit} title={title}>
-      {sent ? (
+    <AuthFrame
+      onSubmit={submit}
+      title={verifying ? <Trans>Check your email</Trans> : <Trans>Create your Tangow</Trans>}
+    >
+      {verifying ? (
         <div className="w-full text-center">
           <Link to="/sign-in" className="font-medium text-foreground">
             <Trans>Back to sign in</Trans>
@@ -206,22 +258,20 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
         </div>
       ) : (
         <>
-          {mode === "up" ? (
-            <div className="mb-4 w-full">
-              <Label htmlFor="name" className="text-muted-foreground">
-                <Trans>Name</Trans>
-              </Label>
-              <Input
-                id="name"
-                name="name"
-                autoComplete="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder={t`Your name`}
-                className={fieldClass}
-              />
-            </div>
-          ) : null}
+          <div className="mb-4 w-full">
+            <Label htmlFor="name" className="text-muted-foreground">
+              <Trans>Name</Trans>
+            </Label>
+            <Input
+              id="name"
+              name="name"
+              autoComplete="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={t`Your name`}
+              className={fieldClass}
+            />
+          </div>
           <div className="w-full">
             <Label htmlFor="email" className="text-muted-foreground">
               <Trans>Email</Trans>
@@ -238,60 +288,39 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
               className={fieldClass}
             />
           </div>
-          {mode === "up" ? (
-            <div className="mt-4 w-full">
-              <Label htmlFor="new-password" className="text-muted-foreground">
-                <Trans>Password</Trans>
-              </Label>
-              <div className="relative">
-                <Input
-                  id="new-password"
-                  name="password"
-                  autoComplete="new-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={t`Password`}
-                  type={showPassword ? "text" : "password"}
-                  required
-                  minLength={8}
-                  className={`${fieldClass} pr-12`}
-                />
-                {passwordToggle}
-              </div>
+          <div className="mt-4 w-full">
+            <Label htmlFor="new-password" className="text-muted-foreground">
+              <Trans>Password</Trans>
+            </Label>
+            <div className="relative">
+              <Input
+                id="new-password"
+                name="password"
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={t`Password`}
+                type={showPassword ? "text" : "password"}
+                required
+                minLength={8}
+                className={`${fieldClass} pr-12`}
+              />
+              {passwordToggle}
             </div>
-          ) : null}
+          </div>
           {error ? (
             <p role="alert" className="mt-3 w-full text-sm text-destructive">
               {error}
             </p>
           ) : null}
-          <Button
-            type="submit"
-            size="lg"
-            disabled={pending || (mode === "forgot" && reset === undefined)}
-            className={submitClass}
-          >
-            {pending ? (
-              <Trans>Working…</Trans>
-            ) : mode === "forgot" ? (
-              <Trans>Send reset link</Trans>
-            ) : (
-              <Trans>Create account</Trans>
-            )}
+          <Button type="submit" size="lg" disabled={pending} className={submitClass}>
+            {pending ? <Trans>Working…</Trans> : <Trans>Create account</Trans>}
           </Button>
           <p className="mt-8 text-muted-foreground">
-            {mode === "up" ? (
-              <>
-                <Trans>Already have an account?</Trans>{" "}
-                <Link to="/sign-in" className="font-medium text-foreground">
-                  <Trans>Sign in</Trans>
-                </Link>
-              </>
-            ) : (
-              <Link to="/sign-in" className="font-medium text-foreground">
-                <Trans>Back to sign in</Trans>
-              </Link>
-            )}
+            <Trans>Already have an account?</Trans>{" "}
+            <Link to="/sign-in" className="font-medium text-foreground">
+              <Trans>Sign in</Trans>
+            </Link>
           </p>
         </>
       )}
@@ -299,22 +328,25 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   );
 }
 
+type ResetStep = "form" | "expired" | "done";
+
 export function PasswordResetPage() {
   const { t } = useLingui();
   const [params] = useSearchParams();
+  const token = params.get("token");
+  const [step, setStep] = useState<ResetStep>(params.get("error") || !token ? "expired" : "form");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [pending, setPending] = useState(false);
-  const [complete, setComplete] = useState(false);
-  const [error, setError] = useState<string | null>(
-    params.get("error") || !params.get("token") ? t`This reset link is invalid or expired` : null,
-  );
+  const [mismatch, setMismatch] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    const token = params.get("token");
     if (!token) return;
-    if (password !== confirmation) {
+    const mismatched = password !== confirmation;
+    setMismatch(mismatched);
+    if (mismatched) {
       setError(t`Passwords do not match`);
       return;
     }
@@ -322,63 +354,88 @@ export function PasswordResetPage() {
     setError(null);
     try {
       const result = await authClient.resetPassword({ newPassword: password, token });
-      if (result.error) {
-        setError(result.error.message ?? t`Could not reset password`);
-        return;
-      }
-      setComplete(true);
+      if (result.error?.code === "INVALID_TOKEN") setStep("expired");
+      else if (result.error) setError(result.error.message ?? t`Could not reset password`);
+      else setStep("done");
     } catch {
-      setError(t`Could not reach the server`);
+      setError(t`Couldn't reach the server.`);
     } finally {
       setPending(false);
     }
   }
 
+  const actions =
+    step === "done" ? (
+      <Link to="/sign-in">
+        <Trans>Sign in</Trans>
+      </Link>
+    ) : step === "expired" ? (
+      <>
+        <Link
+          to="/forgot-password"
+          className={cn(buttonVariants({ size: "full" }), "no-underline")}
+        >
+          <Trans>Send a new link</Trans>
+        </Link>
+        <Link to="/sign-in">
+          <Trans>Back to sign in</Trans>
+        </Link>
+      </>
+    ) : (
+      <>
+        <Button type="submit" size="full" disabled={pending} aria-busy={pending}>
+          <Trans>Reset password</Trans>
+        </Button>
+        <Link to="/sign-in">
+          <Trans>Back to sign in</Trans>
+        </Link>
+      </>
+    );
+
   return (
-    <AuthFrame onSubmit={submit} title={<Trans>Choose a new password</Trans>}>
-      {complete ? (
-        <div role="status" className="w-full text-center">
-          <p className="text-lg">
-            <Trans>Password updated</Trans>
-          </p>
-          <Link to="/sign-in" className="mt-6 inline-flex font-medium">
-            <Trans>Sign in</Trans>
-          </Link>
-        </div>
+    <OnboardingFrame
+      onSubmit={submit}
+      title={<Trans>Reset your password</Trans>}
+      scene={paveScene}
+      actions={actions}
+    >
+      {step === "done" ? (
+        <p role="status">
+          <Trans>Password updated</Trans>
+        </p>
+      ) : step === "expired" ? (
+        <p role="alert">
+          <Trans>This link has expired or was already used.</Trans>
+        </p>
       ) : (
         <>
-          <PasswordField
+          <FloatingField
             id="new-password"
-            label={t`New password`}
+            name="new-password"
+            label={<Trans>New password</Trans>}
+            autoComplete="new-password"
+            type="password"
+            required
+            minLength={8}
             value={password}
-            onChange={setPassword}
+            onChange={(e) => setPassword(e.target.value)}
           />
-          <PasswordField
+          <FloatingField
             id="confirm-password"
-            label={t`Confirm password`}
+            name="confirm-password"
+            label={<Trans>Confirm password</Trans>}
+            autoComplete="new-password"
+            type="password"
+            required
+            minLength={8}
             value={confirmation}
-            onChange={setConfirmation}
-            className="mt-4"
+            onChange={(e) => setConfirmation(e.target.value)}
+            error={error}
+            invalid={mismatch}
           />
-          {error ? (
-            <p role="alert" className="mt-3 w-full text-sm text-destructive">
-              {error}
-            </p>
-          ) : null}
-          <Button
-            type="submit"
-            size="lg"
-            disabled={pending || !params.get("token")}
-            className={submitClass}
-          >
-            {pending ? <Trans>Working…</Trans> : <Trans>Reset password</Trans>}
-          </Button>
-          <Link to="/sign-in" className="mt-6 font-medium">
-            <Trans>Back to sign in</Trans>
-          </Link>
         </>
       )}
-    </AuthFrame>
+    </OnboardingFrame>
   );
 }
 
@@ -403,39 +460,6 @@ function AuthFrame({
         </h1>
         {children}
       </form>
-    </div>
-  );
-}
-
-function PasswordField({
-  id,
-  label,
-  value,
-  onChange,
-  className = "",
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  className?: string;
-}) {
-  return (
-    <div className={`w-full ${className}`}>
-      <Label htmlFor={id} className="text-muted-foreground">
-        {label}
-      </Label>
-      <Input
-        id={id}
-        name={id}
-        autoComplete="new-password"
-        type="password"
-        required
-        minLength={8}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className={fieldClass}
-      />
     </div>
   );
 }

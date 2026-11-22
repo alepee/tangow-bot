@@ -86,6 +86,13 @@
     text-wrap: balance;
   }
 
+  .rk-onboarding-screen > p {
+    margin: 0;
+    font-size: var(--type-body-size);
+    line-height: var(--type-body-leading);
+    color: var(--muted-foreground);
+  }
+
   .rk-onboarding-actions {
     display: flex;
     flex-direction: column;
