@@ -134,9 +134,7 @@ export const Composer = memo(function Composer({
   const tokens = segments.filter((segment) => segment.kind !== "text");
   const skillLeads = segments[0]?.kind === "skill";
   const canSend =
-    draft.trim().length > 0 ||
-    pendingAttachments.length > 0 ||
-    (rewindArtifacts?.length ?? 0) > 0;
+    draft.trim().length > 0 || pendingAttachments.length > 0 || (rewindArtifacts?.length ?? 0) > 0;
 
   const rewindDraftKey = rewindDraft?.key ?? null;
   const rewindDraftText = rewindDraft?.text ?? "";
