@@ -115,9 +115,9 @@ test("account settings language picker includes French and persists it", async (
   await expect(settings.getByRole("heading", { name: "Langue", exact: true })).toBeVisible();
   await expect(picker).toHaveText("Français");
   await expect(page.locator("html")).toHaveAttribute("lang", "fr");
-  await page.reload();
-  await expect(page.locator("html")).toHaveAttribute("lang", "fr");
   await captureScreenshot(page, testInfo, "ui-locale-settings-fr");
   await page.setViewportSize({ width: 390, height: 844 });
   await captureScreenshot(page, testInfo, "ui-locale-settings-fr-phone");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("lang", "fr");
 });
