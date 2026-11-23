@@ -311,7 +311,7 @@ function RoutineMessage({
     <>
       {inGroup ? null : origin}
       <MessageRow
-        avatar={<BotAvatar {...avatarLookup(context.peerBot)(item.botId)} size={26} />}
+        avatar={<BotAvatar {...avatarLookup(context.peerBot)(item.botId)} size={32} />}
         author={
           <>
             <span dir="auto">{context.memberName?.(item.botId) ?? bot?.name ?? t`Bot`}</span>

@@ -119,6 +119,9 @@ test("a long working line is cut with an ellipsis, never widening a phone screen
 
   const row = page.getByTestId("working-line-long");
   await expect(row).toBeVisible();
+  await expect(
+    row.locator('.tangow-clay-avatar[data-working="true"] .tangow-clay-face'),
+  ).toBeVisible();
   const label = row.locator('[data-slot="working-line-label"]');
   // The label overflows its own box (so the ellipsis shows) while the page stays phone-wide.
   expect(await label.evaluate((el) => el.scrollWidth > el.clientWidth)).toBe(true);

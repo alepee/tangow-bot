@@ -136,7 +136,7 @@ function CharacterPicker({
         className="group relative rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         <span key={swaps} className={swaps > 0 ? "block animate-swap" : "block"}>
-          <BotAvatar character={character} size={80} status={bot.status} />
+          <BotAvatar character={character} size={80} status={bot.status} live />
         </span>
         {disabled ? null : (
           <span

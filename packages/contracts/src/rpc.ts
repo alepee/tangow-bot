@@ -403,6 +403,10 @@ export const appContract = {
         }),
       )
       .output(ThreadMessagePageSchema),
+    /** What the bot and one peer, a bot or a connected agent, said to each other, newest page first. */
+    peerMessages: oc
+      .input(botId.extend({ peerBotId: z.string().min(1), before: EntryId.optional() }))
+      .output(ThreadMessagePageSchema),
     subscribe: oc
       .input(threadTarget.safeExtend({ cursor: z.number().int().min(-1) }))
       .output(eventIterator(ProductEventSchema)),

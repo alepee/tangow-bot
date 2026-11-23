@@ -27,7 +27,9 @@ import {
   groupLeadBotId,
   isActive,
   resolveGroupTargetBotIds,
+  routineResultBlocks,
   runFailureError,
+  stripMentionToken,
 } from "@tangow/core";
 import type { DraftLeft } from "@tangow/db";
 import {
@@ -39,6 +41,7 @@ import {
   createThreadMessageInTransaction,
   dismissProposalWithTextInTransaction,
   expireComputerExecutionLeases,
+  groupMembershipFilter,
   groupThreadPeople,
   IsolationError,
   lockGroupForPerson,
@@ -48,6 +51,7 @@ import {
   progressSinceLastEntry,
   resumeAskWithComposerTextInTransaction,
   runsOfMessage,
+  sessionEntryFromRow,
   sharedBotThread,
   type ThreadEvents,
   threadEntryByNonce,
@@ -176,7 +180,7 @@ function isPeerRunRow(run: { trigger: string }): boolean {
   return run.trigger === "bot_message";
 }
 
-/** The blocks of the message a reply targets in the thread: a person's, or a bot's whole run. */
+/** The blocks of the message a reply targets in the thread: a person's, a bot's whole run, or a routine's result. */
 async function repliedBlocks(
   tx: Prisma.TransactionClient,
   threadId: string,
@@ -189,11 +193,18 @@ async function repliedBlocks(
   if (!target) return null;
   if (!target.runId) return blocksOf(target);
   const run = await tx.sessionEntry.findMany({
-    where: { sessionId: target.sessionId, runId: target.runId, type: "assistant.text" },
+    where: {
+      sessionId: target.sessionId,
+      runId: target.runId,
+      type: { in: ["assistant.text", "routine.finished"] },
+    },
     orderBy: { seq: "asc" },
-    select: { payload: true },
   });
-  return run.flatMap(blocksOf);
+  return run.flatMap((row) => {
+    if (row.type !== "routine.finished") return blocksOf(row);
+    const entry = sessionEntryFromRow(row);
+    return entry.type === "routine.finished" ? routineResultBlocks(entry.payload) : [];
+  });
 }
 
 function quoteAppearsInBlocks(quote: string, blocks: MessageBlock[]): boolean {
@@ -254,6 +265,22 @@ async function resolveOwnedConnectorDisplayNames(
   if (rows.length !== connectionIds.length) throw new IsolationError();
   const byId = new Map(rows.map((row) => [row.id, row.displayName]));
   return connectionIds.map((id) => byId.get(id) ?? "connector");
+}
+
+/** Names of the groups a message mentions, each one the sender is a person in. */
+async function resolveMentionedGroupNames(
+  tx: Prisma.TransactionClient,
+  actor: Actor,
+  groupIds: string[],
+) {
+  if (!groupIds.length) return [];
+  const rows = await tx.chatGroup.findMany({
+    where: { id: { in: groupIds }, ...groupMembershipFilter(actor.userId, actor.spaceId) },
+    select: { id: true, name: true },
+  });
+  if (rows.length !== groupIds.length) throw new IsolationError();
+  const byId = new Map(rows.map((row) => [row.id, row.name]));
+  return groupIds.map((id) => byId.get(id) ?? "group");
 }
 
 function sendRunClientNonce(
@@ -819,6 +846,11 @@ export async function sendThreadMessage(
           actor,
           mentionTargets.connectorMentionIds,
         );
+        const groupNames = await resolveMentionedGroupNames(
+          tx,
+          actor,
+          mentionTargets.groupMentionIds,
+        );
         const blocks = buildUserMessageBlocks(input.text, attachmentBlocks, {
           linkPreview: input.linkPreview,
         });
@@ -924,7 +956,7 @@ export async function sendThreadMessage(
             botId: target.botId,
             threadId: target.threadId,
             userId: actor.userId,
-            prompt: buildSendPrompt(input.text, artifacts, connectorNames),
+            prompt: buildSendPrompt(input.text, artifacts, connectorNames, groupNames),
             status: "queued",
           },
         });
@@ -958,9 +990,15 @@ export async function sendThreadMessage(
       const { members } = group;
       const memberBotIds = members.map((member) => member.botId);
       const mentionTargets = splitMentionTargets(input.mentions);
-      // Each woken bot runs as the sender, so only a bot they can use wakes.
+      const groupNames = await resolveMentionedGroupNames(
+        tx,
+        actor,
+        mentionTargets.groupMentionIds,
+      );
+      // Each woken bot runs as the sender, so only a bot they can use wakes. A mentioned group's
+      // name is only a reference: it never wakes a bot whose name it starts with.
       const targetBotIds = resolveGroupTargetBotIds({
-        text: input.text ?? "",
+        text: groupNames.reduce((text, name) => stripMentionToken(text, name), input.text ?? ""),
         members: members.map((member) => ({ id: member.botId, name: member.name })),
         explicitMentions: mentionTargets.botMentionIds,
         leadBotId: group.leadBotId,
@@ -1096,7 +1134,7 @@ export async function sendThreadMessage(
             botId,
             threadId: target.threadId,
             userId: actor.userId,
-            prompt: buildSendPrompt(input.text, artifacts, connectorNames),
+            prompt: buildSendPrompt(input.text, artifacts, connectorNames, groupNames),
             status: "queued",
           },
         });

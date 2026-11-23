@@ -239,7 +239,7 @@ export const MessageView = memo(function MessageView({
             className="size-message text-label"
           />
         ) : (
-          <BotAvatar character={author?.avatarCharacter} size={26} />
+          <BotAvatar character={author?.avatarCharacter} size={32} />
         )
       }
       author={<span dir="auto">{person?.name ?? speakerName ?? author?.name ?? t`Bot`}</span>}

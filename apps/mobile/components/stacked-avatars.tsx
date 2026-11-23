@@ -70,6 +70,7 @@ export function StackedAvatars({
             character={item.character}
             size={size}
             status={item.working ? "running" : undefined}
+            still
           />
         </View>
       ))}

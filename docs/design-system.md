@@ -61,10 +61,15 @@ Bot widgets use the shared [widget kit](../packages/core/src/widget/kit.ts) and 
 - `animate-arrive` for a message, block or capsule entering; capsules in one row
   stagger 60 ms apart.
 - `rk-press` on anything pressable; `duration-(--duration-hover)` for hover.
-- **Nothing loops continuously except the avatar of a bot that is working.**
+- **Nothing loops continuously except a live clay face**: always on the bot
+  page hero and in the conversation header, elsewhere only while its bot works
+  and for its brief end-of-run reaction, never at 20 px and below. On web all
+  live faces share one frame loop, which stops when none is left; on iPhone
+  each face runs native animations that stop when it unmounts.
 - `prefers-reduced-motion: reduce` stops `animate-arrive`, `rk-press`,
-  `rk-press-round`, `rk-press-tile`, `rk-bar`, `rk-dot`, `rk-shimmer`, `rk-buzz` and the working ring's spin, and freezes every `useElapsed`
-  duration. The working ring stays, still.
+  `rk-press-round`, `rk-press-tile`, `rk-bar`, `rk-dot` and `rk-shimmer`, freezes every `useElapsed`
+  duration and holds every live face still: no blink or glance, and an
+  expression changes without a fade.
 - `prefers-reduced-transparency: reduce` (Reduce Transparency on macOS and
   iOS, `AccessibilityInfo.isReduceTransparencyEnabled` on iPhone) turns every
   material opaque (see [Material](design-system/materials.md#material)). The ambient light and the layout stay.
