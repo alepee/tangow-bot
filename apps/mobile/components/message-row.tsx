@@ -7,7 +7,7 @@ import { useThemedStyles } from "../lib/native";
 import { nativeTextStyle } from "../lib/typography";
 
 export interface MessageRowProps extends Omit<ViewProps, "children"> {
-  /** A working `BotAvatar` at `sizes.message` (26). Ignored in `mono`. */
+  /** A working `BotAvatar` at `sizes.message` (32). Ignored in `mono`. */
   avatar?: ReactNode;
   /** The bot's name, 13/500. Ignored in `mono`. */
   author?: ReactNode;

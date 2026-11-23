@@ -251,6 +251,7 @@ export function projectThread(
           };
           shownBy.set(segment.id, routine.id);
           if (payload.status === "completed" && payload.result.trim()) {
+            messageIds.set(routine.id, routine.id);
             routine.ts = segment.ts;
             const from = items.indexOf(routine);
             items.splice(from, 1);

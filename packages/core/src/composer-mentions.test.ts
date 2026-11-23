@@ -19,7 +19,7 @@ describe("buildComposerMentionOptions", () => {
       query: "",
       includeEveryone: true,
       bots: [{ id: "b1", name: "Chief", color: "#111" }],
-      groups: [{ id: "g1", name: "Planning" }],
+      groups: [{ id: "g1", name: "Planning", botIds: ["b1"] }],
       routines: [
         { id: "r1", name: "Daily digest", crons: ["0 9 * * 1-5"], botId: "b1", botName: "Chief" },
       ],
@@ -66,13 +66,28 @@ describe("buildComposerMentionOptions", () => {
       currentGroupId: "g1",
       bots: [],
       groups: [
-        { id: "g1", name: "Here" },
-        { id: "g2", name: "Elsewhere" },
+        { id: "g1", name: "Here", botIds: [] },
+        { id: "g2", name: "Elsewhere", botIds: [] },
       ],
       routines: [],
       connectors: [],
     });
     expect(options.map((option) => option.id)).toEqual(["g2"]);
+  });
+
+  it("offers only the current bot's groups in its thread", () => {
+    const options = buildComposerMentionOptions({
+      query: "",
+      currentBotId: "b1",
+      bots: [],
+      groups: [
+        { id: "g1", name: "Joined", botIds: ["b1", "b2"] },
+        { id: "g2", name: "Other", botIds: ["b2"] },
+      ],
+      routines: [],
+      connectors: [],
+    });
+    expect(options.map((option) => option.id)).toEqual(["g1"]);
   });
 
   it("filters by query before applying limit so later kinds stay reachable", () => {
@@ -112,31 +127,18 @@ describe("buildComposerMentionOptions", () => {
 });
 
 describe("resolveComposerSendPlan", () => {
-  it("opens a chip-only @Group from a 1:1 without sending", () => {
+  it("keeps a chip-only @Group in the current thread as a mention", () => {
     const plan = resolveComposerSendPlan({
       text: "@Planning",
       mentions: [{ kind: "group", id: "g1", name: "Planning" }],
       hasAttachments: false,
     });
-    expect(plan.isNoOp).toBe(false);
-    expect(plan.shouldSend).toBe(false);
-    expect(plan.shouldOpenGroup).toBe(true);
-    expect(plan.rerouteGroupId).toBe("g1");
-    expect(plan.trimmed).toBe("");
-  });
-
-  it("sends leftover text into the mentioned group", () => {
-    const plan = resolveComposerSendPlan({
-      text: "@Planning follow up",
-      mentions: [{ kind: "group", id: "g1", name: "Planning" }],
-      hasAttachments: false,
-    });
     expect(plan.shouldSend).toBe(true);
-    expect(plan.shouldOpenGroup).toBe(true);
-    expect(plan.trimmed).toBe("follow up");
+    expect(plan.trimmed).toBe("@Planning");
+    expect(plan.mentionPayload).toEqual([{ kind: "group", id: "g1" }]);
   });
 
-  it("runs routines then opens the group when both chips have no text", () => {
+  it("runs routines and still sends the group reference", () => {
     const plan = resolveComposerSendPlan({
       text: "@Planning @Digest",
       mentions: [
@@ -145,23 +147,11 @@ describe("resolveComposerSendPlan", () => {
       ],
       hasAttachments: false,
     });
-    expect(plan.shouldRunRoutines).toBe(true);
     expect(plan.routineIds).toEqual(["r1"]);
-    expect(plan.shouldOpenGroup).toBe(true);
-    expect(plan.shouldSend).toBe(false);
-    expect(plan.isNoOp).toBe(false);
-  });
-
-  it("opens another group from inside a group thread", () => {
-    const plan = resolveComposerSendPlan({
-      text: "@Other",
-      mentions: [{ kind: "group", id: "g2", name: "Other" }],
-      hasAttachments: false,
-    });
-    expect(plan.shouldOpenGroup).toBe(true);
-    expect(plan.rerouteGroupId).toBe("g2");
-    expect(plan.shouldSend).toBe(false);
-    expect(plan.isNoOp).toBe(false);
+    expect(plan.shouldRunRoutines).toBe(true);
+    expect(plan.shouldSend).toBe(true);
+    expect(plan.trimmed).toBe("@Planning");
+    expect(plan.mentionPayload).toEqual([{ kind: "group", id: "g1" }]);
   });
 });
 

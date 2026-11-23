@@ -268,7 +268,7 @@
   --size-interstitial: 17px;
   --size-chip: 18px;
   --size-stack: 20px;
-  --size-message: 26px;
+  --size-message: 32px;
   --size-row: 28px;
   --size-call: 120px;
   --size-hover-icon: 28px;
@@ -292,6 +292,8 @@
   --size-link-photo-max: 320px;
   --size-link-mention-icon: 16px;
   --size-link-mention-gap: 5px;
+  --size-mention-glyph: 16px;
+  --size-mention-gap: 4px;
   --size-share-bar: 8px;
   --duration-arrive: 240ms;
   --duration-press: 160ms;

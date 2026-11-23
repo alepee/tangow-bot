@@ -389,7 +389,7 @@ export const sizes = {
   interstitial: 17,
   chip: 18,
   stack: 20,
-  message: 26,
+  message: 32,
   row: 28,
   call: 120,
   hoverIcon: 28,
@@ -428,6 +428,10 @@ export const sizes = {
   linkMentionIcon: 16,
   /** Space between a link mention's icon and its label. */
   linkMentionGap: 5,
+  /** The glyph of a bot, group, everyone or skill mention, inline in the text (web and iOS). */
+  mentionGlyph: 16,
+  /** Space between a mention's glyph and its name. */
+  mentionGap: 4,
   /** Height of a share bar: the usage screen's split of spend. */
   shareBar: 8,
 } as const satisfies Record<string, number>;

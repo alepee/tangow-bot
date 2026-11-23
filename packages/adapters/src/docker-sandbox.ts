@@ -19,7 +19,7 @@ import type {
 import { boundedSandboxCommandTimeoutMs, resolveSupervisorToken } from "@tangow/core";
 import { outgoingCorrelationHeaders } from "@tangow/logging";
 import { z } from "zod";
-import { screenSessionKey } from "./computer-screens.js";
+import { ComputerScreenUnavailableError, screenSessionKey } from "./computer-screens.js";
 import {
   boundedComputerActions,
   clampRounded,
@@ -290,7 +290,7 @@ export class DockerSandboxProvider implements SandboxProvider {
       if (/cannot allocate another screen/i.test(detail)) {
         throw new Error("This Team Computer cannot allocate another screen.");
       }
-      return { url: null, mimeType: "text/html", close: async () => undefined };
+      throw new ComputerScreenUnavailableError();
     }
     const body = await readSandboxJson<{ screenUrl?: string }>(res, context.signal);
     return {

@@ -39,13 +39,17 @@ tags:
 - tapOn:
     text: "Don’t allow"
     optional: true
-# iOS offers to save the password over the inbox.
-- tapOn:
-    text: "Not Now"
-    optional: true
-
+# iOS can drop that alert before the tap, which then opens an inbox row; start from the inbox.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - runFlow:
+          file: subflows/open-link.yaml
+          env:
+            LINK: "tangow:///"
 - extendedWaitUntil:
-    visible: "Researcher"
+    visible: "Researcher.*"
     timeout: 30000
 - takeScreenshot: "04-inbox"
 
@@ -57,72 +61,105 @@ tags:
 
 - tapOn: "Search"
 - inputText: "fixture"
-- hideKeyboard
+# iOS hides the keyboard with a tap that can land on a result; submitting closes it instead.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - pressKey: Enter
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
 - extendedWaitUntil:
-    visible: "Weekly fixture review"
+    visible: "Weekly fixture review(, .*)?"
     timeout: 10000
 - takeScreenshot: "06-search-results"
 
-- openLink: "tangow:///new"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///new"
 - assertVisible: "Name this bot"
 - takeScreenshot: "07-new-bot"
 
-- openLink: "tangow:///new-group"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///new-group"
 - assertVisible: "Name this group"
 - takeScreenshot: "08-new-group"
 
-- openLink: "tangow:///new-space"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///new-space"
 - assertVisible: "Customer support"
 - takeScreenshot: "09-new-space"
 
-- openLink: "tangow:///account"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///account"
 - extendedWaitUntil:
-    visible: "Integrations"
+    visible: "Integrations(, .*)?"
     timeout: 10000
 - takeScreenshot: "10-settings"
-- tapOn: "Usage"
+- tapOn: "Usage(, .*)?"
 - extendedWaitUntil:
     visible: "Model spend uses your provider keys."
     timeout: 10000
 - takeScreenshot: "10d-usage"
-- back
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///account"
 
-- tapOn: "Computer"
+- tapOn: "Computer(, .*)?"
 - extendedWaitUntil:
-    visible: "Update all computers|No computers"
+    visible: "Update all computers|No computers|(Private|Team) Computer"
     timeout: 10000
 - takeScreenshot: "10c-computer-settings"
-- back
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///account"
 
-- tapOn: "Vault"
+- tapOn: "Vault(, .*)?"
 - extendedWaitUntil:
-    visible: "example_api"
+    visible: "example_api(, .*)?"
     timeout: 10000
 # The teammate's key, shared with the screenshot user, is listed read-only.
 - assertVisible: "Shared with you"
-- assertVisible: "release_api"
+- assertVisible: "release_api(, .*)?"
 - takeScreenshot: "10f-vault"
-- tapOn: "example_api"
+- tapOn: "example_api(, .*)?"
 - assertVisible: "Key"
 - extendedWaitUntil:
     visible: "Shared with"
     timeout: 10000
-- assertVisible: "Grace Hopper"
+- assertVisible: "Grace Hopper(, .*)?"
 - takeScreenshot: "10g-vault-replace"
 - tapOn: "Cancel"
-- back
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///account"
 
-- tapOn: ${TANGOW_SCREENSHOT_EMAIL}
+- tapOn: ".*${TANGOW_SCREENSHOT_EMAIL}.*"
 - extendedWaitUntil:
-    visible: "Change password"
+    visible: "Change password(, .*)?"
     timeout: 10000
 - takeScreenshot: "10e-profile"
-- tapOn: "Change password"
+- tapOn: "Change password(, .*)?"
 - assertVisible: "Current password"
 - takeScreenshot: "10b-change-password"
-- back
 
-- openLink: "tangow:///models"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///models"
 - extendedWaitUntil:
     visible: "Active model"
     timeout: 10000
@@ -136,8 +173,11 @@ tags:
 - tapOn: "Scripted.*"
 - takeScreenshot: "11-models"
 
-- openLink: "tangow:///account"
-- tapOn: "Providers"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///account"
+- tapOn: "Providers(, .*)?"
 - extendedWaitUntil:
     visible: "Models"
     timeout: 10000
@@ -149,58 +189,100 @@ tags:
 - scrollUntilVisible:
     element: "Show less"
     direction: DOWN
+    # Each swipe takes about four seconds; the full list needs more than the default 20.
+    timeout: 40000
 - takeScreenshot: "11b-all-providers"
 
-- openLink: "tangow:///voice"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///voice"
 - extendedWaitUntil:
     visible: "Connect a voice provider"
     timeout: 10000
 - takeScreenshot: "12-voice"
 
-- openLink: "tangow:///integrations"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///integrations"
 - extendedWaitUntil:
     visible: "Search apps"
     timeout: 10000
 - takeScreenshot: "13-integrations"
-- tapOn:
-    id: "integrations-advanced"
-- assertVisible: "Add MCP server"
-- takeScreenshot: "14-integrations-advanced"
 
-- openLink: "tangow:///skills"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///custom-apps"
+- extendedWaitUntil:
+    visible: "App URL"
+    timeout: 10000
+- takeScreenshot: "14-custom-apps"
+
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///skills"
 - extendedWaitUntil:
     visible: "New skill"
     timeout: 10000
 - takeScreenshot: "14b-skills"
-- tapOn: "team-review"
+# Bundled skills come first.
+- scrollUntilVisible:
+    element: "team-review(, .*)?"
+    direction: DOWN
+- tapOn: "team-review(, .*)?"
 - assertVisible: "Review shared work before publishing."
 - assertVisible: "Content lives on the shared volume."
 - takeScreenshot: "14c-shared-skill"
 
-- openLink: "tangow:///thread?botId=${TANGOW_SCREENSHOT_BOT_ID}&name=Researcher"
-- extendedWaitUntil:
-    visible: "The fixture workspace is ready."
-    timeout: 10000
-- assertNotVisible: "Reply"
-- assertNotVisible: "Select text"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///thread?botId=${TANGOW_SCREENSHOT_BOT_ID}&name=Researcher"
+# The image stacks seeded after it push the exchange above the fold.
+- scrollUntilVisible:
+    element: "The fixture workspace is ready."
+    direction: UP
+    timeout: 20000
+    # Off center it can stop under the header, where a long press opens the bot's menu.
+    centerElement: true
+- assertNotVisible: "(.*, )?Reply"
+- assertNotVisible: "(.*, )?Select text"
 - takeScreenshot: "15-thread"
 - longPressOn: "The fixture workspace is ready."
-- assertVisible: "Reply"
-- assertVisible: "Speak message"
-- assertVisible: "Copy"
-- assertVisible: "Select text"
+- assertVisible: "(.*, )?Reply"
+- assertVisible: "(.*, )?Speak message"
+- assertVisible: "(.*, )?Copy"
+- assertVisible: "(.*, )?Select text"
 - takeScreenshot: "15b-message-actions"
-- tapOn: "Select text"
-- assertNotVisible: "Reply"
+- tapOn: "(.*, )?Select text"
+- assertNotVisible: "(.*, )?Reply"
 - takeScreenshot: "15d-message-select-text"
 - back
 # User messages have no Speak.
+- scrollUntilVisible:
+    element: "Summarize the fixture launch checklist."
+    direction: UP
 - longPressOn: "Summarize the fixture launch checklist."
-- assertVisible: "Reply"
-- assertVisible: "Copy"
-- assertNotVisible: "Speak message"
-- tapOn: "Reply"
+- assertVisible: "(.*, )?Reply"
+- assertVisible: "(.*, )?Copy"
+- assertNotVisible: "(.*, )?Speak message"
+- tapOn: "(.*, )?Reply"
 - assertVisible: "Replying to"
+- tapOn: "Cancel reply"
+# A routine's result acts as a bot message.
+- scrollUntilVisible:
+    element: "Two open questions remain on the fixture launch."
+    direction: DOWN
+- longPressOn: "Two open questions remain on the fixture launch."
+- assertVisible: "(.*, )?Reply"
+- assertVisible: "(.*, )?Copy"
+- takeScreenshot: "15e-routine-actions"
+- tapOn: "(.*, )?Reply"
+- assertVisible: "Replying to"
+- takeScreenshot: "15f-routine-reply"
 - tapOn: "Cancel reply"
 # Bot actions live on a long press of the header title (its accessible name
 # is the bot's name; a short press opens the bot's page).
@@ -220,13 +302,16 @@ tags:
     commands:
       - back
 
-- openLink: "tangow:///bot?botId=${TANGOW_SCREENSHOT_BOT_ID}&tab=settings"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///bot?botId=${TANGOW_SCREENSHOT_BOT_ID}&tab=settings"
 - extendedWaitUntil:
-    visible: "Instructions"
+    visible: "Instructions(, .*)?"
     timeout: 10000
-- assertVisible: "Voice and replies"
-- assertVisible: "Model"
-- assertVisible: "Space default.*"
+- assertVisible: "Voice and replies(, .*)?"
+- assertVisible: "Model(, .*)?"
+- assertVisible: "(.*, )?Space default.*"
 - takeScreenshot: "17-bot-settings"
 - tapOn: "Appearance"
 - extendedWaitUntil:
@@ -234,22 +319,37 @@ tags:
     timeout: 10000
 - takeScreenshot: "17b-bot-appearance"
 
-- openLink: "tangow:///computer?botId=${TANGOW_SCREENSHOT_BOT_ID}&name=Researcher"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///computer?botId=${TANGOW_SCREENSHOT_BOT_ID}&name=Researcher"
 - extendedWaitUntil:
     visible: "Take control"
     timeout: 10000
 - takeScreenshot: "18-computer"
 
-- openLink: "tangow:///group-thread?groupId=${TANGOW_SCREENSHOT_GROUP_ID}&name=Launch%20team"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///group-thread?groupId=${TANGOW_SCREENSHOT_GROUP_ID}&name=Launch%20team"
 - extendedWaitUntil:
-    visible: "The fixture launch plan is ready."
+    visible: "Launch checklist"
     timeout: 10000
-- assertNotVisible: "Reply"
+- assertNotVisible: "(.*, )?Reply"
 - takeScreenshot: "19-group-thread"
-- longPressOn: "The fixture launch plan is ready."
-- assertVisible: "Reply"
-- assertVisible: "Select text"
-- back
+- longPressOn: "Here.s a tighter quote for the release."
+- assertVisible: "(.*, )?Reply"
+- assertVisible: "(.*, )?Select text"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: "dismiss popup"
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - back
 - tapOn: "Open in full screen"
 - takeScreenshot: "19b-widget-full-screen"
 - tapOn: "Close preview"
@@ -260,35 +360,47 @@ tags:
 - assertVisible: "Grace Hopper"
 - takeScreenshot: "19c-group-thread-people"
 
-- openLink: "tangow:///group-settings?groupId=${TANGOW_SCREENSHOT_GROUP_ID}"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///group-settings?groupId=${TANGOW_SCREENSHOT_GROUP_ID}"
 - extendedWaitUntil:
-    visible: "Delete group"
+    visible: "Lead bot"
     timeout: 10000
 - assertVisible: "Grace Hopper"
-- assertVisible: "Lead bot"
 - takeScreenshot: "20-group-settings"
+- scrollUntilVisible:
+    element: "Delete group"
+    direction: DOWN
 
-- openLink: "tangow:///bot-routine?botId=${TANGOW_SCREENSHOT_BOT_ID}&routineId=${TANGOW_SCREENSHOT_ROUTINE_ID}"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///bot-routine?botId=${TANGOW_SCREENSHOT_BOT_ID}&routineId=${TANGOW_SCREENSHOT_ROUTINE_ID}"
 - extendedWaitUntil:
     visible: "Weekly fixture review"
     timeout: 10000
 - takeScreenshot: "21-routine"
 
 # A failed run's error sits above the composer, out of the conversation, until dismissed.
-- openLink: "tangow:///thread?botId=${TANGOW_SCREENSHOT_FAILED_BOT_ID}&name=Support"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///thread?botId=${TANGOW_SCREENSHOT_FAILED_BOT_ID}&name=Support"
 - extendedWaitUntil:
     visible: "Dismiss error"
     timeout: 10000
 - assertVisible: "Draft the reply to the refund request."
 - takeScreenshot: "21b-thread-run-error"
 
+- runFlow: subflows/restart-app.yaml
+
 # A bot shared with this user: their own thread, the team save under the reply, the MCP card
 # pointing to web or desktop, and a title menu without the owner's screens.
-- openLink: "tangow:///thread?botId=${TANGOW_SCREENSHOT_SHARED_BOT_ID}&name=Release%20notes"
-# iOS asks before opening its own link.
-- tapOn:
-    text: "Open"
-    optional: true
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///thread?botId=${TANGOW_SCREENSHOT_SHARED_BOT_ID}&name=Release%20notes"
 - extendedWaitUntil:
     visible: "Saved for the team"
     timeout: 10000
@@ -313,11 +425,10 @@ tags:
 
 # The shared bot's computer as the member sees it: no mode picker, and no Take control until
 # their own run asks for them.
-- openLink: "tangow:///computer?botId=${TANGOW_SCREENSHOT_SHARED_BOT_ID}&name=Release%20notes&shared=1"
-# iOS asks before opening its own link.
-- tapOn:
-    text: "Open"
-    optional: true
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///computer?botId=${TANGOW_SCREENSHOT_SHARED_BOT_ID}&name=Release%20notes&shared=1"
 - extendedWaitUntil:
     visible: "Release notes’s computer"
     timeout: 10000
@@ -326,11 +437,10 @@ tags:
 - takeScreenshot: "32b-shared-bot-computer"
 
 # The owner's share sheet for Writer, shared with the teammate, then its team memory.
-- openLink: "tangow:///bot-share?botId=${TANGOW_SCREENSHOT_SHARE_BOT_ID}"
-# iOS asks before opening its own link.
-- tapOn:
-    text: "Open"
-    optional: true
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///bot-share?botId=${TANGOW_SCREENSHOT_SHARE_BOT_ID}"
 - extendedWaitUntil:
     visible: "Skills this bot can use"
     timeout: 10000
@@ -339,16 +449,15 @@ tags:
 - assertVisible: "Everyone who uses this bot can see its files and browser sign-ins."
 - takeScreenshot: "33-share-sheet"
 - scrollUntilVisible:
-    element: "example_api"
+    element: "example_api(, .*)?"
 - assertVisible: "Keys"
 - takeScreenshot: "33b-share-sheet-keys"
 - tapOn: "Done"
 
-- openLink: "tangow:///bot?botId=${TANGOW_SCREENSHOT_SHARE_BOT_ID}"
-# iOS asks before opening its own link.
-- tapOn:
-    text: "Open"
-    optional: true
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///bot?botId=${TANGOW_SCREENSHOT_SHARE_BOT_ID}"
 - extendedWaitUntil:
     visible: "Knowledge"
     timeout: 10000
@@ -359,11 +468,10 @@ tags:
 - takeScreenshot: "34-team-memory"
 
 # A group the teammate created with the user: who is in it, read-only, and Leave group.
-- openLink: "tangow:///group-settings?groupId=${TANGOW_SCREENSHOT_MEMBER_GROUP_ID}"
-# iOS asks before opening its own link.
-- tapOn:
-    text: "Open"
-    optional: true
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///group-settings?groupId=${TANGOW_SCREENSHOT_MEMBER_GROUP_ID}"
 - extendedWaitUntil:
     visible: "Leave group"
     timeout: 10000
@@ -371,33 +479,55 @@ tags:
 - assertNotVisible: "Delete group"
 - takeScreenshot: "35-group-settings-member"
 
+- runFlow: subflows/restart-app.yaml
+
 # Verify saved appearance changes on already-mounted screens and modal routes.
-- openLink: "tangow:///account"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///profile"
 - extendedWaitUntil:
     visible: "Dark"
     timeout: 10000
 - tapOn: "Dark"
 - takeScreenshot: "22-account-dark"
 
-- openLink: "tangow:///new"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///new"
 - assertVisible: "Name this bot"
 - takeScreenshot: "23-new-bot-dark"
 
-- openLink: "tangow:///new-group"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///new-group"
 - assertVisible: "Name this group"
 - takeScreenshot: "24-new-group-dark"
 
-- openLink: "tangow:///new-space"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///new-space"
 - assertVisible: "Customer support"
 - takeScreenshot: "25-new-space-dark"
 
-- openLink: "tangow:///thread?botId=${TANGOW_SCREENSHOT_BOT_ID}&name=Researcher"
-- extendedWaitUntil:
-    visible: "The fixture workspace is ready."
-    timeout: 10000
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///thread?botId=${TANGOW_SCREENSHOT_BOT_ID}&name=Researcher"
+- scrollUntilVisible:
+    element: "The fixture workspace is ready."
+    direction: UP
+    timeout: 20000
+    centerElement: true
 - takeScreenshot: "26-thread-dark"
 
-- openLink: "tangow:///thread?botId=${TANGOW_SCREENSHOT_FAILED_BOT_ID}&name=Support"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///thread?botId=${TANGOW_SCREENSHOT_FAILED_BOT_ID}&name=Support"
 - extendedWaitUntil:
     visible: "Dismiss error"
     timeout: 10000
@@ -405,32 +535,56 @@ tags:
 - tapOn: "Dismiss error"
 - assertNotVisible: "Dismiss error"
 
-- openLink: "tangow:///group-thread?groupId=${TANGOW_SCREENSHOT_GROUP_ID}&name=Launch%20team"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///group-thread?groupId=${TANGOW_SCREENSHOT_GROUP_ID}&name=Launch%20team"
 - extendedWaitUntil:
-    visible: "The fixture launch plan is ready."
+    visible: "Launch checklist"
     timeout: 10000
 - takeScreenshot: "27-group-thread-dark"
 
-- openLink: "tangow:///group-settings?groupId=${TANGOW_SCREENSHOT_GROUP_ID}"
-- assertVisible: "Delete group"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///group-settings?groupId=${TANGOW_SCREENSHOT_GROUP_ID}"
+- extendedWaitUntil:
+    visible: "Lead bot"
+    timeout: 10000
 - takeScreenshot: "28-group-settings-dark"
 
-- openLink: "tangow:///bot?botId=${TANGOW_SCREENSHOT_BOT_ID}"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///bot?botId=${TANGOW_SCREENSHOT_BOT_ID}"
 - extendedWaitUntil:
     visible: "Appearance"
     timeout: 10000
 - takeScreenshot: "28b-bot-page-dark"
 
-- openLink: "tangow:///"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///"
 - extendedWaitUntil:
     visible: "Researcher.*"
     timeout: 10000
 - takeScreenshot: "28c-inbox-dark"
 
-- openLink: "tangow:///account"
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///profile"
 - tapOn: "Light"
-- openLink: "tangow:///thread?botId=${TANGOW_SCREENSHOT_BOT_ID}&name=Researcher"
-- assertVisible: "The fixture workspace is ready."
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///thread?botId=${TANGOW_SCREENSHOT_BOT_ID}&name=Researcher"
+- scrollUntilVisible:
+    element: "The fixture workspace is ready."
+    direction: UP
+    timeout: 20000
+    centerElement: true
 - takeScreenshot: "29-thread-light-restored"
 
 # Capture the reaction after theme comparisons. Reactions are append-only, so adding
@@ -440,11 +594,16 @@ tags:
 - extendedWaitUntil:
     visible: "👍"
     timeout: 10000
-- assertNotVisible: "Reply"
+- assertNotVisible: "(.*, )?Reply"
 - takeScreenshot: "15c-message-reaction"
 
-# The computer was booted above, so its update runs through the real fixture API.
-- openLink: "tangow:///computer-settings"
+# The update's progress shows over the app's root, under any open sheet; start from the root.
+- runFlow: subflows/restart-app.yaml
+# The fixture booted this computer, so its update runs through the real fixture API.
+- runFlow:
+    file: subflows/open-link.yaml
+    env:
+      LINK: "tangow:///computer-settings"
 - extendedWaitUntil:
     visible: "Update computer"
     timeout: 10000

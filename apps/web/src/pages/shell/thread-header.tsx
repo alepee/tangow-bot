@@ -103,7 +103,7 @@ export function ThreadHeader({
           {/* D2-a: a mono (single-bot) thread carries the bot's identity here
               instead of on every message — no per-message avatar or name. */}
           {!inGroup && active ? (
-            <BotAvatar character={active.avatarCharacter} status={active.status} size={26} />
+            <BotAvatar character={active.avatarCharacter} status={active.status} size={32} live />
           ) : null}
           <span className="block min-w-0 truncate text-title text-foreground" dir="auto">
             {inGroup

@@ -1,5 +1,6 @@
 import type { ProcessEvent } from "@tangow/adapter-kit";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { isComputerScreenUnavailable } from "./computer-screens.js";
 import {
   DockerSandboxProvider,
   MAX_SANDBOX_ERROR_RESPONSE_BYTES,
@@ -112,6 +113,25 @@ describe("Docker sandbox", () => {
       provider.provision({ botId: "bot", homePath: "/tmp/bot" }, context),
     ).rejects.toThrow(`sandbox response exceeds ${MAX_SANDBOX_SUCCESS_RESPONSE_BYTES} bytes`);
     await vi.waitFor(() => expect(cancel).toHaveBeenCalledOnce());
+  });
+
+  it("surfaces a screen the supervisor failed to start as unavailable", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({ error: "computer screen did not become ready in time" }, { status: 400 }),
+      ),
+    );
+    const provider = new DockerSandboxProvider("http://supervisor.test", "test-token");
+
+    const error = await provider
+      .connectScreen(
+        { id: "computer", botId: "bot", kind: "docker", providerRef: "computer" },
+        { view: "stream" },
+        context,
+      )
+      .catch((caught: unknown) => caught);
+    expect(isComputerScreenUnavailable(error)).toBe(true);
   });
 
   it("translates a 429 computer limit reached error from the supervisor", async () => {

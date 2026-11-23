@@ -450,43 +450,6 @@
   }
 }
 
-@keyframes tangow-avatar-spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.tangow-bot-avatar-ring {
-  animation: tangow-avatar-spin 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-  opacity: 0;
-  transition: opacity 180ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.tangow-bot-avatar {
-  transition: box-shadow 180ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.tangow-bot-avatar[data-working="true"] .tangow-bot-avatar-ring {
-  opacity: 1;
-}
-
-/* A working bot buzzes: a steady, linear left-right jitter. */
-@keyframes rk-buzz {
-  from {
-    transform: translateX(-1.5px) rotate(-2deg);
-  }
-  to {
-    transform: translateX(1.5px) rotate(2deg);
-  }
-}
-
-.rk-buzz {
-  animation: rk-buzz 120ms linear infinite alternate;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .animate-arrive,
   .animate-pivot,
@@ -497,7 +460,6 @@
   .rk-bar,
   .rk-dot,
   .rk-halo,
-  .rk-buzz,
   .rk-shimmer,
   .rk-word-in {
     animation: none;
@@ -519,15 +481,6 @@
   [data-long-pressing="true"] [data-slot="user-bubble"],
   [data-long-pressing="true"] [data-slot="image-stack"] {
     transform: none;
-    transition: none;
-  }
-
-  .tangow-bot-avatar-ring {
-    animation: none;
-    transition: none;
-  }
-
-  .tangow-bot-avatar {
     transition: none;
   }
 }

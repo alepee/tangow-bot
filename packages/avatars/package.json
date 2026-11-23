@@ -5,6 +5,8 @@
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "exports": {
-    "./characters/*": "./characters/*"
+    "./bodies/*": "./bodies/*",
+    "./characters/*": "./characters/*",
+    "./face/*": "./face/*"
   }
 }

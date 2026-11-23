@@ -114,4 +114,74 @@ describe("reply context", () => {
     const quoted = JSON.parse(context!.split("\n")[2]!).quotedText as string;
     expect(quoted).toHaveLength(REPLY_QUOTE_MAX_LENGTH);
   });
+
+  it("quotes a routine's final words when the reply targets the routine's start outside the window", async () => {
+    const entry = (id: string, seq: number, type: string, payload: unknown) => ({
+      id,
+      sessionId: "session-1",
+      seq,
+      parentId: seq === 0 ? null : "routine-start",
+      type,
+      payload,
+      botId: "bot-1",
+      runId: "run-routine",
+      createdAt,
+    });
+    const stored = [
+      entry("routine-start", 0, "routine.started", {
+        sessionId: "session-routine",
+        routineId: "routine-1",
+        name: "Morning brief",
+        trigger: "routine",
+        scheduledAt: "2026-10-01T07:00:00.000Z",
+        model: { provider: "openai", id: "gpt-5" },
+      }),
+      entry("routine-end", 1, "routine.finished", {
+        status: "completed",
+        usage: { inputTokens: 10, outputTokens: 2 },
+        result: "Two meetings today.",
+      }),
+    ];
+    const source = {
+      id: "user-reply",
+      sessionId: "session-1",
+      seq: 5,
+      parentId: "routine-end",
+      type: "user.message",
+      payload: {
+        blocks: [{ kind: "text", text: "Which ones?" }],
+        replyTo: { entryId: "routine-start" },
+        source: "app",
+      },
+      botId: null,
+      runId: null,
+      createdAt,
+    };
+    const findFirst = vi
+      .fn()
+      .mockImplementation(
+        async ({ where }: { where: { id: string } }) =>
+          [source, ...stored].find((row) => row.id === where.id) ?? null,
+      );
+    const findMany = vi
+      .fn()
+      .mockImplementation(
+        async ({
+          where,
+        }: {
+          where: { runId: string; id: { not: string }; type: { in: string[] } };
+        }) =>
+          stored.filter(
+            (row) =>
+              row.runId === where.runId &&
+              row.id !== where.id.not &&
+              where.type.in.includes(row.type),
+          ),
+      );
+    const prisma = { sessionEntry: { findFirst, findMany } } as unknown as PrismaClient;
+
+    const context = await loadReplyContext(prisma, "thread-1", "user-reply");
+    expect(context).toContain('"messageId":"routine-start"');
+    expect(context).toContain("Two meetings today.");
+  });
 });

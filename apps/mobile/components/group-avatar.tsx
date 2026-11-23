@@ -63,9 +63,15 @@ export const GroupAvatar = memo(function GroupAvatar({
     );
   }
 
+  // A pile of tiles stays still, as on web; a lone bot comes alive like any avatar.
   const renderTile = (tile: Tile, tileSize: number) =>
     "bot" in tile ? (
-      <BotAvatar character={tile.bot.avatarCharacter} size={tileSize} status={tile.bot.status} />
+      <BotAvatar
+        character={tile.bot.avatarCharacter}
+        size={tileSize}
+        status={tile.bot.status}
+        still={tiles.length > 1}
+      />
     ) : (
       <UserAvatar initials={tile.person.initials} image={tile.person.image} size={tileSize} />
     );

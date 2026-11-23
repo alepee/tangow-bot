@@ -32,7 +32,7 @@ way: `sheet`, then its `group`s.
 | `chatBot` | `#FFFFFF` | `#2C2C2F` | the bot's paper: every bot bubble, and everything the bot produces |
 | `chatUser` | `#1D1D1F` | `#636366` | user bubble and avatar: ink in light, a clear step above the bot's paper in dark |
 | `chatUserForeground` | `#FFFFFF` | `#F5F5F7` | |
-| `mentionChip` | `#EDEDF0` | `#3A3A3D` | mention chip in the composer |
+| `mentionChip` | `#EDEDF0` | `#3A3A3D` | a mention token selected in the composer |
 | `mentionChipForeground` | `#1D1D1F` | `#F5F5F7` | |
 | `linkMentionTile` | `#F2F2F4` | `#444447` | the tile behind a link mention's icon in a bot bubble, a step off `chatBot` |
 | `muted` | `#E8E8EA` | `#2A2A2D` | segmented track |
@@ -209,7 +209,7 @@ not count as an elevation.
 ## Sizes
 
 Avatars: `receipt 14`, `stackXs 16`, `interstitial 17`, `chip 18`, `stack 20`,
-`message 26`, `row 28`, `call 120`. Controls: `hoverIcon 28`, `quickReply 32`,
+`message 32`, `row 28`, `call 120`. Controls: `hoverIcon 28`, `quickReply 32`,
 `composerIcon 34`, `capsule 36`, `mobileStack 44`, `callButton 52`. Mobile composer:
 `composerAttach 48` (the detached + bubble), `composerTarget 44` (a button's
 touch target in the capsule), `composerAction 36` (the send / stop disc).
@@ -223,7 +223,9 @@ height) and `linkCard 360` (its width on web, capped by the column),
 `linkThumb 56` (the compact format's thumbnail), `linkIconInset 8` (the space around
 a site icon inside that thumbnail, web and iOS), `linkPhotoMax 320` (the photo
 format's maximum height). Link mention: `linkMentionIcon 16` (the site icon in the
-text, web and iOS) and `linkMentionGap 5` (between that icon and the label).
+text, web and iOS) and `linkMentionGap 5` (between that icon and the label). Entity
+mention: `mentionGlyph 16` (a bot, group, everyone or skill glyph in the text, web and iOS)
+and `mentionGap 4` (between that glyph and the name).
 
 The sizes a primitive needs as a class are mapped into Tailwind's spacing
 namespace in `packages/ui-web/src/styles.css` — `--spacing-hover-icon`,

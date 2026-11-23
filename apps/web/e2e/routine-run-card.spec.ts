@@ -140,4 +140,33 @@ test("renders a webhook-woken routine as a routine message, not a user message",
       (entry) => entry.type === "user.message" && JSON.stringify(entry.payload).includes("deploy."),
     ),
   ).toBe(false);
+
+  // A routine's words take the same actions as any bot message: time, reply, react, copy.
+  const routineRow = page
+    .locator("[data-message-id]")
+    .filter({ has: page.getByTestId("routine-message") });
+  const pill = routineRow.getByTestId("message-hover-rail");
+  await expect
+    .poll(async () => {
+      await routineRow.hover();
+      return pill.evaluate((element) => getComputedStyle(element).opacity);
+    })
+    .toBe("1");
+  await expect(pill.getByTestId("message-hover-time")).toHaveText(/\d/);
+  await expect(pill.getByRole("button", { name: "React" })).toBeVisible();
+  await expect(pill.getByRole("button", { name: "Copy" })).toBeVisible();
+  const reply = pill.getByRole("button", { name: "Reply" });
+  await reply.focus();
+  await captureRoutineMessage(page, testInfo, "routine-message-actions");
+
+  const routineWords = (await page.getByTestId("routine-message").innerText()).trim();
+  await reply.click();
+  const replyText = `routine-reply-${stamp}`;
+  await page.getByRole("combobox", { name: /^Message/ }).fill(replyText);
+  await page.getByRole("button", { name: "Send", exact: true }).click();
+  const replyRow = page.locator("[data-message-id]").filter({ hasText: replyText }).first();
+  await expect(replyRow.getByTestId("reply-parent-preview")).toContainText(
+    (routineWords.split("\n")[0] ?? "").slice(0, 20),
+  );
+  await captureScreenshot(page, testInfo, "routine-message-reply");
 });
