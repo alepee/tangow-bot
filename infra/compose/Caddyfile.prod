@@ -12,6 +12,11 @@
 		}
 	}
 
+	# Internal endpoints are called by the web server over the private network only.
+	handle /api/internal/* {
+		respond 404
+	}
+
 	handle /api/* {
 		reverse_proxy api:3100 {
 			import deploy_retry

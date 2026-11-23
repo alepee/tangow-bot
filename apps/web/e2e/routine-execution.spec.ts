@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import type { Routine } from "@tangow/contracts";
+import type { Routine, RunsListOutput } from "@tangow/contracts";
 import {
   activeBotId,
   addRoutineTrigger,
@@ -179,11 +179,24 @@ test("routine test-run completes and survives reload", async ({ page }, testInfo
   await captureScreenshot(page, testInfo, "33-routine-scheduled");
 
   await routine.click();
+  const started = page.waitForResponse(
+    (response) => response.url().includes("/rpc/routines/testRun") && response.ok(),
+  );
   await page.getByRole("button", { name: "Test run" }).click();
+  const {
+    json: { runId },
+  } = await (await started).json();
   await expect(page.getByText(/routine-run-now-ok/i).first()).toBeVisible({ timeout: 30_000 });
-  // The composer draft is empty, so Send stays hidden; the combobox being enabled is the
-  // signal that the thread is back and interactive.
-  await expect(page.getByRole("combobox", { name: /^Message/ })).toBeEnabled({ timeout: 30_000 });
+  // The composer stays enabled during a run; reload only after its result is durable.
+  await expect
+    .poll(
+      async () => {
+        const { runs } = await rpc<RunsListOutput>(page, "runs/list", { filter: "recent" });
+        return runs.find((run) => run.runId === runId)?.status;
+      },
+      { timeout: 30_000 },
+    )
+    .toBe("completed");
   await captureScreenshot(page, testInfo, "34-routine-run-completed");
 
   await page.reload();

@@ -16,6 +16,7 @@ import {
   botRecords,
   botSaves,
   modelCatalogRead,
+  noteBotSaved,
   routineRecords,
   viewer,
   voicesRead,
@@ -29,8 +30,7 @@ export type BotPatch = Partial<
     | "title"
     | "description"
     | "instructions"
-    | "color"
-    | "shapeSeed"
+    | "avatarCharacter"
     | "notifyOnFinish"
     | "voiceId"
     | "autoSpeak"
@@ -60,12 +60,14 @@ export function readViewer(): Promise<Me> {
   return read;
 }
 
-export function updateBot(botId: string, patch: BotPatch): Promise<Bot> {
-  return botRecords.write(
+export async function updateBot(botId: string, patch: BotPatch): Promise<Bot> {
+  const bot = await botRecords.write(
     botId,
     () => rpc<Bot>("bots/update", { botId, ...patch }),
     Object.keys(patch),
   );
+  if ("avatarCharacter" in patch) noteBotSaved(bot);
+  return bot;
 }
 
 /** Its own call, never chained with `updateBot`: the server refuses it while the bot runs. */

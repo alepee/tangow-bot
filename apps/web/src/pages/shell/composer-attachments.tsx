@@ -48,7 +48,7 @@ export function useDraftLinkPreview(draft: string, previewLink: PreviewLink | un
   return { linkPreview, linkPreviewView, draftChange };
 }
 
-/** Files dragged onto the composer: the drop highlight and the hand-off to the attachment picker. */
+/** Files dragged onto the conversation: the drop highlight and the hand-off to the attachment picker. */
 export function useComposerFileDrop({
   disabled,
   onAttachmentPick,
@@ -56,56 +56,69 @@ export function useComposerFileDrop({
   disabled: boolean | undefined;
   onAttachmentPick: (files: FileList | null) => void | Promise<void>;
 }) {
-  const dragDepth = useRef(0);
   const [draggingFiles, setDraggingFiles] = useState(false);
+  // An image dragged out of the transcript also carries "Files"; only drags from outside count.
+  const pageDrag = useRef(false);
 
-  function onDragEnter(event: DragEvent<HTMLFieldSetElement>) {
-    const dataTransfer = event.dataTransfer;
-    if (!isFileDrag(dataTransfer)) return;
-    event.preventDefault();
-    if (disabled) {
-      dragDepth.current = 0;
-      setDraggingFiles(false);
-      return;
+  // A file let go outside the drop zone does nothing, instead of the browser opening it in
+  // place of the app.
+  useEffect(() => {
+    function startPageDrag() {
+      pageDrag.current = true;
     }
-    dragDepth.current += 1;
-    setDraggingFiles(true);
+    function endPageDrag() {
+      pageDrag.current = false;
+    }
+    function refuse(event: globalThis.DragEvent) {
+      if (event.defaultPrevented || !isFileDrag(event.dataTransfer)) return;
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "none";
+      setDraggingFiles(false);
+    }
+    window.addEventListener("dragstart", startPageDrag);
+    window.addEventListener("dragend", endPageDrag);
+    window.addEventListener("dragover", refuse);
+    window.addEventListener("drop", refuse);
+    return () => {
+      window.removeEventListener("dragstart", startPageDrag);
+      window.removeEventListener("dragend", endPageDrag);
+      window.removeEventListener("dragover", refuse);
+      window.removeEventListener("drop", refuse);
+    };
+  }, []);
+
+  // Dialogs portaled from inside the zone still bubble here through React; they are not the zone.
+  function droppedFiles(event: DragEvent<HTMLElement>) {
+    return (
+      !pageDrag.current &&
+      event.currentTarget.contains(event.target as Node) &&
+      isFileDrag(event.dataTransfer)
+    );
   }
 
-  function onDragOver(event: DragEvent<HTMLFieldSetElement>) {
-    const dataTransfer = event.dataTransfer;
-    if (!isFileDrag(dataTransfer)) return;
+  function onDragOver(event: DragEvent<HTMLElement>) {
+    if (!droppedFiles(event)) return;
     event.preventDefault();
-    dataTransfer.dropEffect = disabled ? "none" : "copy";
-    if (disabled) {
-      dragDepth.current = 0;
-      setDraggingFiles(false);
-      return;
-    }
-    setDraggingFiles(true);
+    event.dataTransfer.dropEffect = disabled ? "none" : "copy";
+    setDraggingFiles(!disabled);
   }
 
-  function onDragLeave(event: DragEvent<HTMLFieldSetElement>) {
-    if (!isFileDrag(event.dataTransfer)) return;
-    if (disabled) {
-      dragDepth.current = 0;
-      setDraggingFiles(false);
-      return;
-    }
-    dragDepth.current = Math.max(0, dragDepth.current - 1);
-    if (dragDepth.current === 0) setDraggingFiles(false);
-  }
-
-  function onDrop(event: DragEvent<HTMLFieldSetElement>) {
-    const dataTransfer = event.dataTransfer;
-    if (!isFileDrag(dataTransfer)) return;
-    event.preventDefault();
-    dragDepth.current = 0;
+  function onDragLeave(event: DragEvent<HTMLElement>) {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
     setDraggingFiles(false);
-    if (!disabled) void onAttachmentPick(dataTransfer.files);
   }
 
-  return { draggingFiles, dropHandlers: { onDragEnter, onDragOver, onDragLeave, onDrop } };
+  function onDrop(event: DragEvent<HTMLElement>) {
+    if (!droppedFiles(event)) return;
+    event.preventDefault();
+    setDraggingFiles(false);
+    if (!disabled) void onAttachmentPick(event.dataTransfer.files);
+  }
+
+  return {
+    draggingFiles,
+    dropHandlers: { onDragEnter: onDragOver, onDragOver, onDragLeave, onDrop },
+  };
 }
 
 /** The files and link preview riding along with the draft. */

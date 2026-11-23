@@ -8,9 +8,8 @@ struct ShareTarget: Identifiable, Hashable {
   let kind: Kind
   let targetId: String
   let name: String
-  /// The bot's identity color and picked bloub; groups have neither.
-  let color: String?
-  let shapeSeed: Int?
+  /// The bot's character; groups have none.
+  let character: String?
   let spaceId: String
   /// Shown only when the person belongs to more than one space.
   let spaceName: String?
@@ -123,12 +122,12 @@ struct ShareClient {
       let label = named ? space.name : nil
       let bots = space.bots.map { bot in
         ShareTarget(
-          kind: .bot, targetId: bot.id, name: bot.name, color: bot.color,
-          shapeSeed: bot.shapeSeed, spaceId: space.id, spaceName: label, updatedAt: bot.updatedAt)
+          kind: .bot, targetId: bot.id, name: bot.name, character: bot.avatarCharacter,
+          spaceId: space.id, spaceName: label, updatedAt: bot.updatedAt)
       }
       let groups = space.groups.map { group in
         ShareTarget(
-          kind: .group, targetId: group.id, name: group.name, color: nil, shapeSeed: nil,
+          kind: .group, targetId: group.id, name: group.name, character: nil,
           spaceId: space.id, spaceName: label, updatedAt: group.updatedAt)
       }
       return bots + groups
@@ -160,8 +159,7 @@ struct ShareClient {
   private struct Listed: Decodable {
     let id: String
     let name: String
-    let color: String?
-    let shapeSeed: Int?
+    let avatarCharacter: String?
     let updatedAt: String
   }
 

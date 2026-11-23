@@ -1,4 +1,4 @@
-import type { CapabilityInstall, Connection, ConnectionCatalogItem } from "@tangow/contracts";
+import type { Connection, ConnectionCatalogItem } from "@tangow/contracts";
 import {
   abortableDelay,
   buildFeaturedConnectorTiles,
@@ -28,7 +28,6 @@ import { useI18n } from "../lib/i18n";
 import { loadLastBotId } from "../lib/last-bot";
 import { native, useThemedStyles } from "../lib/native";
 
-type SourceKind = "treg" | "executor" | "mcp" | "api" | "graphql";
 type ConnectionTool = { name: string; description: string };
 
 function itemKey(item: Pick<ConnectionCatalogItem, "connectorId" | "slug">) {
@@ -44,17 +43,9 @@ export default function Integrations() {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [query, setQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(CONNECTION_CATALOG_PAGE_SIZE);
-  const [sources, setSources] = useState<CapabilityInstall[]>([]);
-  const [sourceKind, setSourceKind] = useState<SourceKind | null>(null);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [installedOpen, setInstalledOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [url, setUrl] = useState("");
-  const [credential, setCredential] = useState("");
-  const [requiresAuth, setRequiresAuth] = useState(true);
   const [pending, setPending] = useState<string | null>(null);
   const [catalogError, setCatalogError] = useState<string | null>(null);
-  const [sourceError, setSourceError] = useState<string | null>(null);
   const [lastBotId, setLastBotId] = useState("");
   const [catalogReady, setCatalogReady] = useState(false);
   const [labelDrafts, setLabelDrafts] = useState<Record<string, string>>({});
@@ -105,16 +96,6 @@ export default function Integrations() {
       setConnections([]);
       setLabelDrafts({});
     }
-    try {
-      const installs = await rpc<CapabilityInstall[]>("capabilities/list");
-      setSources(
-        installs.filter(
-          (item) => item.kind === "mcp" || item.kind === "api" || item.kind === "graphql",
-        ),
-      );
-    } catch {
-      // Tool sources are optional; keep featured/catalog usable if this fails.
-    }
   }
 
   useEffect(() => {
@@ -151,16 +132,6 @@ export default function Integrations() {
       cancelled = true;
     };
   }, [detailKey, toolsTick]);
-
-  function closeAdvanced() {
-    setAdvancedOpen(false);
-    setSourceKind(null);
-    setSourceError(null);
-    setName("");
-    setUrl("");
-    setCredential("");
-    setRequiresAuth(true);
-  }
 
   function openDetail(item: ConnectionCatalogItem) {
     setCatalogError(null);
@@ -302,68 +273,6 @@ export default function Integrations() {
     } catch (reason) {
       setCatalogError(reason instanceof Error ? reason.message : t("Could not revoke connection"));
       await refresh().catch(() => undefined);
-    } finally {
-      setPending(null);
-    }
-  }
-
-  function beginSource(kind: SourceKind) {
-    setSourceKind(kind);
-    setSourceError(null);
-    setName(kind === "treg" ? "Treg" : kind === "executor" ? "Executor" : "");
-    setUrl(kind === "treg" ? "https://treg.to/mcp/" : "");
-    setCredential("");
-    setRequiresAuth(kind === "treg" || kind === "executor");
-  }
-
-  async function addSource() {
-    if (!sourceKind) return;
-    setPending("source");
-    setSourceError(null);
-    try {
-      await rpc("capabilities/install", {
-        kind: sourceKind === "treg" || sourceKind === "executor" ? "mcp" : sourceKind,
-        name:
-          name.trim() ||
-          (sourceKind === "treg"
-            ? "Treg"
-            : sourceKind === "executor"
-              ? "Executor"
-              : sourceKind === "graphql"
-                ? "GraphQL"
-                : t("Custom connector")),
-        source: url.trim(),
-        credential: credential.trim() || undefined,
-        config:
-          sourceKind === "treg"
-            ? { preset: "treg", auth: { type: "bearer" } }
-            : sourceKind === "api"
-              ? { openApi: true, auth: { type: requiresAuth ? "bearer" : "none" } }
-              : sourceKind === "graphql"
-                ? { auth: { type: requiresAuth ? "bearer" : "none" } }
-                : {
-                    preset: "custom",
-                    auth: { type: sourceKind === "executor" || requiresAuth ? "bearer" : "none" },
-                  },
-      });
-      setCredential("");
-      setSourceKind(null);
-      await refresh();
-    } catch (reason) {
-      setSourceError(reason instanceof Error ? reason.message : t("Could not add source"));
-    } finally {
-      setPending(null);
-    }
-  }
-
-  async function removeSource(source: CapabilityInstall) {
-    setPending(source.id);
-    setSourceError(null);
-    try {
-      await rpc("capabilities/remove", { id: source.id });
-      setSources((current) => current.filter((item) => item.id !== source.id));
-    } catch (reason) {
-      setSourceError(reason instanceof Error ? reason.message : t("Could not remove source"));
     } finally {
       setPending(null);
     }
@@ -652,161 +561,6 @@ export default function Integrations() {
                 <Text style={styles.buttonLabel}>{t("Show more")}</Text>
               </Pressable>
             ) : null}
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ expanded: advancedOpen }}
-              testID="integrations-advanced"
-              onPress={() => {
-                if (advancedOpen) closeAdvanced();
-                else setAdvancedOpen(true);
-              }}
-              style={styles.advancedToggle}
-            >
-              <Text style={styles.advancedLabel}>{t("Advanced")}</Text>
-              <Text style={styles.chevron}>›</Text>
-            </Pressable>
-
-            {advancedOpen ? (
-              <View style={styles.advancedBody}>
-                <View style={styles.accountActions}>
-                  {(["mcp", "api", "graphql", "executor", "treg"] as const).map((kind) => (
-                    <Pressable
-                      key={kind}
-                      accessibilityRole="button"
-                      onPress={() => beginSource(kind)}
-                      style={styles.smallButton}
-                    >
-                      <Text style={styles.buttonLabel}>
-                        {kind === "treg"
-                          ? t("Add Treg")
-                          : kind === "executor"
-                            ? t("Add Executor")
-                            : kind === "mcp"
-                              ? t("Add MCP server")
-                              : kind === "graphql"
-                                ? t("Add GraphQL")
-                                : t("Add OpenAPI")}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-
-                {sourceError ? <Text style={styles.error}>{sourceError}</Text> : null}
-
-                {sourceKind ? (
-                  <View style={styles.card}>
-                    <Text style={styles.title}>
-                      {sourceKind === "treg"
-                        ? t("Connect Treg")
-                        : sourceKind === "executor"
-                          ? t("Connect Executor")
-                          : sourceKind === "mcp"
-                            ? t("Remote MCP server")
-                            : sourceKind === "graphql"
-                              ? t("GraphQL endpoint")
-                              : t("OpenAPI JSON")}
-                    </Text>
-                    <TextInput
-                      value={name}
-                      onChangeText={setName}
-                      placeholder={t("Display name")}
-                      placeholderTextColor={native.tertiaryLabel}
-                      style={styles.input}
-                    />
-                    {sourceKind !== "treg" ? (
-                      <TextInput
-                        value={url}
-                        onChangeText={setUrl}
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                        placeholder={
-                          sourceKind === "mcp"
-                            ? t("https://example.com/mcp")
-                            : sourceKind === "executor"
-                              ? t("https://executor.example/mcp")
-                              : sourceKind === "graphql"
-                                ? t("https://example.com/graphql")
-                                : t("https://example.com/openapi.json")
-                        }
-                        placeholderTextColor={native.tertiaryLabel}
-                        style={styles.input}
-                      />
-                    ) : null}
-                    {sourceKind !== "treg" && sourceKind !== "executor" ? (
-                      <Pressable
-                        accessibilityRole="button"
-                        onPress={() => setRequiresAuth((value) => !value)}
-                        style={styles.authToggle}
-                      >
-                        <Text style={styles.secondary}>
-                          {requiresAuth ? t("Bearer authentication") : t("No authentication")}
-                        </Text>
-                      </Pressable>
-                    ) : null}
-                    {sourceKind === "treg" || sourceKind === "executor" || requiresAuth ? (
-                      <TextInput
-                        value={credential}
-                        onChangeText={setCredential}
-                        secureTextEntry
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                        placeholder={
-                          sourceKind === "treg"
-                            ? t("Treg token")
-                            : sourceKind === "executor"
-                              ? t("Executor token")
-                              : t("Bearer token")
-                        }
-                        placeholderTextColor={native.tertiaryLabel}
-                        style={styles.input}
-                      />
-                    ) : null}
-                    <View style={styles.accountActions}>
-                      <Pressable
-                        accessibilityRole="button"
-                        disabled={pending === "source"}
-                        onPress={() => void addSource()}
-                        style={styles.smallButton}
-                      >
-                        {pending === "source" ? (
-                          <ActivityIndicator color={native.label} />
-                        ) : (
-                          <Text style={styles.buttonLabel}>{t("Verify and add")}</Text>
-                        )}
-                      </Pressable>
-                      <Pressable
-                        accessibilityRole="button"
-                        onPress={() => setSourceKind(null)}
-                        style={styles.smallButton}
-                      >
-                        <Text style={styles.buttonLabel}>{t("Cancel")}</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                ) : null}
-
-                <Text style={styles.section}>{t("Tool sources")}</Text>
-                {sources.length === 0 ? (
-                  <Text style={styles.secondary}>{t("No custom sources installed.")}</Text>
-                ) : null}
-                {sources.map((source) => (
-                  <View key={source.id} style={styles.row}>
-                    <View style={styles.grow}>
-                      <Text style={styles.title}>{source.name}</Text>
-                      <Text numberOfLines={1} style={styles.secondary}>
-                        {source.kind.toUpperCase()} · {source.source}
-                      </Text>
-                    </View>
-                    <Pressable accessibilityRole="button" onPress={() => void removeSource(source)}>
-                      <Text style={styles.remove}>
-                        {pending === source.id ? t("Removing…") : t("Remove")}
-                      </Text>
-                    </Pressable>
-                  </View>
-                ))}
-              </View>
-            ) : null}
           </>
         )}
       </ScrollView>
@@ -848,7 +602,6 @@ function createIntegrationsStyles() {
       paddingHorizontal: 14,
       fontSize: 15,
     },
-    authToggle: { minHeight: 42, justifyContent: "center" },
     catalogGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     catalogStack: { gap: 8 },
     catalogCell: { flexGrow: 1, flexBasis: "47%", maxWidth: "49%" },
@@ -915,7 +668,6 @@ function createIntegrationsStyles() {
       justifyContent: "space-between",
     },
     advancedLabel: { color: native.secondaryLabel, fontSize: 14 },
-    advancedBody: { gap: 14 },
     chevron: { color: native.secondaryLabel, fontSize: 18 },
   });
 }

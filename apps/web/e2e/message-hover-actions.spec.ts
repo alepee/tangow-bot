@@ -232,6 +232,8 @@ test("message hover shows a floating action pill; reply links to parent", async 
     .poll(async () => page.evaluate(() => navigator.clipboard.readText()))
     .toBe(parentText);
 
+  // Rest requires both pointer and keyboard focus outside the action group.
+  await composer.focus();
   // Moving the mouse away returns the bare icons to opacity 0.
   const parentRowBox = await parentRow.boundingBox();
   if (parentRowBox) {

@@ -1161,11 +1161,6 @@ async function ensureComputerImage() {
             "terminalrc",
             "zshrc",
             "tangow-browser.desktop",
-            "embed.html",
-            "clipboard-bridge.js",
-            "mobile-keyboard.js",
-            "screen-link-machine.js",
-            "screen-link-session.js",
             "fluxbox.init",
             "fluxbox.apps",
             "fluxbox.menu",
@@ -1415,13 +1410,13 @@ const SCREEN_READY_TIMEOUT_MS = 45_000;
 // serving — the same race can still slip through between "port open" and
 // "websockify ready" (e.g. right after setInteractiveScreen starts a new
 // x11vnc/websockify pair on the control port for a takeover). An HTTP GET
-// against the same embed.html path the browser will load only succeeds once
-// websockify itself is answering requests, closing that gap too.
+// for noVNC's stock page only succeeds once websockify itself is answering
+// requests, closing that gap too.
 export async function waitForScreenReady(host: string, port: number, timeoutMs: number) {
   const deadline = Date.now() + timeoutMs;
   do {
     const ready = await new Promise<boolean>((resolve) => {
-      const req = http.get({ host, port, path: "/embed.html", timeout: 1_500 }, (res) => {
+      const req = http.get({ host, port, path: "/vnc.html", timeout: 1_500 }, (res) => {
         res.resume();
         const status = res.statusCode ?? 0;
         resolve(status >= 200 && status < 300);

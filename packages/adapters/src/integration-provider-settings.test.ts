@@ -32,7 +32,6 @@ function fixture() {
   const settings = new IntegrationProviderSettings(
     prisma as unknown as PrismaClient,
     secrets,
-    "test-identity",
     {},
     factory,
   );
@@ -44,7 +43,6 @@ describe("integration provider settings", () => {
     const worker = new IntegrationProviderSettings(
       f.prisma as unknown as PrismaClient,
       f.secrets,
-      "test-identity",
       {},
       f.factory,
     );
@@ -97,9 +95,8 @@ describe("integration provider settings", () => {
     const settings = new IntegrationProviderSettings(
       f.prisma as unknown as PrismaClient,
       f.secrets,
-      "test-identity",
       {
-        pipedream: {
+        composio: {
           warmDirectory: fallbackWarm,
         } as unknown as ManagedConnectorProvider,
       },

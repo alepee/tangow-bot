@@ -9,7 +9,7 @@ export default defineConfig({
     {
       path: "<rootDir>/src/locales/{locale}/messages",
       include: ["src"],
-      exclude: ["**/locales/**", "**/*.test.*"],
+      exclude: ["**/locales/**", "**/*.test.*", "**/*.d.ts"],
     },
   ],
   compileNamespace: "es",

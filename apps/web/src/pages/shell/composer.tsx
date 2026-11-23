@@ -1,21 +1,25 @@
 import { useLingui } from "@lingui/react/macro";
 import type { AgentSkillCatalogEntry } from "@tangow/contracts";
 import type { ComposerChange, ComposerMention, SlashActionId } from "@tangow/core";
-import { mentionChipKey, resolveMentionPickerKey, serializeComposerPrompt } from "@tangow/core";
+import {
+  composerSegments,
+  insertMentionToken,
+  mentionChipKey,
+  mentionQueryAt,
+  mentionsInDraft,
+  resolveMentionPickerKey,
+  serializeComposerPrompt,
+  skillInDraft,
+} from "@tangow/core";
 import type { ComposerState } from "@tangow/ui-web";
-import { Button, ComposerShell, StopContour } from "@tangow/ui-web";
+import { Button, ComposerShell, cn, StopContour } from "@tangow/ui-web";
 import { ArrowUp } from "lucide-react";
-import type { ClipboardEvent, RefObject } from "react";
+import type { ClipboardEvent, KeyboardEvent, RefObject } from "react";
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { isFilePaste } from "../../lib/pending-attachments";
 import type { MessageItem } from "../../lib/thread-items";
 import type { PreviewLink } from "./composer-attachments";
-import {
-  AttachButton,
-  AttachmentTray,
-  useComposerFileDrop,
-  useDraftLinkPreview,
-} from "./composer-attachments";
+import { AttachButton, AttachmentTray, useDraftLinkPreview } from "./composer-attachments";
 import {
   DictateButton,
   DictationCancel,
@@ -23,8 +27,9 @@ import {
   DictationPreview,
   useComposerDictation,
 } from "./composer-dictation";
+import { DraftMirror } from "./composer-mirror";
 import { ComposerNotices } from "./composer-notices";
-import { MentionPicker, SelectedChips, SlashPicker, useComposerPickers } from "./composer-pickers";
+import { MentionPicker, SlashPicker, useComposerPickers } from "./composer-pickers";
 import type { PendingAttachment } from "./layout";
 
 export const Composer = memo(function Composer({
@@ -63,6 +68,7 @@ export const Composer = memo(function Composer({
   onSlashAction,
   chatSettings,
   recentWriting,
+  onDictatingChange,
 }: {
   activeName?: string;
   /** The bot whose pending question the next send answers, from the roster. */
@@ -112,6 +118,8 @@ export const Composer = memo(function Composer({
   /** The person's own recent messages here, to dictate in the language they
    * write in (`dictationLangFor`) rather than the browser's own language. */
   recentWriting?: () => readonly string[];
+  /** Files dropped on the conversation are ignored while dictating, as they are while `disabled`. */
+  onDictatingChange?: (dictating: boolean) => void;
 }) {
   const { t } = useLingui();
   const [draft, setDraft] = useState("");
@@ -119,14 +127,15 @@ export const Composer = memo(function Composer({
   const pickers = useComposerPickers({ mentionTargets, agentSkills, onSlashOpen, chatSettings });
   const [selectedSkill, setSelectedSkill] = useState<AgentSkillCatalogEntry | null>(null);
   const [selectedMentions, setSelectedMentions] = useState<ComposerMention[]>([]);
+  const [selection, setSelection] = useState<readonly [number, number]>([0, 0]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const mirrorRef = useRef<HTMLDivElement>(null);
   const shellRef = useRef<HTMLDivElement>(null);
+  const segments = composerSegments(draft, selectedMentions, selectedSkill);
+  const tokens = segments.filter((segment) => segment.kind !== "text");
+  const skillLeads = segments[0]?.kind === "skill";
   const canSend =
-    draft.trim().length > 0 ||
-    selectedSkill !== null ||
-    selectedMentions.length > 0 ||
-    pendingAttachments.length > 0 ||
-    (rewindArtifacts?.length ?? 0) > 0;
+    draft.trim().length > 0 || pendingAttachments.length > 0 || (rewindArtifacts?.length ?? 0) > 0;
 
   const rewindDraftKey = rewindDraft?.key ?? null;
   const rewindDraftText = rewindDraft?.text ?? "";
@@ -135,6 +144,9 @@ export const Composer = memo(function Composer({
   useEffect(() => {
     if (!rewindDraftKey) return;
     setDraft(rewindDraftText);
+    // Only what the edited message still names stays picked.
+    setSelectedMentions((current) => mentionsInDraft(rewindDraftText, current));
+    setSelectedSkill((current) => skillInDraft(rewindDraftText, current));
     if (rewindDraftLinkPreviewRemoved) linkPreview.remove();
     textareaRef.current?.focus();
   }, [rewindDraftKey, rewindDraftText, rewindDraftLinkPreviewRemoved, linkPreview]);
@@ -178,6 +190,7 @@ export const Composer = memo(function Composer({
       if (!textarea) return;
       textarea.style.height = "0px";
       textarea.style.height = `${textarea.scrollHeight}px`;
+      syncMirror();
     }
 
     syncHeight();
@@ -198,31 +211,94 @@ export const Composer = memo(function Composer({
     // coming back as a single line.
   }, [draft, isDictating]);
 
-  function updateDraft(value: string, change: ComposerChange = "type") {
-    draftChange.current = change;
-    setDraft(value);
-    pickers.trackDraft(value, selectedSkill === null);
+  /** The mirror follows the textarea's scroll, and leaves room for a scrollbar that takes width. */
+  function syncMirror() {
+    const textarea = textareaRef.current;
+    const mirror = mirrorRef.current;
+    if (!textarea || !mirror) return;
+    mirror.style.translate = `0 ${-textarea.scrollTop}px`;
+    mirror.style.paddingInlineEnd = `${textarea.offsetWidth - textarea.clientWidth}px`;
   }
 
-  function focusComposer() {
-    textareaRef.current?.focus();
+  useLayoutEffect(syncMirror);
+
+  /** A picked skill or mention lives as long as its token text: editing it away drops it. */
+  function updateDraft(value: string, change: ComposerChange = "type", caret = value.length) {
+    draftChange.current = change;
+    setDraft(value);
+    const mentions = mentionsInDraft(value, selectedMentions);
+    if (mentions.length !== selectedMentions.length) setSelectedMentions(mentions);
+    const skill = skillInDraft(value, selectedSkill);
+    if (skill !== selectedSkill) setSelectedSkill(skill);
+    pickers.trackDraft(value, caret, skill === null, mentions);
+  }
+
+  /** Where the caret goes once the draft just set has rendered. */
+  const pendingCaret = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const caret = pendingCaret.current;
+    const textarea = textareaRef.current;
+    if (caret === null || !textarea) return;
+    pendingCaret.current = null;
+    textarea.focus();
+    textarea.setSelectionRange(caret, caret);
+  });
+
+  function placeCaret(caret: number) {
+    pendingCaret.current = caret;
   }
 
   function insertMention(mention: ComposerMention) {
-    setDraft((current) => current.replace(/@([\w-]*)$/, ""));
+    const textarea = textareaRef.current;
+    const caret = textarea?.selectionStart ?? draft.length;
+    const collapsed = !textarea || caret === textarea.selectionEnd;
+    const query = collapsed ? mentionQueryAt(draft, caret, selectedMentions) : null;
     pickers.closeMentions();
+    if (!query) return;
+    const next = insertMentionToken(draft, query.start, caret, mention.name);
+    setDraft(next.draft);
     setSelectedMentions((current) =>
       current.some((selected) => mentionChipKey(selected) === mentionChipKey(mention))
         ? current
         : [...current, mention],
     );
-    focusComposer();
+    placeCaret(next.caret);
   }
 
   function insertSkill(skill: AgentSkillCatalogEntry) {
+    const next = `/${skill.name} `;
     setSelectedSkill(skill);
-    setDraft("");
+    setDraft(next);
     pickers.closeSlash();
+    placeCaret(next.length);
+  }
+
+  /**
+   * A token moves and deletes as one: the caret steps over it, and Backspace or Delete next to it
+   * first selects it whole, so the next press removes it.
+   */
+  function handleTokenKey(event: KeyboardEvent<HTMLTextAreaElement>): boolean {
+    if (event.shiftKey || event.altKey || event.metaKey || event.ctrlKey) return false;
+    const textarea = event.currentTarget;
+    const caret = textarea.selectionStart;
+    if (caret !== textarea.selectionEnd) return false;
+    const rtl = getComputedStyle(textarea).direction === "rtl";
+    const back = event.key === "Backspace" || event.key === (rtl ? "ArrowRight" : "ArrowLeft");
+    const forward = event.key === "Delete" || event.key === (rtl ? "ArrowLeft" : "ArrowRight");
+    if (!back && !forward) return false;
+    const token = tokens.find((segment) =>
+      back ? segment.start + segment.text.length === caret : segment.start === caret,
+    );
+    if (!token) return false;
+    event.preventDefault();
+    const end = token.start + token.text.length;
+    if (event.key === "Backspace" || event.key === "Delete") {
+      textarea.setSelectionRange(token.start, end);
+    } else {
+      const to = back ? token.start : end;
+      textarea.setSelectionRange(to, to);
+    }
+    return true;
   }
 
   function runSlashAction(action: SlashActionId) {
@@ -231,21 +307,13 @@ export const Composer = memo(function Composer({
     onSlashAction?.(action);
   }
 
-  function removeLastChip() {
-    if (selectedMentions.length > 0) {
-      setSelectedMentions((current) => current.slice(0, -1));
-      return;
-    }
-    if (selectedSkill) setSelectedSkill(null);
-  }
-
   function send() {
     if (!canSend || sending || disabled) return;
-    const text = serializeComposerPrompt(draft, selectedSkill, selectedMentions);
+    const text = serializeComposerPrompt(draft, skillInDraft(draft, selectedSkill));
+    const mentions = mentionsInDraft(draft, selectedMentions);
     setDraft("");
     pickers.closeAll();
     setSelectedSkill(null);
-    const mentions = selectedMentions;
     setSelectedMentions([]);
     const withoutPreview = linkPreview.isRemoved();
     linkPreview.reset();
@@ -261,18 +329,17 @@ export const Composer = memo(function Composer({
 
   // Attachments stay unchanged while dictating: a file dropped or pasted in
   // is ignored the same way it already is while `disabled`.
-  const dropDisabled = disabled || isDictating;
-  const { draggingFiles, dropHandlers } = useComposerFileDrop({
-    disabled: dropDisabled,
-    onAttachmentPick,
-  });
+  const attachDisabled = disabled || isDictating;
+  useEffect(() => {
+    onDictatingChange?.(isDictating);
+  }, [isDictating, onDictatingChange]);
 
   function handlePaste(event: ClipboardEvent<HTMLTextAreaElement>) {
     const clipboardData = event.clipboardData;
     // Only intercept real FileList pastes; leave text-only / empty-files native.
     // (The textarea itself is unmounted while dictating, but this keeps the
     // guard true even if that ever changes.)
-    if (dropDisabled || !clipboardData || !isFilePaste(clipboardData)) return;
+    if (attachDisabled || !clipboardData || !isFilePaste(clipboardData)) return;
     event.preventDefault();
     void onAttachmentPick(clipboardData.files);
     const text = clipboardData.getData("text/plain");
@@ -280,15 +347,19 @@ export const Composer = memo(function Composer({
     const textarea = event.currentTarget;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    updateDraft(`${draft.slice(0, start)}${text}${draft.slice(end)}`, "paste");
     const caret = start + text.length;
+    updateDraft(`${draft.slice(0, start)}${text}${draft.slice(end)}`, "paste", caret);
     window.requestAnimationFrame(() => {
       textareaRef.current?.setSelectionRange(caret, caret);
     });
   }
 
-  const showComposerPlaceholder =
-    draft.length === 0 && selectedSkill === null && selectedMentions.length === 0;
+  const showComposerPlaceholder = draft.length === 0;
+  const tokenSelected = tokens.some(
+    (token) => selection[0] === token.start && selection[1] === token.start + token.text.length,
+  );
+  /** Type and box shared by the textarea and its mirror. */
+  const fieldText = cn("py-1 text-body", skillLeads && "indent-(--size-mention-glyph)");
   const fieldName = answerName
     ? t`Answer ${answerName}…`
     : activeName
@@ -312,11 +383,7 @@ export const Composer = memo(function Composer({
     <fieldset
       data-slot="composer"
       aria-label={t`Message composer`}
-      data-dragging={draggingFiles ? "files" : undefined}
-      {...dropHandlers}
-      className={`relative z-30 m-0 min-w-0 border-0 pt-3 pb-5 ${
-        draggingFiles ? "rounded-card ring-2 ring-inset ring-ring" : ""
-      }`}
+      className="relative z-30 m-0 min-w-0 border-0 pt-3 pb-5"
     >
       <ComposerNotices
         sendError={sendError}
@@ -380,23 +447,6 @@ export const Composer = memo(function Composer({
             disabled={disabled || isDictating}
           />
         }
-        leading={
-          selectedSkill || selectedMentions.length > 0 ? (
-            <SelectedChips
-              skill={selectedSkill}
-              mentions={selectedMentions}
-              disabled={isDictating}
-              onRemoveSkill={() => setSelectedSkill(null)}
-              onRemoveMention={(mention) =>
-                setSelectedMentions((current) =>
-                  current.filter(
-                    (selected) => mentionChipKey(selected) !== mentionChipKey(mention),
-                  ),
-                )
-              }
-            />
-          ) : undefined
-        }
         trailing={
           isDictating ? undefined : (
             <>
@@ -448,83 +498,102 @@ export const Composer = memo(function Composer({
             onConfirm={() => void insertDictation()}
           />
         ) : (
-          <textarea
-            ref={textareaRef}
-            value={draft}
-            onChange={(event) =>
-              updateDraft(
-                event.target.value,
-                (event.nativeEvent as InputEvent).inputType === "insertFromPaste"
-                  ? "paste"
-                  : "type",
-              )
-            }
-            onPaste={handlePaste}
-            onKeyDown={(event) => {
-              if (
-                event.key === "Backspace" &&
-                draft.length === 0 &&
-                (selectedSkill !== null || selectedMentions.length > 0)
-              ) {
-                event.preventDefault();
-                removeLastChip();
-                return;
+          <div className="relative">
+            <textarea
+              ref={textareaRef}
+              value={draft}
+              onChange={(event) =>
+                updateDraft(
+                  event.target.value,
+                  (event.nativeEvent as InputEvent).inputType === "insertFromPaste"
+                    ? "paste"
+                    : "type",
+                  event.target.selectionStart,
+                )
               }
-              if (event.key === "Escape" && !pickers.mentionPickerOpen && rewindTarget) {
-                event.preventDefault();
-                onCancelRewind?.();
-                return;
+              onSelect={(event) => {
+                const { selectionStart, selectionEnd } = event.currentTarget;
+                setSelection([selectionStart, selectionEnd]);
+                if (selectionStart === selectionEnd) {
+                  pickers.trackCaret(draft, selectionStart, selectedMentions);
+                } else {
+                  pickers.closeMentions();
+                }
+              }}
+              onScroll={syncMirror}
+              onPaste={handlePaste}
+              onKeyDown={(event) => {
+                if (event.key === "Escape" && !pickers.mentionPickerOpen && rewindTarget) {
+                  event.preventDefault();
+                  onCancelRewind?.();
+                  return;
+                }
+                const isComposing = event.nativeEvent.isComposing || event.keyCode === 229;
+                if (!isComposing && handleTokenKey(event)) return;
+                const action = resolveMentionPickerKey({
+                  key: event.key,
+                  shiftKey: event.shiftKey,
+                  isComposing,
+                  optionCount: pickers.mentionOptions.length,
+                  highlightedIndex: pickers.activeMentionIndex,
+                });
+                if (action.type === "complete") {
+                  const mention = pickers.mentionOptions[action.index];
+                  if (!mention) return;
+                  event.preventDefault();
+                  insertMention(mention);
+                  return;
+                }
+                if (action.type === "move") {
+                  event.preventDefault();
+                  pickers.setMentionHighlightIndex(action.index);
+                  return;
+                }
+                if (action.type === "dismiss") {
+                  event.preventDefault();
+                  pickers.closeMentions();
+                  return;
+                }
+                if (action.type === "send") {
+                  event.preventDefault();
+                  send();
+                }
+              }}
+              disabled={disabled}
+              placeholder={
+                showComposerPlaceholder
+                  ? activeName || answerName
+                    ? fieldName
+                    : t`Message…`
+                  : undefined
               }
-              const action = resolveMentionPickerKey({
-                key: event.key,
-                shiftKey: event.shiftKey,
-                isComposing: event.nativeEvent.isComposing || event.keyCode === 229,
-                optionCount: pickers.mentionOptions.length,
-                highlightedIndex: pickers.activeMentionIndex,
-              });
-              if (action.type === "complete") {
-                const mention = pickers.mentionOptions[action.index];
-                if (!mention) return;
-                event.preventDefault();
-                insertMention(mention);
-                return;
-              }
-              if (action.type === "move") {
-                event.preventDefault();
-                pickers.setMentionHighlightIndex(action.index);
-                return;
-              }
-              if (action.type === "dismiss") {
-                event.preventDefault();
-                pickers.closeMentions();
-                return;
-              }
-              if (action.type === "send") {
-                event.preventDefault();
-                send();
-              }
-            }}
-            disabled={disabled}
-            placeholder={
-              showComposerPlaceholder
-                ? activeName || answerName
-                  ? fieldName
-                  : t`Message…`
-                : undefined
-            }
-            aria-label={fieldName}
-            role="combobox"
-            aria-autocomplete="list"
-            aria-haspopup="listbox"
-            aria-expanded={pickers.mentionPickerOpen}
-            aria-controls={pickers.mentionPickerOpen ? pickers.mentionListboxId : undefined}
-            aria-activedescendant={pickers.activeMentionOptionId}
-            name="chat-message"
-            autoComplete="off"
-            dir="auto"
-            rows={1}
-            className="rk-scroll block max-h-composer-field min-h-6 w-full resize-none overflow-y-auto bg-transparent py-1 text-body text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-40"
-          />
+              aria-label={fieldName}
+              role="combobox"
+              aria-autocomplete="list"
+              aria-haspopup="listbox"
+              aria-expanded={pickers.mentionPickerOpen}
+              aria-controls={pickers.mentionPickerOpen ? pickers.mentionListboxId : undefined}
+              aria-activedescendant={pickers.activeMentionOptionId}
+              name="chat-message"
+              autoComplete="off"
+              dir="auto"
+              rows={1}
+              className={cn(
+                "rk-scroll block max-h-composer-field min-h-6 w-full resize-none overflow-y-auto bg-transparent text-foreground outline-none placeholder:text-muted-foreground disabled:opacity-40",
+                fieldText,
+                tokens.length > 0 && "text-transparent caret-foreground",
+                tokenSelected && "selection:bg-transparent",
+              )}
+            />
+            {tokens.length > 0 ? (
+              <DraftMirror
+                segments={segments}
+                selection={selection}
+                mirrorRef={mirrorRef}
+                className={fieldText}
+              />
+            ) : null}
+          </div>
         )}
       </ComposerShell>
     </fieldset>

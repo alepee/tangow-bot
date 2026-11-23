@@ -22,6 +22,7 @@
   --link-mention-tile: #444447;
   --muted: #2a2a2d;
   --muted-foreground: #aeaeb2;
+  --avatar-disc: rgba(118, 118, 128, 0.24);
   --accent: #252527;
   --accent-foreground: #f5f5f7;
   --destructive: #ef4444;
@@ -112,6 +113,7 @@
   --link-mention-tile: #f2f2f4;
   --muted: #e8e8ea;
   --muted-foreground: #6e6e73;
+  --avatar-disc: rgba(118, 118, 128, 0.12);
   --accent: #ebebed;
   --accent-foreground: #1d1d1f;
   --destructive: #dc2626;
@@ -266,7 +268,7 @@
   --size-interstitial: 17px;
   --size-chip: 18px;
   --size-stack: 20px;
-  --size-message: 26px;
+  --size-message: 32px;
   --size-row: 28px;
   --size-call: 120px;
   --size-hover-icon: 28px;
@@ -290,11 +292,12 @@
   --size-link-photo-max: 320px;
   --size-link-mention-icon: 16px;
   --size-link-mention-gap: 5px;
+  --size-mention-glyph: 16px;
+  --size-mention-gap: 4px;
   --size-share-bar: 8px;
   --duration-arrive: 240ms;
   --duration-press: 160ms;
   --duration-hover: 160ms;
-  --duration-breathe: 5600ms;
   --duration-caret: 1000ms;
   --duration-pivot: 320ms;
   --duration-morph: 260ms;

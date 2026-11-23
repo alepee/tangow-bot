@@ -26,7 +26,7 @@ services:
   # legacy messages first when an upgrade needs it. On a large database that takes minutes. The
   # Docker home move that follows does nothing here: production runs E2B computers.
   migrate:
-    image: ${TANGOW_IMAGE:-ghcr.io/elie222/rakazo/app}:${TANGOW_IMAGE_TAG:-local}
+    image: ${TANGOW_IMAGE:-tangow/app}:${TANGOW_IMAGE_TAG:-local}
     build:
       context: ../..
       dockerfile: infra/compose/Dockerfile
@@ -55,13 +55,10 @@ services:
         condition: service_healthy
 
   api:
-    # The tag is what the updater moves. `docker compose pull` fetches it, `up -d` recreates onto
-    # it, and the previous tag stays in .env so a rollback is one redeploy rather than a rebuild.
-    #
-    # The default tag is `local`, which no registry serves, so a fresh install builds from the
-    # checkout via `up -d --build` instead of failing on a `pull` of an image that does not exist
-    # yet. Once a release is published, pin TANGOW_IMAGE_TAG to it and the pull path takes over.
-    image: ${TANGOW_IMAGE:-ghcr.io/elie222/rakazo/app}:${TANGOW_IMAGE_TAG:-local}
+    # Images are built on this host from the checkout. The tag is what the updater moves: it builds
+    # `local-<commit>`, `up -d` recreates onto it, and the previous tag stays in .env so a rollback
+    # is one redeploy rather than a rebuild.
+    image: ${TANGOW_IMAGE:-tangow/app}:${TANGOW_IMAGE_TAG:-local}
     build:
       context: ../..
       dockerfile: infra/compose/Dockerfile
@@ -117,7 +114,7 @@ services:
       retries: 20
 
   worker:
-    image: ${TANGOW_IMAGE:-ghcr.io/elie222/rakazo/app}:${TANGOW_IMAGE_TAG:-local}
+    image: ${TANGOW_IMAGE:-tangow/app}:${TANGOW_IMAGE_TAG:-local}
     build:
       context: ../..
       dockerfile: infra/compose/Dockerfile
@@ -163,7 +160,7 @@ services:
         condition: service_healthy
 
   web:
-    image: ${TANGOW_IMAGE:-ghcr.io/elie222/rakazo/app}:${TANGOW_IMAGE_TAG:-local}
+    image: ${TANGOW_IMAGE:-tangow/app}:${TANGOW_IMAGE_TAG:-local}
     build:
       context: ../..
       dockerfile: infra/compose/Dockerfile
@@ -202,7 +199,7 @@ services:
     profiles: [updater]
     # Pinned separately from the application image: the updater does not recreate itself, so moving
     # its own version is an operator action, not something an update can do underneath itself.
-    image: ${TANGOW_UPDATER_IMAGE:-ghcr.io/elie222/rakazo/updater}:${TANGOW_UPDATER_IMAGE_TAG:-local}
+    image: ${TANGOW_UPDATER_IMAGE:-tangow/updater}:${TANGOW_UPDATER_IMAGE_TAG:-local}
     build:
       context: ../..
       dockerfile: infra/updater/Dockerfile
@@ -222,7 +219,7 @@ services:
       TANGOW_UPDATER_TOKEN: ${TANGOW_UPDATER_TOKEN:-}
       TANGOW_UPDATER_HOST: "0.0.0.0"
       TANGOW_UPDATER_PORT: "7092"
-      TANGOW_IMAGE: ${TANGOW_IMAGE:-ghcr.io/elie222/rakazo/app}
+      TANGOW_IMAGE: ${TANGOW_IMAGE:-tangow/app}
       # `-p` is available to Compose interpolation but is not injected into containers unless it is
       # declared here. The sidecar must target the project the operator actually started.
       COMPOSE_PROJECT_NAME: ${COMPOSE_PROJECT_NAME:-tangow-prod}

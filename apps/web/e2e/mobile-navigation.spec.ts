@@ -128,10 +128,12 @@ test("phone Settings is a list of sections: a row pushes one, Back and close lea
   const settings = page.getByTestId("user-settings");
   await expect(settings.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
   await expect(settings.getByTestId("settings-nav")).toHaveCount(0);
-  for (const id of ["profile", "providers", "updates", "space", "models", "usage"]) {
+  for (const id of ["profile", "providers", "space", "models", "usage"]) {
     const row = await settings.getByTestId(`settings-list-${id}`).boundingBox();
     expect(row?.height, `${id} row`).toBeGreaterThanOrEqual(44);
   }
+  // The window zooms in when it opens; measure it once it has landed.
+  await settings.evaluate((element) => Promise.all(element.getAnimations().map((a) => a.finished)));
   const close = await settings.getByRole("button", { name: "Close user settings" }).boundingBox();
   expect(close && close.x + close.width).toBeGreaterThan(340);
   expect(close?.y).toBeLessThan(60);

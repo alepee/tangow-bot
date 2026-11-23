@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildComputers } from "./tangow-builds.mjs";
 import {
+  composeArgs,
   inspectHomes,
   runMigrations,
   validateConfiguration,
@@ -125,14 +126,7 @@ async function main() {
   }
   let provider = override ? "e2b" : "docker";
   const docker = values.sudo ? ["sudo", "-n", "docker"] : ["docker"];
-  const compose = [
-    "compose",
-    "--env-file",
-    ".env",
-    "-f",
-    "infra/compose/docker-compose.yml",
-    ...(override ? ["-f", ".env.e2b.compose.json"] : []),
-  ];
+  const compose = override ? composeArgs(root, ".env.e2b.compose.json") : composeArgs(root);
   const run = (
     label,
     executable,
@@ -291,15 +285,7 @@ async function main() {
         verify,
         activateDocker() {
           provider = "docker";
-          compose.splice(
-            0,
-            compose.length,
-            "compose",
-            "--env-file",
-            ".env",
-            "-f",
-            "infra/compose/docker-compose.yml",
-          );
+          compose.splice(0, compose.length, ...composeArgs(root));
         },
       });
       return;
@@ -519,7 +505,7 @@ async function main() {
             { inherit: true },
           );
           provider = "e2b";
-          compose.push("-f", ".env.e2b.compose.json");
+          compose.splice(0, compose.length, ...composeArgs(root, ".env.e2b.compose.json"));
           delete expectedImages.supervisor;
           await verify(target, expectedImages);
         }

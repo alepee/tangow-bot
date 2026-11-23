@@ -7,7 +7,6 @@ import {
 } from "@tangow/contracts";
 import type { PrismaClient } from "@tangow/db";
 import { ComposioConnector } from "./composio-connector.js";
-import { PipedreamConnector } from "./pipedream-connector.js";
 import type { EncryptedSecretStore } from "./secrets.js";
 
 /** Resolve persisted credentials on every operation so API and workers observe changes.
@@ -21,7 +20,6 @@ export class IntegrationProviderSettings {
   constructor(
     private readonly prisma: PrismaClient,
     private readonly secrets: EncryptedSecretStore,
-    private readonly identitySecret: string,
     private readonly fallbacks: Partial<
       Record<IntegrationProviderId, ManagedConnectorProvider>
     > = {},
@@ -30,9 +28,7 @@ export class IntegrationProviderSettings {
 
   private create(config: IntegrationProviderConfig): ManagedConnectorProvider {
     if (this.factory) return this.factory(config);
-    return config.provider === "composio"
-      ? new ComposioConnector(config.apiKey)
-      : new PipedreamConnector({ ...config, identitySecret: this.identitySecret });
+    return new ComposioConnector(config.apiKey);
   }
 
   async configured(id: IntegrationProviderId): Promise<boolean> {

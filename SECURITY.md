@@ -2,7 +2,7 @@
 
 ## Reporting vulnerabilities
 
-Email **security@rakazo.com** only. Do not open public GitHub issues for security bugs.
+Email **security@tangow.app** only. Do not open public GitHub issues for security bugs.
 
 Please include:
 
@@ -14,8 +14,7 @@ We will acknowledge your report and work on a fix. Please do not file a public i
 
 ## Other contact
 
-- General support: **support@rakazo.com**
-- Maintainer: **elie@rakazo.com**
+- Maintainer: **romainjeff@tangow.app**
 
 ## Scope
 

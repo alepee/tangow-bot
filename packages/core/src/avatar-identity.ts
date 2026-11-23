@@ -1,6 +1,6 @@
 /**
  * A bot with no picked shape still needs a stable one: the seed hashes its id so
- * the same bot always lands on the same bloub silhouette (`SHAPES`).
+ * the same bot always lands on the same shape.
  */
 export function avatarIdentitySeed(identity: string): number {
   let hash = 0;

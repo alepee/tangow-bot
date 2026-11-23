@@ -1,8 +1,11 @@
+import type { AvatarCharacterId } from "@tangow/contracts";
 import {
   type Actor,
+  AVATAR_CHARACTER_IDS,
   BOT_COLORS,
   type Bot,
   type BotSection,
+  botDisplayColor,
   type MessageBlock,
   type SpaceBot,
 } from "@tangow/contracts";
@@ -27,6 +30,12 @@ function isSpawnKeyConflict(error: unknown): boolean {
   return fields.some((field) => field === "spawnKey" || field.includes("spawnKey"));
 }
 
+/** The catalogue character the owner has the fewest of, the earliest in the catalogue on a tie. */
+export function pickFreeCharacter(usedIds: readonly (string | null)[]): AvatarCharacterId {
+  const uses = (id: string) => usedIds.filter((used) => used === id).length;
+  return AVATAR_CHARACTER_IDS.reduce((best, id) => (uses(id) < uses(best) ? id : best));
+}
+
 function mapBot(
   bot: {
     id: string;
@@ -37,6 +46,7 @@ function mapBot(
     instructions: string;
     color: string;
     shapeSeed: number | null;
+    avatarCharacter: string | null;
     notifyOnFinish: boolean;
     pinned: boolean;
     sectionId: string | null;
@@ -71,8 +81,9 @@ function mapBot(
     title: bot.title,
     description: bot.description,
     instructions: bot.instructions,
-    color: bot.color,
+    color: botDisplayColor(bot),
     shapeSeed: bot.shapeSeed,
+    avatarCharacter: bot.avatarCharacter,
     notifyOnFinish: bot.notifyOnFinish,
     pinned: bot.pinned,
     sectionId: bot.sectionId,
@@ -140,6 +151,7 @@ export function createRepos(prisma: PrismaClient) {
           name: true,
           color: true,
           shapeSeed: true,
+          avatarCharacter: true,
           createdAt: true,
           updatedAt: true,
           memberThreads: {
@@ -190,6 +202,7 @@ export function createRepos(prisma: PrismaClient) {
         title: true,
         color: true,
         shapeSeed: true,
+        avatarCharacter: true,
         notifyOnFinish: true,
         pinned: true,
         sectionId: true,
@@ -216,8 +229,9 @@ export function createRepos(prisma: PrismaClient) {
       spaceId: bot.spaceId,
       name: bot.name,
       title: bot.title,
-      color: bot.color,
+      color: botDisplayColor(bot),
       shapeSeed: bot.shapeSeed,
+      avatarCharacter: bot.avatarCharacter,
       notifyOnFinish: bot.notifyOnFinish,
       pinned: bot.pinned,
       sectionId: bot.sectionId,
@@ -367,6 +381,7 @@ export function createRepos(prisma: PrismaClient) {
         ...shared.map(
           ({ thread, createdAt, updatedAt, ...bot }): Bot => ({
             ...bot,
+            color: botDisplayColor(bot),
             threadId: thread.id,
             unread: thread.unread,
             preview: previews.get(thread.sessionId) ?? "",
@@ -457,6 +472,14 @@ export function createRepos(prisma: PrismaClient) {
             // A new home starts on volumes, so its runs go to workers with no move.
             homeStorage: kind === "e2b" || kind === "docker" ? "volumes" : "snapshot",
           });
+          const avatarCharacter = pickFreeCharacter(
+            (
+              await tx.bot.findMany({
+                where: { spaceId: actor.spaceId, userId: actor.userId },
+                select: { avatarCharacter: true },
+              })
+            ).map((row) => row.avatarCharacter),
+          );
           const created = await tx.bot.create({
             data: {
               spaceId: actor.spaceId,
@@ -467,6 +490,7 @@ export function createRepos(prisma: PrismaClient) {
               instructions: input.instructions,
               notifyOnFinish: input.notifyOnFinish,
               color,
+              avatarCharacter,
               position: (positions._max.position ?? -1) + 1,
               parentBotId: input.parentBotId ?? null,
               computerId: teamComputer.id,

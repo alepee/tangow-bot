@@ -13,37 +13,9 @@ import {
   approvalReplayEffectToolName,
   buildApprovalContinuation,
 } from "./executor.js";
-import {
-  catalogEntries,
-  disambiguateInstalledToolNames,
-  resolveCatalogCall,
-} from "./lazy-tool-catalog.js";
+import { catalogEntries, resolveCatalogCall } from "./lazy-tool-catalog.js";
 
 describe("executor approval replay", () => {
-  it.each([
-    ["MCP", "install-mcp", "notes.write"],
-    ["API", "install-api", "createContact"],
-  ])("replays a pre-namespaced installed %s approval", (_kind, resourceId, toolName) => {
-    const [tool] = disambiguateInstalledToolNames([
-      {
-        name: toolName,
-        description: toolName,
-        inputSchema: { type: "object" },
-        route: { connectorId: "installed", resourceId, toolName },
-      },
-    ]);
-    const request = catalogApprovalRequest(
-      "installed_execute_tool",
-      { id: `${resourceId}:${toolName}`, arguments: {} },
-      "__tangowCatalogTool",
-    );
-    const queue = createApprovedEffectReplayQueue([{ kind: toolName, request }]);
-
-    expect(tool!.name).toBe(toolName);
-    expect(queue.take(tool!.name)).toEqual(request);
-    expect(queue.assertDrained).not.toThrow();
-  });
-
   it("lists and replays every approved request in FIFO order when a tool repeats", () => {
     const effects = [
       { kind: "destination.write", request: { sequence: 1 } },
@@ -93,34 +65,25 @@ describe("executor approval replay", () => {
 
   it("renders a direct tool continuation when a catalog approval's wrapper is no longer exposed", () => {
     const request = catalogApprovalRequest(
-      "installed_execute_tool",
-      { id: "install-A:notes.write", arguments: { text: "approved exactly" } },
+      "mcp_execute_tool",
+      { id: "server-A:notes.write", arguments: { text: "approved exactly" } },
       "__tangowCatalogTool",
     );
     const stillCatalog = buildApprovalContinuation(
       [{ kind: "notes.write", request }],
       JSON.stringify,
-      { exposedToolNames: new Set(["installed_execute_tool", "installed_search_tools"]) },
+      { exposedToolNames: new Set(["mcp_execute_tool", "mcp_search_tools"]) },
     );
     const afterShrink = buildApprovalContinuation(
       [{ kind: "notes.write", request }],
       JSON.stringify,
       { exposedToolNames: new Set(["notes.write"]) },
     );
-    const afterShrinkUniquified = buildApprovalContinuation(
-      [{ kind: "notes.write", request }],
-      JSON.stringify,
-      { exposedToolNames: new Set(["installed__install-A__notes.write"]) },
-    );
-
     expect(stillCatalog).toContain(
-      'installed_execute_tool: {"id":"install-A:notes.write","arguments":{"text":"approved exactly"}}',
+      'mcp_execute_tool: {"id":"server-A:notes.write","arguments":{"text":"approved exactly"}}',
     );
     expect(afterShrink).toContain('notes.write: {"text":"approved exactly"}');
-    expect(afterShrink).not.toContain("installed_execute_tool:");
-    expect(afterShrinkUniquified).toContain(
-      'installed__install-A__notes.write: {"text":"approved exactly"}',
-    );
+    expect(afterShrink).not.toContain("mcp_execute_tool:");
   });
 
   it("keeps a direct-tool argument named like the catalog marker in continuation JSON", () => {
@@ -132,7 +95,7 @@ describe("executor approval replay", () => {
             id: "row-1",
             arguments: { mode: "strict" },
             text: "approved exactly",
-            __tangowCatalogTool: "installed_execute_tool",
+            __tangowCatalogTool: "mcp_execute_tool",
           },
         },
       ],
@@ -140,13 +103,13 @@ describe("executor approval replay", () => {
     );
 
     expect(continuation).toContain(
-      'notes.write: {"id":"row-1","arguments":{"mode":"strict"},"text":"approved exactly","__tangowCatalogTool":"installed_execute_tool"}',
+      'notes.write: {"id":"row-1","arguments":{"mode":"strict"},"text":"approved exactly","__tangowCatalogTool":"mcp_execute_tool"}',
     );
   });
 
   it("renders a catalog wrapper continuation when a bound direct tool is no longer exposed", () => {
     const request = boundDirectApprovalRequest(
-      { connectorId: "installed", resourceId: "install-A", toolName: "notes.write" },
+      { connectorId: "mcp", resourceId: "server-A", toolName: "notes.write" },
       { text: "approved exactly" },
       "__tangowCatalogTool",
     );
@@ -158,45 +121,23 @@ describe("executor approval replay", () => {
     const afterGrowth = buildApprovalContinuation(
       [{ kind: "notes.write", request }],
       JSON.stringify,
-      { exposedToolNames: new Set(["installed_execute_tool"]) },
+      { exposedToolNames: new Set(["mcp_execute_tool"]) },
     );
 
     expect(stillDirect).toContain('notes.write: {"text":"approved exactly"}');
     expect(afterGrowth).toContain(
-      'installed_execute_tool: {"id":"install-A:notes.write","arguments":{"text":"approved exactly"}}',
+      'mcp_execute_tool: {"id":"server-A:notes.write","arguments":{"text":"approved exactly"}}',
     );
     expect(afterGrowth).not.toContain("notes.write:");
   });
 
-  it("renders a uniquified direct name when collision renames the tool under the direct limit", () => {
-    const request = boundDirectApprovalRequest(
-      { connectorId: "installed", resourceId: "install-A", toolName: "delete_item" },
-      { target: "approved" },
-      "__tangowCatalogTool",
-    );
-    const continuation = buildApprovalContinuation(
-      [{ kind: "delete_item", request }],
-      JSON.stringify,
-      {
-        exposedToolNames: new Set([
-          "installed__install-A__delete_item",
-          "installed__install-B__delete_item",
-        ]),
-      },
-    );
-
-    expect(continuation).toContain('installed__install-A__delete_item: {"target":"approved"}');
-    expect(continuation).not.toContain("installed_execute_tool:");
-    expect(continuation).not.toMatch(/(^|\n)delete_item:/);
-  });
-
-  it("keeps the original approval effect key after collision uniquify", () => {
+  it("keeps the original approval effect key when the server is renamed", () => {
     const args = { target: "approved" };
     const original = approvalEffectKey("run", "delete_item", args);
-    const uniquified = approvalEffectKey("run", "installed__install-A__delete_item", args);
+    const uniquified = approvalEffectKey("run", "mcp__server-A__delete_item", args);
     expect(original).not.toBe(uniquified);
     const replayName = approvalReplayEffectToolName(
-      "installed__install-A__delete_item",
+      "mcp__server-A__delete_item",
       "delete_item",
       true,
     );
@@ -208,24 +149,19 @@ describe("executor approval replay", () => {
       {
         kind: "delete_item",
         request: catalogApprovalRequest(
-          "installed_execute_tool",
-          { id: "install-A:delete_item", arguments: { target: "approved" } },
+          "mcp_execute_tool",
+          { id: "server-A:delete_item", arguments: { target: "approved" } },
           "__tangowCatalogTool",
         ),
       },
     ];
     const queue = createApprovedEffectReplayQueue(effects);
-    const replay = approvedCatalogReplay(
-      queue,
-      "installed_execute_tool",
-      "__tangowCatalogTool",
-      true,
-    );
+    const replay = approvedCatalogReplay(queue, "mcp_execute_tool", "__tangowCatalogTool", true);
     const modelRuntimeArgs = {
-      id: "install-B:delete_item",
+      id: "server-B:delete_item",
       arguments: { target: "model-reconstructed" },
     };
-    const tools: ConnectorTool[] = ["install-A", "install-B"].map((resourceId) => ({
+    const tools: ConnectorTool[] = ["server-A", "server-B"].map((resourceId) => ({
       name: "delete_item",
       description: "Delete one item",
       inputSchema: {
@@ -233,34 +169,34 @@ describe("executor approval replay", () => {
         properties: { target: { type: "string" } },
         required: ["target"],
       },
-      route: { connectorId: "installed", resourceId, toolName: "delete_item" },
+      route: { connectorId: "mcp", resourceId, toolName: "delete_item" },
     }));
 
     const resolved = resolveCatalogCall(
       {
-        tool: "installed_execute_tool",
+        tool: "mcp_execute_tool",
         args: replay.args ?? modelRuntimeArgs,
         executionId: "approved",
-        route: { connectorId: "installed", toolName: "__catalog_execute" },
+        route: { connectorId: "mcp", toolName: "__catalog_execute" },
       },
       catalogEntries(tools),
     );
 
-    expect(resolved.call.route?.resourceId).toBe("install-A");
+    expect(resolved.call.route?.resourceId).toBe("server-A");
     expect(resolved.call.args).toEqual({ target: "approved" });
   });
 
   it("keeps resolveCall parsed args when draining an approved catalog replay", () => {
     const marker = "__tangowCatalogTool";
     const approvedRequest = catalogApprovalRequest(
-      "installed_execute_tool",
-      { id: "install-A:create_item", arguments: {} },
+      "mcp_execute_tool",
+      { id: "server-A:create_item", arguments: {} },
       marker,
     );
     const queue = createApprovedEffectReplayQueue([
       { kind: "create_item", request: approvedRequest },
     ]);
-    const replay = approvedCatalogReplay(queue, "installed_execute_tool", marker, true);
+    const replay = approvedCatalogReplay(queue, "mcp_execute_tool", marker, true);
     const tool: ConnectorTool = {
       name: "create_item",
       description: "Create one item",
@@ -269,14 +205,14 @@ describe("executor approval replay", () => {
         properties: { count: { type: "integer", default: 3 } },
         additionalProperties: false,
       },
-      route: { connectorId: "installed", resourceId: "install-A", toolName: "create_item" },
+      route: { connectorId: "mcp", resourceId: "server-A", toolName: "create_item" },
     };
     const resolved = resolveCatalogCall(
       {
-        tool: "installed_execute_tool",
+        tool: "mcp_execute_tool",
         args: replay.args!,
         executionId: "approved",
-        route: { connectorId: "installed", toolName: "__catalog_execute" },
+        route: { connectorId: "mcp", toolName: "__catalog_execute" },
       },
       catalogEntries([tool]),
     );

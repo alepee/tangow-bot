@@ -4,6 +4,7 @@ import type { Socket } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { WorkerSpec } from "@tangow/adapter-kit";
+import { WorkerEnsureSettledError } from "@tangow/adapter-kit";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DOCKER_CREATE_MARGIN_MS, DockerWorkerProvider } from "./docker-worker.js";
 import { encodeFrameLine } from "./runtime-worker/framing.js";
@@ -18,7 +19,13 @@ async function fakeSupervisor() {
   const workers = new Map<string, string>();
   const requests: Request[] = [];
   const guests: GuestSocket[] = [];
-  const faults = { resetNext: 0, stallCreate: false, refuseUpgrade: false, failDelete: false };
+  const faults = {
+    resetNext: 0,
+    stallCreate: false,
+    refuseUpgrade: false,
+    failDelete: false,
+    refuseCreate: undefined as { status: number; body: string } | undefined,
+  };
   let created = 0;
   const server = http.createServer(async (req, res) => {
     if (faults.resetNext > 0) {
@@ -41,6 +48,9 @@ async function fakeSupervisor() {
       return json(401, { error: "unauthorized" });
     if (req.method === "POST" && url.pathname === "/workers") {
       if (faults.stallCreate) return;
+      if (faults.refuseCreate) {
+        return res.writeHead(faults.refuseCreate.status).end(faults.refuseCreate.body);
+      }
       const { attemptId } = JSON.parse(raw) as { attemptId: string };
       const id = workers.get(attemptId) ?? `ctr${++created}`;
       workers.set(attemptId, id);
@@ -185,9 +195,35 @@ describe("DockerWorkerProvider", () => {
   it("never resends a create, which could start a second container on the same volumes", async () => {
     supervisor.faults.resetNext = 1;
 
-    await expect(worker.ensure(spec([]))).rejects.toThrow();
+    const failed = await worker.ensure(spec([])).catch((error: unknown) => error);
+
+    expect(failed).toBeInstanceOf(Error);
+    expect(failed).not.toBeInstanceOf(WorkerEnsureSettledError);
     expect(supervisor.faults.resetNext).toBe(0);
     expect(supervisor.workers.size).toBe(0);
+  });
+
+  it("settles a create the supervisor refused with its own error, so nothing is left in flight", async () => {
+    supervisor.faults.refuseCreate = {
+      status: 500,
+      body: JSON.stringify({ error: "invalid worker volume name" }),
+    };
+
+    const refused = await worker.ensure(spec([])).catch((error: unknown) => error);
+
+    expect(refused).toBeInstanceOf(WorkerEnsureSettledError);
+    expect((refused as Error).message).toBe(
+      "Supervisor POST /workers failed with 500: invalid worker volume name",
+    );
+  });
+
+  it("leaves a create failed by a gateway answer that is not the supervisor's JSON unsettled", async () => {
+    supervisor.faults.refuseCreate = { status: 502, body: "<html>" };
+
+    const failed = await worker.ensure(spec([])).catch((error: unknown) => error);
+
+    expect(failed).toBeInstanceOf(Error);
+    expect(failed).not.toBeInstanceOf(WorkerEnsureSettledError);
   });
 
   it("reports a removal the supervisor could not confirm as an error, never as absent", async () => {

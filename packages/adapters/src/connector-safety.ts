@@ -58,3 +58,19 @@ export function redactPayloadWith(value: unknown, redact: (text: string) => stri
     Object.entries(value).map(([key, item]) => [redact(key), redactPayloadWith(item, redact)]),
   );
 }
+
+/**
+ * Masks secrets in a transcript's text. An image's base64 data is kept as it is: it would spend
+ * the redaction budget and come back as a bare `[redacted]` in place of the image.
+ */
+export function redactTranscript(value: unknown, redact: (text: string) => string): unknown {
+  if (Array.isArray(value)) return value.map((item) => redactTranscript(item, redact));
+  if (value === null || typeof value !== "object") return redactPayloadWith(value, redact);
+  const image = (value as { type?: unknown }).type === "image";
+  return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [
+      redact(key),
+      image && key === "data" ? item : redactTranscript(item, redact),
+    ]),
+  );
+}

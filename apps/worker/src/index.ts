@@ -34,20 +34,16 @@ import {
   GraphileJobPublisher,
   GraphileJobWorkerHost,
   InMemoryJobQueue,
-  InstalledConnectorProvider,
   isComposioEnabled,
   isMessagingSurfaceEnabled,
-  isPipedreamEnabled,
   LocalAgentHomeStore,
   LocalArtifactStore,
   McpConnector,
   McpOAuthBroker,
   messagingEnvFromProcess,
   messagingPlatformsFromEnv,
-  PipedreamConnector,
   PostgresRealtimeFanout,
   PostgresSessionLog,
-  pipedreamConfigFromEnv,
   reconcileComputerUpdates,
   resolveDeploymentModel,
   resolveSandboxProvider,
@@ -111,16 +107,6 @@ async function main() {
     },
     mcpOAuth,
   );
-  const pipedreamConfig = pipedreamConfigFromEnv({
-    pipedreamClientId: process.env.PIPEDREAM_CLIENT_ID,
-    pipedreamClientSecret: process.env.PIPEDREAM_CLIENT_SECRET,
-    pipedreamProjectId: process.env.PIPEDREAM_PROJECT_ID,
-    pipedreamEnvironment: process.env.PIPEDREAM_ENVIRONMENT,
-    encryptionKey: resolveEncryptionKey(process.env),
-  });
-  const pipedream = isPipedreamEnabled(pipedreamConfig)
-    ? new PipedreamConnector(pipedreamConfig)
-    : undefined;
   // pollInboundMessages stays false (the default) here: this process
   // only ever sends outbound (messaging.deliver jobs). It must never poll
   // Telegram — that would steal the single getUpdates slot away from the
@@ -132,22 +118,12 @@ async function main() {
   })
     ? new ChatSdkMessagingSurface(messagingPlatforms)
     : undefined;
-  const integrationSettings = new IntegrationProviderSettings(
-    prisma,
-    secrets,
-    resolveEncryptionKey(process.env),
-    {
-      composio: isComposioEnabled(process.env.COMPOSIO_API_KEY)
-        ? new ComposioConnector(process.env.COMPOSIO_API_KEY)
-        : undefined,
-      pipedream,
-    },
-  );
-  const stack = createConnectorStack(false, undefined, [
-    new InstalledConnectorProvider(prisma, secrets),
-    ...integrationSettings.providers(),
-    mcp,
-  ]);
+  const integrationSettings = new IntegrationProviderSettings(prisma, secrets, {
+    composio: isComposioEnabled(process.env.COMPOSIO_API_KEY)
+      ? new ComposioConnector(process.env.COMPOSIO_API_KEY)
+      : undefined,
+  });
+  const stack = createConnectorStack(false, undefined, [...integrationSettings.providers(), mcp]);
   const connector = stack.destination;
   await connector.start();
   integrationSettings.warmDirectories();
@@ -174,6 +150,8 @@ async function main() {
     new GraphileJobWorkerHost(pool, {
       concurrency: parsePositiveInteger(process.env.GRAPHILE_WORKER_CONCURRENCY, 4),
       except: ISOLATED_JOB_NAMES,
+      // stop() below owns shutdown: graphile's own handler would kill the process mid-way.
+      noHandleSignals: true,
     });
   // Link previews read third-party pages: they get a runner of their own, so they can never
   // take a slot a bot run is waiting for (and a slow site can only slow other previews). The
@@ -195,6 +173,7 @@ async function main() {
   const skillLearning = parseSkillLearningMode(process.env.SKILL_LEARNING);
   const sessionLog = new PostgresSessionLog(prisma);
   const feedback = createFeedbackProvider();
+  const shutdown = new AbortController();
   const executor = createRunExecutor({
     prisma,
     sessionLog,
@@ -235,6 +214,7 @@ async function main() {
     web: createWebProvider(),
     feedback: feedback?.provider,
     version: process.env.GIT_SHA?.trim() || undefined,
+    shutdownSignal: shutdown.signal,
     skillLearning,
   });
 
@@ -306,6 +286,8 @@ async function main() {
     if (stopping) return;
     stopping = true;
     try {
+      // In-flight runs end first and hand their run back, so the job host drains promptly.
+      shutdown.abort();
       await reconciler.stop();
       await jobHost.stop();
       await previewHost?.stop();
@@ -321,8 +303,10 @@ async function main() {
       await logger.flush({ timeoutMs: 2_000 });
     }
   };
-  process.once("SIGTERM", () => void stop());
-  process.once("SIGINT", () => void stop());
+  // Exit once stopped: a handle left open must not hold the container until SIGKILL.
+  const stopAndExit = () => void stop().finally(() => process.exit(0));
+  process.once("SIGTERM", stopAndExit);
+  process.once("SIGINT", stopAndExit);
   // graphile-worker fires completeJob() without awaiting it. When pool.connect()
   // then hits Postgres 53300, that rejection is unhandled. Exiting here is the
   // crash loop: Docker restarts the process before Postgres has reaped the old

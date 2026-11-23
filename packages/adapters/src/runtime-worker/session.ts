@@ -28,7 +28,7 @@ import {
   helperProfileOf,
   isHelperTool,
 } from "../builtin-tools.js";
-import { redactPayloadWith } from "../connector-safety.js";
+import { redactTranscript } from "../connector-safety.js";
 import { loadCatalogEntry } from "../lazy-tool-catalog.js";
 import type { RunTraceRecorder } from "../pi-run-trace.js";
 import type { CapabilityKey } from "./capability.js";
@@ -125,22 +125,6 @@ type Helper = {
   /** A helper the controller started settles its parent's `run_subagent` call. */
   settle?: (outcome: HelperOutcome) => void;
 };
-
-/**
- * Masks secrets in a transcript's text. An image's base64 data is kept as it is: it would spend
- * the redaction budget and come back as a bare `[redacted]` in place of the image.
- */
-function redactTranscript(value: unknown, redact: (text: string) => string): unknown {
-  if (Array.isArray(value)) return value.map((item) => redactTranscript(item, redact));
-  if (value === null || typeof value !== "object") return redactPayloadWith(value, redact);
-  const image = (value as { type?: unknown }).type === "image";
-  return Object.fromEntries(
-    Object.entries(value).map(([key, item]) => [
-      redact(key),
-      image && key === "data" ? item : redactTranscript(item, redact),
-    ]),
-  );
-}
 
 /**
  * One attempt's guest, from launch to confirmed stop. Lives as long as the executor's run: a

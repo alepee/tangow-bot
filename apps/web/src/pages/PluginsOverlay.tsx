@@ -8,21 +8,12 @@ import {
 } from "@tangow/core";
 import { Button, Input } from "@tangow/ui-web";
 import { useMemo, useState } from "react";
-import { IntegrationSetup } from "../components/integrations/IntegrationSetup";
-import { AdvancedIntegrations } from "./plugins/advanced-integrations";
 import { ConnectionDetail } from "./plugins/connection-detail";
 import { itemKey, useIntegrations } from "./plugins/use-integrations";
 
 /** Integrations section of the Customize dialog, which owns the shell. */
-export function PluginsOverlay({
-  onOpenMcp,
-  activeBotId,
-}: {
-  onOpenMcp?: () => void;
-  activeBotId?: string;
-}) {
+export function PluginsOverlay({ activeBotId }: { activeBotId?: string }) {
   const { t } = useLingui();
-  const [setupOpen, setSetupOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(CONNECTION_CATALOG_PAGE_SIZE);
   const [installedOpen, setInstalledOpen] = useState(false);
@@ -31,10 +22,8 @@ export function PluginsOverlay({
     catalog,
     pending,
     catalogError,
-    setCatalogError,
     loading,
     detailItem,
-    refresh,
     openDetail,
     itemConnected,
     installed,
@@ -155,28 +144,6 @@ export function PluginsOverlay({
       ) : null}
 
       <div id="integration-list" className="rk-scroll flex-1 overflow-y-auto px-8 py-6">
-        <Button
-          variant="outline"
-          className="mb-4"
-          onClick={() => setSetupOpen((current) => !current)}
-        >
-          <Trans>Browse MCP servers</Trans>
-        </Button>
-        {setupOpen ? (
-          <div className="mb-6">
-            <IntegrationSetup
-              botId={activeBotId}
-              onDone={() => {
-                setSetupOpen(false);
-                void refresh().catch((err: unknown) =>
-                  setCatalogError(
-                    err instanceof Error ? err.message : t`Could not load integrations`,
-                  ),
-                );
-              }}
-            />
-          </div>
-        ) : null}
         {catalogError ? <p className="mb-4 text-sm text-destructive">{catalogError}</p> : null}
 
         {detailItem ? (
@@ -310,8 +277,6 @@ export function PluginsOverlay({
                 </Button>
               </div>
             ) : null}
-
-            <AdvancedIntegrations integrations={integrations} onOpenMcp={onOpenMcp} />
           </>
         )}
       </div>

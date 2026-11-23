@@ -299,14 +299,7 @@ export default function GroupSettingsScreen() {
               onSelect={setLeadBotId}
               style={{ ...field, flexDirection: "row", alignItems: "center", gap: 10 }}
             >
-              {leadBot ? (
-                <BotAvatar
-                  color={leadBot.color}
-                  identity={leadBot.id}
-                  shapeSeed={leadBot.shapeSeed}
-                  size={22}
-                />
-              ) : null}
+              {leadBot ? <BotAvatar character={leadBot.avatarCharacter} size={22} /> : null}
               <Text style={{ flex: 1, color: tokens.foreground, fontSize: 16 }}>
                 {leadBot?.name}
               </Text>

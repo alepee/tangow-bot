@@ -6,9 +6,16 @@ import Markdown, {
   type RenderRules,
 } from "@ronradtke/react-native-markdown-display";
 import { type ColorTokens, darkTokens, type ResolvedAppearance } from "@tangow/ui-tokens";
-import { memo, useMemo } from "react";
+import { Fragment, memo, useMemo } from "react";
 import type { TextProps, TextStyle } from "react-native";
 import { Linking, StyleSheet, Text, View } from "react-native";
+import type { NativeEntityMentions } from "./entity-mention.native";
+import {
+  botEntityMentionTone,
+  nativeEntityTokens,
+  personEntityMentionTone,
+  useNativeEntityMentions,
+} from "./entity-mention.native";
 import type { NativeLinkMentions } from "./link-mention.native";
 import {
   botLinkMentionTone,
@@ -222,6 +229,27 @@ function mentionLinkRule(mentions: NativeLinkMentions, palette: ColorTokens): Re
   };
 }
 
+/** The text rule once the thread knows names: a known `@Name` draws in place, never inside a link. */
+function entityTextRule(entities: NativeEntityMentions, palette: ColorTokens): RenderRules["text"] {
+  const tone = botEntityMentionTone(palette);
+  return (node, _children, parents, styleMap, inheritedStyles) => {
+    const style = [inheritedStyles, styleMap.text] as TextProps["style"];
+    const content = node.content ?? "";
+    if (!content.includes("@") || parents.some((parent) => parent.type === "link")) {
+      return (
+        <Text key={node.key} style={style}>
+          {content}
+        </Text>
+      );
+    }
+    return (
+      <Text key={node.key} style={style}>
+        {nativeEntityTokens({ text: content, entities, tone, leads: false })}
+      </Text>
+    );
+  };
+}
+
 // Untrusted content: drop every image node. The render rule returning null is
 // the robust guard (independent of the library's `defaultImageHandler`, which
 // defaults to `'https://'` and would otherwise reload a scheme-less URL);
@@ -288,14 +316,19 @@ export const ChatMarkdown = memo(function ChatMarkdown({
 }) {
   const styles = useMemo(() => markdownStyles(palette, inBubble), [palette, inBubble]);
   const imagePolicy = nativeImagePolicy(allowImages);
+  const entities = useNativeEntityMentions();
   const rules = useMemo(() => {
     const base = withTables(
       imagePolicy.blockImages ? renderRulesNoImages : renderRules,
       palette,
       bleed ?? (inBubble ? 14 : 0),
     );
-    return mentions ? { ...base, link: mentionLinkRule(mentions, palette) } : base;
-  }, [imagePolicy.blockImages, palette, inBubble, bleed, mentions]);
+    return {
+      ...base,
+      ...(mentions ? { link: mentionLinkRule(mentions, palette) } : {}),
+      ...(entities?.mentions.length ? { text: entityTextRule(entities, palette) } : {}),
+    };
+  }, [imagePolicy.blockImages, palette, inBubble, bleed, mentions, entities]);
   const sharedProps = {
     colorScheme,
     style: styles,
@@ -323,7 +356,8 @@ export const ChatMarkdown = memo(function ChatMarkdown({
 });
 
 /** Plain text (what the person typed) with every URL in it made clickable, as a
- * mention when the server resolved one for it. Nest it in a `Text` so links
+ * mention when the server resolved one for it, and every bot, group or skill
+ * the thread knows drawn in place. Nest it in a `Text` so links
  * inherit the surrounding ink. A link is its own touch responder, so pass the
  * bubble's `onLongPress` to keep its actions reachable. */
 export function LinkifiedText({
@@ -339,9 +373,18 @@ export function LinkifiedText({
   mentions?: NativeLinkMentions;
 }) {
   const tone = personLinkMentionTone(ink);
+  const entities = useNativeEntityMentions();
+  const entityTone = personEntityMentionTone(ink);
   return linkifyText(children).map((segment, i) => {
     const href = segment.href;
-    if (!href) return segment.text;
+    if (!href) {
+      if (!entities) return segment.text;
+      return (
+        <Fragment key={i}>
+          {nativeEntityTokens({ text: segment.text, entities, tone: entityTone, leads: i === 0 })}
+        </Fragment>
+      );
+    }
     return (
       nativeLinkMention({
         mentions,
@@ -381,6 +424,9 @@ const layout = StyleSheet.create({
   },
 });
 
+export type { EntityMentionTarget } from "./entity-mention";
+export type { NativeEntityMentions } from "./entity-mention.native";
+export { NativeEntityMentionsProvider } from "./entity-mention.native";
 export type { NativeLinkMentions } from "./link-mention.native";
 export type { ChatMarkdownProps } from "./markdown";
 export { hasMarkdownTable, truncateMarkdownForRender } from "./markdown";

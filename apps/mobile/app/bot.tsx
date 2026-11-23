@@ -1,7 +1,7 @@
 import { routineFailing } from "@tangow/core";
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useRef, useState, useSyncExternalStore } from "react";
-import { Keyboard, ScrollView, StyleSheet, View } from "react-native";
+import { AppState, Keyboard, ScrollView, StyleSheet, View } from "react-native";
 import { AmbientBackground } from "../components/ambient-background";
 import { ActivityTab, useOpenRun } from "../components/bot-page/activity-tab";
 import { BotHero, BotTabs } from "../components/bot-page/hero";
@@ -62,6 +62,24 @@ export default function BotPageScreen() {
     );
   }, [botId, epoch]);
   useFocusEffect(refresh);
+  // The bot's status, read again every 5 s while the page shows, as on Home: its face shows a run
+  // that starts. A failed read here keeps what was shown.
+  useFocusEffect(
+    useCallback(() => {
+      if (!botId) return;
+      let cancelled = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const tick = async () => {
+        if (AppState.currentState === "active") await readBotPage(botId).catch(() => undefined);
+        if (!cancelled) timer = setTimeout(() => void tick(), 5_000);
+      };
+      timer = setTimeout(() => void tick(), 5_000);
+      return () => {
+        cancelled = true;
+        if (timer !== undefined) clearTimeout(timer);
+      };
+    }, [botId]),
+  );
   const routineList = useRoutines(botId, epoch);
   const routineFailed = routineList.routines?.some(routineFailing) ?? false;
 

@@ -87,7 +87,7 @@ The gate reads the raw model answer. The default-path score after fallback is re
 
 ## Limits
 
-The corpus is synthetic and small. Its counts describe these invented tools, not the distribution of real calls. Protocol-derived hints, such as those set by installed API and GraphQL connectors, are known metadata: the executor keeps the name rule for those tools and the corpus does not represent them. The corpus covers native and MCP tools.
+The corpus is synthetic and small. Its counts describe these invented tools, not the distribution of real calls. The corpus covers native and MCP tools.
 
 ## Recorded validation
 

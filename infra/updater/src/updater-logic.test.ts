@@ -1,4 +1,4 @@
-import { DEFAULT_COMPOSE_PROJECT_NAME, isLocalImageTag } from "@tangow/core";
+import { DEFAULT_COMPOSE_PROJECT_NAME, LOCAL_IMAGE_TAG } from "@tangow/core";
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_COMPOSE_FILE,
@@ -178,13 +178,8 @@ describe("readTagState", () => {
     expect(readTagState(contents)).toEqual({ currentTag: "local", previousTag: null });
   });
 
-  /**
-   * The fallback has to be a tag no registry serves. A deployment that has never been pinned has
-   * only ever built its images locally, so a fallback of `latest` would send both a first
-   * `docker compose up` and a rollback to a registry that may have nothing under that name.
-   */
-  it("falls back to a tag that is local-only, so nothing tries to pull it", () => {
-    expect(isLocalImageTag(readTagState("").currentTag)).toBe(true);
+  it("falls back to the tag a first local build produces", () => {
+    expect(readTagState("").currentTag).toBe(LOCAL_IMAGE_TAG);
   });
 });
 

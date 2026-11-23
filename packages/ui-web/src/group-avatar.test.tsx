@@ -9,14 +9,12 @@ describe("GroupAvatar", () => {
   });
 
   it("renders single BotAvatar when 1 member", () => {
-    const html = renderToString(<GroupAvatar members={[{ name: "Harry", color: "#8B5CF6" }]} />);
-    expect(html).toContain("tangow-organic-avatar");
+    const html = renderToString(<GroupAvatar members={[{ botId: "harry" }]} />);
+    expect(html).toContain("tangow-clay-avatar");
   });
 
   it("pairs a lone bot with the user's initials when provided", () => {
-    const html = renderToString(
-      <GroupAvatar members={[{ name: "Harry", color: "#8B5CF6" }]} userInitials="RJ" />,
-    );
+    const html = renderToString(<GroupAvatar members={[{ botId: "harry" }]} userInitials="RJ" />);
     expect((html.match(/data-working=/g) || []).length).toBe(1);
     expect(html).toContain(">RJ<");
   });
@@ -24,7 +22,7 @@ describe("GroupAvatar", () => {
   it("renders the user's photo instead of the initials tile", () => {
     const html = renderToString(
       <GroupAvatar
-        members={[{ name: "Harry", color: "#8B5CF6" }]}
+        members={[{ botId: "harry" }]}
         userInitials="RJ"
         userImage="data:image/webp;base64,dGlueQ=="
       />,
@@ -36,7 +34,7 @@ describe("GroupAvatar", () => {
   it("shows the group's other people beside its bot instead of the user", () => {
     const html = renderToString(
       <GroupAvatar
-        members={[{ name: "Harry", color: "#8B5CF6" }]}
+        members={[{ botId: "harry" }]}
         people={[{ initials: "AL" }]}
         userInitials="RJ"
       />,
@@ -49,11 +47,7 @@ describe("GroupAvatar", () => {
   it("keeps a person visible when bots and people overflow", () => {
     const html = renderToString(
       <GroupAvatar
-        members={[
-          { name: "Sherlock", color: "#8B5CF6" },
-          { name: "Elon", color: "#06B6D4" },
-          { name: "Penny", color: "#EC4899" },
-        ]}
+        members={[{ botId: "sherlock" }, { botId: "elon" }, { botId: "penny" }]}
         people={[{ initials: "AL" }, { initials: "BO" }]}
       />,
     );
@@ -64,12 +58,7 @@ describe("GroupAvatar", () => {
 
   it("renders 2 overlapping bot avatars for 2 members", () => {
     const html = renderToString(
-      <GroupAvatar
-        members={[
-          { name: "Sherlock", color: "#8B5CF6" },
-          { name: "Elon", color: "#06B6D4" },
-        ]}
-      />,
+      <GroupAvatar members={[{ botId: "sherlock" }, { botId: "elon" }]} />,
     );
     const count = (html.match(/data-working=/g) || []).length;
     expect(count).toBe(2);
@@ -80,8 +69,8 @@ describe("GroupAvatar", () => {
     const html = renderToString(
       <GroupAvatar
         members={[
-          { name: "Sherlock", color: "#8B5CF6", status: "running" },
-          { name: "Elon", color: "#06B6D4", status: "idle" },
+          { botId: "sherlock", status: "running" },
+          { botId: "elon", status: "idle" },
         ]}
       />,
     );
@@ -91,13 +80,7 @@ describe("GroupAvatar", () => {
 
   it("renders 3 mini bot avatars for 3 members", () => {
     const html = renderToString(
-      <GroupAvatar
-        members={[
-          { name: "Sherlock", color: "#8B5CF6" },
-          { name: "Elon", color: "#06B6D4" },
-          { name: "Penny", color: "#EC4899" },
-        ]}
-      />,
+      <GroupAvatar members={[{ botId: "sherlock" }, { botId: "elon" }, { botId: "penny" }]} />,
     );
     const count = (html.match(/data-working=/g) || []).length;
     expect(count).toBe(3);
@@ -106,12 +89,7 @@ describe("GroupAvatar", () => {
   it("renders 2 mini avatars + overflow count for 4+ members", () => {
     const html = renderToString(
       <GroupAvatar
-        members={[
-          { name: "Sherlock", color: "#8B5CF6" },
-          { name: "Elon", color: "#06B6D4" },
-          { name: "Penny", color: "#EC4899" },
-          { name: "Harry", color: "#10B981" },
-        ]}
+        members={[{ botId: "sherlock" }, { botId: "elon" }, { botId: "penny" }, { botId: "harry" }]}
       />,
     );
     expect(html).toContain("+2");

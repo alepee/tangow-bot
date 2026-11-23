@@ -17,13 +17,17 @@ export function IntegrationSetupPage() {
   const [setupState, setSetupState] = useState<IntegrationSetupState | null>(null);
   const [error, setError] = useState(false);
   useEffect(() => {
+    if (!serverSetup) {
+      navigate("/app?customize=custom-apps", { replace: true });
+      return;
+    }
     setReady(false);
     setError(false);
     let cancelled = false;
-    void Promise.all([rpc.bots.list(), serverSetup ? rpc.integrationSetup.get() : null])
+    void Promise.all([rpc.bots.list(), rpc.integrationSetup.get()])
       .then(([rows, setup]) => {
         if (cancelled) return;
-        if (serverSetup && !setup?.canConfigure) {
+        if (!setup?.canConfigure) {
           navigate("/app", { replace: true });
           return;
         }
@@ -62,8 +66,6 @@ export function IntegrationSetupPage() {
         ) : null}
         {ready ? (
           <IntegrationSetup
-            key={serverSetup ? "server" : "mcp"}
-            serverSetup={serverSetup}
             initialState={setupState}
             botId={botId || undefined}
             onDone={() => navigate(bots.length ? "/app" : "/onboarding")}

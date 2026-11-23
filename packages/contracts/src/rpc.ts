@@ -36,7 +36,6 @@ import {
   ExternalConversationPolicySchema,
   GroupSchema,
   ImportAgentSkillInput,
-  IntegrationCatalogResultSchema,
   McpServerConfigInput,
   McpServerSchema,
   MemoryDocumentSchema,
@@ -397,6 +396,10 @@ export const appContract = {
         }),
       )
       .output(ThreadMessagePageSchema),
+    /** What the bot and one peer, a bot or a connected agent, said to each other, newest page first. */
+    peerMessages: oc
+      .input(botId.extend({ peerBotId: z.string().min(1), before: EntryId.optional() }))
+      .output(ThreadMessagePageSchema),
     subscribe: oc
       .input(threadTarget.safeExtend({ cursor: z.number().int().min(-1) }))
       .output(eventIterator(ProductEventSchema)),
@@ -695,27 +698,13 @@ export const appContract = {
   },
   capabilities: {
     list: oc.output(z.array(CapabilityInstallSchema)),
-    catalogSearch: oc
-      .input(
-        z.object({
-          query: z.string().trim().max(253).default(""),
-          usePublicCatalog: z.boolean().default(false),
-        }),
-      )
-      .output(
-        z.object({
-          enabled: z.boolean(),
-          results: z.array(IntegrationCatalogResultSchema),
-        }),
-      ),
     install: oc
       .input(
         z.object({
-          kind: z.enum(["skill", "plugin", "mcp", "api", "graphql"]),
+          kind: z.enum(["skill", "plugin"]),
           name: z.string().min(1).max(120),
           source: z.string().min(1).max(2048),
           config: z.record(z.string(), z.unknown()).default({}),
-          credential: z.string().max(16_384).optional(),
         }),
       )
       .output(CapabilityInstallSchema),
@@ -724,7 +713,9 @@ export const appContract = {
   mcp: {
     servers: {
       list: oc.output(z.array(McpServerSchema)),
-      create: oc.input(McpServerConfigInput).output(McpServerSchema),
+      create: oc
+        .input(McpServerConfigInput.and(z.object({ botIds: z.array(Id).optional() })))
+        .output(McpServerSchema),
       update: oc
         .input(
           z.union([
@@ -763,7 +754,7 @@ export const appContract = {
             authorizationUrl: z.string().url(),
           }),
           z.object({
-            status: z.enum(["already_connected", "authorization_not_requested"]),
+            status: z.enum(["already_connected", "authorization_not_requested", "token_required"]),
           }),
         ]),
       ),

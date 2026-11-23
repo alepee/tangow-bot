@@ -8,6 +8,8 @@ compose=(docker compose -f "$ROOT/infra/compose/docker-compose.yml")
 # repo root; point it at the root .env when one exists (vars may also come
 # from the environment, so its absence is not an error).
 if [[ -f "$ROOT/.env" ]]; then compose=(docker compose --env-file "$ROOT/.env" -f "$ROOT/infra/compose/docker-compose.yml"); fi
+# The operator's untracked local override stays last so it wins.
+if [[ -f "$ROOT/.env.tangow.compose.yml" ]]; then compose+=(-f "$ROOT/.env.tangow.compose.yml"); fi
 mkdir -p "$OUT"
 "${compose[@]}" exec -T postgres pg_dump -U tangow tangow > "$OUT/tangow.sql"
 if [[ "${TANGOW_BACKUP_SKIP_HOMES:-0}" == "1" ]] || [[ ! -e "$ROOT/data" && ! -L "$ROOT/data" ]]; then

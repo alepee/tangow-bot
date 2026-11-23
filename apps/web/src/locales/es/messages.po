@@ -13,7 +13,8 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: src/pages/shell/sidebar-roster.tsx:281
+#: src/pages/shell/command-palette.tsx:333
+#: src/pages/shell/sidebar-roster.tsx:283
 msgid " (unread)"
 msgstr " (sin leer)"
 
@@ -36,7 +37,7 @@ msgid "{0, plural, one {# compaction} other {# compactions}} · {1} in · {2} ou
 msgstr ""
 
 #. placeholder {0}: group.entries.length
-#: src/pages/ProvidersSettings.tsx:138
+#: src/pages/ProvidersSettings.tsx:166
 msgid "{0, plural, one {# model} other {# models}}"
 msgstr "{0, plural, one {# modelo} other {# modelos}}"
 
@@ -164,7 +165,7 @@ msgstr "{count} · próxima {next}"
 msgid "{count} more"
 msgstr ""
 
-#: src/pages/SpaceGeneralSettings.tsx:254
+#: src/pages/SpaceGeneralSettings.tsx:259
 msgid "{days, plural, one {Expires in # day} other {Expires in # days}}"
 msgstr ""
 
@@ -264,13 +265,11 @@ msgstr ""
 msgid "About spaces"
 msgstr ""
 
-#: src/components/integrations/IntegrationSetup.tsx:305
+#: src/components/integrations/IntegrationSetup.tsx:196
+#: src/pages/custom-apps/AppEditor.tsx:136
+#: src/pages/custom-apps/CustomApps.tsx:220
 msgid "Access token"
-msgstr ""
-
-#: src/pages/McpServersOverlay.tsx:437
-msgid "Access token (optional)"
-msgstr "Token de acceso (opcional)"
+msgstr "Token de acceso"
 
 #: src/pages/AccountSettingsOverlay.tsx:79
 msgid "Account"
@@ -289,7 +288,7 @@ msgstr ""
 msgid "Accounts"
 msgstr ""
 
-#: src/components/ApprovalRulesSettings.tsx:112
+#: src/components/AutoReviewSettings.tsx:61
 msgid "Action confirmations"
 msgstr "Confirmaciones de acción"
 
@@ -297,9 +296,10 @@ msgstr "Confirmaciones de acción"
 #. placeholder {0}: group.spaceName
 #. placeholder {0}: sectionMenu.section.name
 #: src/pages/bot-page/BotPage.tsx:344
-#: src/pages/BotContextMenu.tsx:101
+#: src/pages/BotContextMenu.tsx:134
+#: src/pages/custom-apps/CustomApps.tsx:307
 #: src/pages/shell/shell-overlays.tsx:424
-#: src/pages/shell/sidebar-roster.tsx:150
+#: src/pages/shell/sidebar-roster.tsx:161
 msgid "Actions for {0}"
 msgstr "Acciones para {0}"
 
@@ -327,8 +327,8 @@ msgstr "Activa: {0}"
 
 #: src/pages/bot-page/BotPage.tsx:99
 #: src/pages/bot-page/RoutineDetail.tsx:191
-#: src/pages/shell/sidebar-header.tsx:61
-#: src/pages/shell/sidebar-header.tsx:63
+#: src/pages/shell/sidebar-header.tsx:95
+#: src/pages/shell/sidebar-header.tsx:97
 msgid "Activity"
 msgstr "Actividad"
 
@@ -336,14 +336,15 @@ msgstr "Actividad"
 msgid "Activity, last run failed"
 msgstr "Actividad, la última ejecución falló"
 
-#: src/pages/plugins/advanced-integrations.tsx:171
-#: src/pages/PluginsOverlay.tsx:83
+#: src/pages/custom-apps/AppEditor.tsx:154
+#: src/pages/custom-apps/CustomApps.tsx:239
+#: src/pages/PluginsOverlay.tsx:72
 #: src/pages/ScratchpadSection.tsx:196
 #: src/pages/shell/message-cards.tsx:201
 msgid "Add"
 msgstr "Agregar"
 
-#: src/components/ApprovalRulesSettings.tsx:151
+#: src/components/AutoReviewSettings.tsx:78
 msgid "Add a model in Settings to use this."
 msgstr "Agrega un modelo en Configuración para usarlo."
 
@@ -355,61 +356,19 @@ msgstr "Agrega una hora de ejecución para este one-shot."
 msgid "Add a schedule, webhook, GitHub, or message trigger"
 msgstr ""
 
-#: src/pages/McpServersOverlay.tsx:166
-msgid "Add a server name."
-msgstr "Agrega un nombre de servidor."
-
-#: src/pages/McpServersOverlay.tsx:174
-msgid "Add a stdio command."
-msgstr "Agrega un comando stdio."
-
-#: src/pages/McpServersOverlay.tsx:170
-msgid "Add an HTTPS server URL."
-msgstr "Agrega una URL de servidor HTTPS."
-
 #: src/pages/plugins/connection-detail.tsx:122
 msgid "Add another"
 msgstr ""
-
-#: src/pages/plugins/advanced-integrations.tsx:217
-msgid "Add Executor"
-msgstr "Agregar Executor"
-
-#: src/pages/plugins/advanced-integrations.tsx:208
-msgid "Add GraphQL"
-msgstr "Añadir GraphQL"
-
-#: src/pages/plugins/advanced-integrations.tsx:243
-msgid "Add GraphQL endpoint"
-msgstr "Añadir endpoint de GraphQL"
 
 #: src/pages/ScratchpadSection.tsx:185
 msgid "Add item"
 msgstr "Agregar elemento"
 
-#: src/components/integrations/IntegrationSetup.tsx:129
-#: src/pages/plugins/advanced-integrations.tsx:190
-msgid "Add MCP server"
-msgstr "Agregar servidor MCP"
-
-#: src/pages/plugins/advanced-integrations.tsx:199
-msgid "Add OpenAPI"
-msgstr "Agregar OpenAPI"
-
 #: src/pages/AccountProfileSettings.tsx:115
 msgid "Add photo"
 msgstr ""
 
-#: src/pages/plugins/advanced-integrations.tsx:241
-msgid "Add remote MCP server"
-msgstr "Agregar servidor MCP remoto"
-
-#: src/pages/McpServersOverlay.tsx:334
-#: src/pages/McpServersOverlay.tsx:498
-msgid "Add server"
-msgstr "Agregar servidor"
-
-#: src/components/integrations/IntegrationSetup.tsx:273
+#: src/components/integrations/IntegrationSetup.tsx:165
 msgid "Add server URL"
 msgstr ""
 
@@ -417,33 +376,26 @@ msgstr ""
 msgid "Add to routine"
 msgstr "Agregar a la rutina"
 
-#: src/pages/plugins/advanced-integrations.tsx:226
-msgid "Add Treg"
-msgstr "Agregar Treg"
-
 #: src/pages/bot-page/RoutineTriggers.tsx:95
 msgid "Add trigger"
 msgstr "Agregar disparador"
 
-#: src/pages/PluginsOverlay.tsx:67
+#: src/pages/PluginsOverlay.tsx:56
 msgid "Added"
 msgstr ""
 
-#: src/pages/McpServersOverlay.tsx:498
 #: src/pages/plugins/connection-detail.tsx:122
-#: src/pages/PluginsOverlay.tsx:67
-#: src/pages/PluginsOverlay.tsx:83
+#: src/pages/PluginsOverlay.tsx:56
+#: src/pages/PluginsOverlay.tsx:72
 msgid "Adding…"
 msgstr "Agregando…"
 
 #: src/pages/DecisionModelSettingsPanel.tsx:132
-#: src/pages/McpServersOverlay.tsx:425
-#: src/pages/model-settings/model-detail.tsx:168
+#: src/pages/model-settings/model-detail.tsx:171
 #: src/pages/model-settings/routing-settings.tsx:118
 #: src/pages/Onboarding.tsx:496
-#: src/pages/plugins/advanced-integrations.tsx:77
 #: src/pages/RoutineSchedule.tsx:47
-#: src/pages/SpaceGeneralSettings.tsx:49
+#: src/pages/SpaceGeneralSettings.tsx:54
 msgid "Advanced"
 msgstr "Avanzado"
 
@@ -459,17 +411,12 @@ msgstr "Conexiones de agentes"
 msgid "Agents"
 msgstr "Agentes"
 
-#: src/pages/McpServersOverlay.tsx:468
-#: src/pages/McpServersOverlay.tsx:535
-msgid "Agents:"
-msgstr "Agentes:"
-
 #: src/pages/KnowledgeSection.tsx:446
 #: src/pages/usage-settings.tsx:103
 msgid "All"
 msgstr "Todos"
 
-#: src/pages/PluginsOverlay.tsx:287
+#: src/pages/PluginsOverlay.tsx:254
 msgid "All integrations"
 msgstr "Todas las integraciones"
 
@@ -528,7 +475,7 @@ msgstr "Siempre permitido"
 msgid "Answer"
 msgstr "Responder"
 
-#: src/pages/shell/composer.tsx:293
+#: src/pages/shell/composer.tsx:290
 msgid "Answer {answerName}…"
 msgstr ""
 
@@ -555,21 +502,23 @@ msgid "API is back, but the update did not finish. Check the host logs."
 msgstr "La API volvió, pero la actualización no terminó. Revisa los logs del host."
 
 #: src/components/AskCard.tsx:123
-#: src/components/integrations/IntegrationSetup.tsx:189
+#: src/components/integrations/IntegrationSetup.tsx:127
 #: src/lib/localized-provider-hint.ts:9
-#: src/pages/model-settings/model-detail.tsx:281
 #: src/pages/model-settings/model-detail.tsx:284
-#: src/pages/model-settings/model-detail.tsx:303
+#: src/pages/model-settings/model-detail.tsx:287
+#: src/pages/model-settings/model-detail.tsx:306
 #: src/pages/Onboarding.tsx:630
 #: src/pages/Onboarding.tsx:633
 #: src/pages/Onboarding.tsx:647
-#: src/pages/ProvidersSettings.tsx:217
+#: src/pages/ProvidersSettings.tsx:247
 msgid "API key"
 msgstr "Clave de API"
 
-#: src/pages/plugins/advanced-integrations.tsx:283
-msgid "API key header"
-msgstr "Encabezado de clave de API"
+#: src/pages/custom-apps/AppEditor.tsx:119
+#: src/pages/custom-apps/CustomApps.tsx:180
+#: src/pages/custom-apps/CustomApps.tsx:199
+msgid "App URL"
+msgstr "URL de la app"
 
 #: src/pages/AccountSettingsOverlay.tsx:90
 #: src/pages/AccountSettingsOverlay.tsx:203
@@ -584,7 +533,7 @@ msgstr "Límites de aprobación"
 
 #: src/pages/MessagingSettingsOverlay.tsx:224
 #: src/pages/MessagingSettingsOverlay.tsx:297
-#: src/pages/shell/message-cards.tsx:294
+#: src/pages/shell/message-cards.tsx:295
 msgid "Approve"
 msgstr "Aprobar"
 
@@ -593,7 +542,7 @@ msgstr "Aprobar"
 msgid "Approve it in the chat, or say no to cancel."
 msgstr "Apruébalo en el chat o di no para cancelar."
 
-#: src/pages/shell/message-cards.tsx:285
+#: src/pages/shell/message-cards.tsx:286
 msgid "Approve this server to let your agent use its tools."
 msgstr "Aprueba este servidor para que tu agente use sus herramientas."
 
@@ -602,7 +551,7 @@ msgid "Apps this bot can use"
 msgstr ""
 
 #: src/pages/bot-page/BotPage.tsx:377
-#: src/pages/BotContextMenu.tsx:176
+#: src/pages/BotContextMenu.tsx:198
 msgid "Archive"
 msgstr "Archivar"
 
@@ -614,7 +563,8 @@ msgstr "Archivado"
 msgid "Archived. Chat, memory, and files kept."
 msgstr "Archivado. Se conservan el chat, la memoria y los archivos."
 
-#: src/pages/McpServersOverlay.tsx:383
+#: src/pages/custom-apps/AppEditor.tsx:110
+#: src/pages/custom-apps/AppEditor.tsx:111
 msgid "Arguments"
 msgstr "Argumentos"
 
@@ -648,15 +598,15 @@ msgstr "Preguntar antes de cada acción"
 msgid "Ask before purchase actions"
 msgstr "Preguntar antes de acciones de compra"
 
-#: src/components/ApprovalRulesSettings.tsx:133
+#: src/components/ApprovalRulesSettings.tsx:109
 msgid "Ask before purchases"
 msgstr "Preguntar antes de compras"
 
-#: src/components/ApprovalRulesSettings.tsx:126
+#: src/components/ApprovalRulesSettings.tsx:102
 msgid "Ask before sending external email"
 msgstr "Preguntar antes de enviar correo externo"
 
-#: src/components/integrations/IntegrationSetup.tsx:223
+#: src/components/integrations/IntegrationSetup.tsx:157
 msgid "Ask the server owner to configure this provider."
 msgstr ""
 
@@ -671,7 +621,7 @@ msgstr "a las {0}"
 msgid "at {timeSelect}"
 msgstr "a las {timeSelect}"
 
-#: src/pages/shell/composer-attachments.tsx:192
+#: src/pages/shell/composer-attachments.tsx:205
 msgid "Attach file"
 msgstr "Adjuntar archivo"
 
@@ -689,11 +639,11 @@ msgid "Authorization timed out. Please try again."
 msgstr "Se agotó el tiempo de autorización. Inténtalo de nuevo."
 
 #: src/pages/shell/message-cards.tsx:201
-#: src/pages/shell/message-cards.tsx:294
+#: src/pages/shell/message-cards.tsx:295
 msgid "Authorize"
 msgstr "Autorizar"
 
-#: src/pages/shell/message-cards.tsx:284
+#: src/pages/shell/message-cards.tsx:285
 msgid "Authorize this server so agents can use its tools. A popup opens."
 msgstr "Autoriza este servidor para que tus agentes usen sus herramientas. Se abre una ventana emergente."
 
@@ -703,6 +653,10 @@ msgstr "Autoriza este servidor para que tus agentes usen sus herramientas. Se ab
 #: src/pages/model-settings/routing-settings.tsx:74
 msgid "Auto"
 msgstr "Automático"
+
+#: src/components/AutoReviewSettings.tsx:74
+msgid "Auto-review bot actions"
+msgstr "Revisar automáticamente las acciones del bot"
 
 #: src/pages/ExternalConversationSettings.tsx:160
 msgid "Automated senders"
@@ -750,7 +704,6 @@ msgid "Bcc"
 msgstr ""
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx:48
-#: src/pages/plugins/advanced-integrations.tsx:280
 msgid "Bearer token"
 msgstr "Token Bearer"
 
@@ -770,7 +723,7 @@ msgstr "Iniciando la computadora de {0}"
 msgid "bot"
 msgstr "bot"
 
-#: src/pages/IntegrationSetup.tsx:51
+#: src/pages/IntegrationSetup.tsx:55
 #: src/pages/shell/message-view.tsx:248
 #: src/pages/shell/message-view.tsx:455
 #: src/pages/shell/thread-row.tsx:313
@@ -802,11 +755,12 @@ msgstr ""
 msgid "Bot to link"
 msgstr "Bot a vincular"
 
+#: src/pages/shell/command-palette.tsx:247
 #: src/pages/usage-settings.tsx:68
 msgid "Bots"
 msgstr ""
 
-#: src/components/ApprovalRulesSettings.tsx:115
+#: src/components/ApprovalRulesSettings.tsx:91
 msgid "Bots act without asking by default. Add an exception only when you want to review a type of action first."
 msgstr "Los bots actúan sin preguntar de forma predeterminada. Agrega una excepción solo cuando quieras revisar primero un tipo de acción."
 
@@ -827,10 +781,6 @@ msgstr ""
 msgid "Breakdown"
 msgstr ""
 
-#: src/pages/PluginsOverlay.tsx:163
-msgid "Browse MCP servers"
-msgstr ""
-
 #: src/pages/ComputerSettingsPanel.tsx:80
 msgid "Busy. Try again when idle."
 msgstr ""
@@ -845,9 +795,10 @@ msgstr "No se puede alcanzar el servidor."
 #: src/lib/approval-labels.ts:14
 #: src/pages/bot-page/page-kit.tsx:148
 #: src/pages/bot-page/RoutineTriggers.tsx:296
+#: src/pages/custom-apps/AppEditor.tsx:157
+#: src/pages/custom-apps/CustomApps.tsx:255
 #: src/pages/KnowledgeSection.tsx:227
 #: src/pages/KnowledgeSection.tsx:692
-#: src/pages/plugins/advanced-integrations.tsx:337
 #: src/pages/shell/dialogs.tsx:88
 #: src/pages/shell/dialogs.tsx:199
 #: src/pages/shell/dialogs.tsx:263
@@ -862,7 +813,7 @@ msgstr "Cancelar"
 msgid "Cancel dictation"
 msgstr ""
 
-#: src/pages/shell/composer-notices.tsx:131
+#: src/pages/shell/composer-notices.tsx:137
 msgid "Cancel edit"
 msgstr "Cancelar edición"
 
@@ -874,7 +825,7 @@ msgstr "Cancelar nuevo bot"
 msgid "Cancel new group"
 msgstr "Cancelar nuevo grupo"
 
-#: src/pages/shell/composer-notices.tsx:112
+#: src/pages/shell/composer-notices.tsx:118
 msgid "Cancel reply"
 msgstr "Cancelar respuesta"
 
@@ -920,9 +871,13 @@ msgstr ""
 msgid "Chat apps"
 msgstr "Apps de chat"
 
-#: src/pages/SpaceGeneralSettings.tsx:37
+#: src/pages/SpaceGeneralSettings.tsx:40
 msgid "Chat apps, group channels, and agent connections."
 msgstr "Apps de chat, canales de grupo y conexiones de agentes."
+
+#: src/pages/shell/command-palette.tsx:250
+msgid "Chats"
+msgstr ""
 
 #: src/components/SoftwareUpdateSection.tsx:157
 msgid "Check failed"
@@ -974,8 +929,8 @@ msgid "Clear {0}’s conversation?"
 msgstr "¿Borrar la conversación de {0}?"
 
 #: src/pages/bot-page/BotPage.tsx:373
-#: src/pages/BotContextMenu.tsx:170
-#: src/pages/BotContextMenu.tsx:201
+#: src/pages/BotContextMenu.tsx:192
+#: src/pages/BotContextMenu.tsx:223
 msgid "Clear conversation"
 msgstr "Borrar conversación"
 
@@ -991,15 +946,7 @@ msgstr "¿Borrar las instrucciones?"
 msgid "Clearing…"
 msgstr "Borrando…"
 
-#: src/components/integrations/IntegrationSetup.tsx:167
-msgid "Client ID"
-msgstr ""
-
-#: src/components/integrations/IntegrationSetup.tsx:189
-msgid "Client secret"
-msgstr ""
-
-#: src/pages/CustomizeOverlay.tsx:125
+#: src/pages/CustomizeOverlay.tsx:141
 #: src/pages/KnowledgeSection.tsx:692
 #: src/pages/KnowledgeSection.tsx:848
 #: src/pages/MessagingSettingsOverlay.tsx:362
@@ -1015,20 +962,20 @@ msgstr "Cerrar"
 msgid "Close computer"
 msgstr "Cerrar computadora"
 
+#: src/pages/CustomizeOverlay.tsx:140
+msgid "Close custom apps"
+msgstr "Cerrar apps personalizadas"
+
 #: src/pages/shell/image-viewer.tsx:171
 msgid "Close image preview"
 msgstr "Cerrar vista previa de imagen"
 
-#: src/pages/CustomizeOverlay.tsx:122
+#: src/pages/CustomizeOverlay.tsx:136
 msgid "Close integrations"
 msgstr "Cerrar integraciones"
 
-#: src/pages/McpServersOverlay.tsx:317
-msgid "Close MCP servers"
-msgstr "Cerrar servidores MCP"
-
 #: src/pages/MemorySettingsOverlay.tsx:168
-#: src/pages/SettingsOverlay.tsx:152
+#: src/pages/SettingsOverlay.tsx:153
 msgid "Close memory settings"
 msgstr "Cerrar configuración de memoria"
 
@@ -1037,7 +984,7 @@ msgid "Close messaging settings"
 msgstr "Cerrar configuración de mensajería"
 
 #: src/pages/ModelSettingsOverlay.tsx:51
-#: src/pages/SettingsOverlay.tsx:150
+#: src/pages/SettingsOverlay.tsx:151
 msgid "Close model settings"
 msgstr "Cerrar configuración de modelos"
 
@@ -1050,15 +997,15 @@ msgstr "Cerrar panel"
 msgid "Close preview"
 msgstr "Cerrar vista previa"
 
-#: src/pages/CustomizeOverlay.tsx:124
+#: src/pages/CustomizeOverlay.tsx:138
 msgid "Close skills"
 msgstr "Cerrar skills"
 
-#: src/pages/SettingsOverlay.tsx:155
+#: src/pages/SettingsOverlay.tsx:156
 msgid "Close user settings"
 msgstr "Cerrar configuración de usuario"
 
-#: src/pages/SettingsOverlay.tsx:154
+#: src/pages/SettingsOverlay.tsx:155
 #: src/pages/VoiceSettingsOverlay.tsx:141
 msgid "Close voice settings"
 msgstr "Cerrar configuración de voz"
@@ -1072,7 +1019,7 @@ msgid "Code"
 msgstr "Código"
 
 #. placeholder {0}: group.title
-#: src/pages/shell/sidebar-roster.tsx:128
+#: src/pages/shell/sidebar-roster.tsx:139
 msgid "Collapse {0}"
 msgstr "Contraer {0}"
 
@@ -1081,7 +1028,9 @@ msgstr "Contraer {0}"
 msgid "Color {0}"
 msgstr "Color {0}"
 
-#: src/pages/McpServersOverlay.tsx:371
+#: src/pages/custom-apps/AppEditor.tsx:103
+#: src/pages/custom-apps/AppEditor.tsx:104
+#: src/pages/custom-apps/CustomApps.tsx:180
 msgid "Command"
 msgstr "Comando"
 
@@ -1100,7 +1049,7 @@ msgstr "Complejo"
 
 #: src/pages/bot-page/SettingsTab.tsx:109
 #: src/pages/bot-page/SettingsTab.tsx:118
-#: src/pages/SettingsOverlay.tsx:142
+#: src/pages/settings-sections.ts:47
 #: src/pages/shell/block-views.tsx:136
 #: src/pages/shell/bot-panel.tsx:28
 msgid "Computer"
@@ -1134,12 +1083,8 @@ msgstr "Computadora no disponible"
 msgid "Computer updated"
 msgstr ""
 
-#: src/pages/McpServersOverlay.tsx:504
-msgid "Configured servers"
-msgstr "Servidores configurados"
-
+#: src/pages/custom-apps/CustomApps.tsx:346
 #: src/pages/KnowledgeSection.tsx:687
-#: src/pages/McpServersOverlay.tsx:589
 msgid "Confirm delete"
 msgstr "Confirmar eliminación"
 
@@ -1148,14 +1093,13 @@ msgstr "Confirmar eliminación"
 msgid "Confirm password"
 msgstr "Confirmar contraseña"
 
-#: src/components/integrations/IntegrationSetup.tsx:217
-#: src/components/integrations/IntegrationSetup.tsx:262
-#: src/components/integrations/IntegrationSetup.tsx:286
-#: src/components/integrations/IntegrationSetup.tsx:319
+#: src/components/integrations/IntegrationSetup.tsx:151
+#: src/components/integrations/IntegrationSetup.tsx:178
+#: src/components/integrations/IntegrationSetup.tsx:210
 #: src/pages/DecisionModelSettingsPanel.tsx:176
 #: src/pages/memory-providers/SerenitySettingsForm.tsx:107
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx:82
-#: src/pages/ProvidersSettings.tsx:239
+#: src/pages/ProvidersSettings.tsx:269
 msgid "Connect"
 msgstr "Conectar"
 
@@ -1167,76 +1111,62 @@ msgstr "Conectar un modelo"
 msgid "Connect a voice provider"
 msgstr ""
 
-#: src/pages/model-settings/model-detail.tsx:333
+#: src/pages/model-settings/model-detail.tsx:336
 msgid "Connect API key"
 msgstr "Conectar clave de API"
 
-#: src/pages/plugins/advanced-integrations.tsx:239
-msgid "Connect Executor"
-msgstr "Conectar Executor"
-
-#: src/pages/shell/message-cards.tsx:276
+#: src/pages/shell/message-cards.tsx:277
 msgid "Connect MCP server “{name}”"
 msgstr "Conectar servidor MCP “{name}”"
 
-#: src/pages/McpServersOverlay.tsx:39
-msgid "Connect OAuth"
-msgstr "Conectar OAuth"
-
-#: src/pages/model-settings/model-detail.tsx:257
+#: src/pages/model-settings/model-detail.tsx:260
 msgid "Connect this provider to use it as your personal model."
 msgstr "Conecta este proveedor para usarlo como tu modelo personal."
 
-#: src/pages/plugins/advanced-integrations.tsx:237
-msgid "Connect Treg"
-msgstr "Conectar Treg"
-
-#: src/components/integrations/IntegrationSetup.tsx:159
-#: src/components/integrations/IntegrationSetup.tsx:262
+#: src/components/integrations/IntegrationSetup.tsx:121
 #: src/pages/DecisionModelSettingsPanel.tsx:98
 #: src/pages/McpOAuthCallback.tsx:54
 #: src/pages/MemorySettingsOverlay.tsx:191
-#: src/pages/ProvidersSettings.tsx:145
-#: src/pages/ProvidersSettings.tsx:195
+#: src/pages/ProvidersSettings.tsx:173
+#: src/pages/ProvidersSettings.tsx:225
 #: src/pages/shell/message-cards.tsx:193
 msgid "Connected"
 msgstr "Conectado"
 
 #. placeholder {0}: credential.label
-#: src/pages/model-settings/model-detail.tsx:248
+#: src/pages/model-settings/model-detail.tsx:251
 msgid "Connected · {0}"
 msgstr "Conectado · {0}"
 
 #. placeholder {0}: selectedVoice.name
-#: src/pages/ProvidersSettings.tsx:68
+#: src/pages/ProvidersSettings.tsx:90
 msgid "Connected {0}."
 msgstr "Se conectó {0}."
 
 #. placeholder {0}: selected.label
 #. placeholder {0}: selectedLabelRef.current ?? "this model"
 #: src/pages/model-settings/use-model-settings.ts:67
-#: src/pages/model-settings/use-model-settings.ts:309
+#: src/pages/model-settings/use-model-settings.ts:311
 msgid "Connected and using {0}."
 msgstr "Conectado y usando {0}."
 
-#: src/pages/shell/message-cards.tsx:308
+#: src/pages/shell/message-cards.tsx:309
 msgid "Connected. Its tools are available from your next message."
 msgstr "Conectado: sus herramientas estarán disponibles desde tu próximo mensaje."
 
-#: src/components/integrations/IntegrationSetup.tsx:217
-#: src/components/integrations/IntegrationSetup.tsx:356
+#: src/components/integrations/IntegrationSetup.tsx:151
+#: src/components/integrations/IntegrationSetup.tsx:244
 #: src/pages/DecisionModelSettingsPanel.tsx:176
-#: src/pages/McpServersOverlay.tsx:38
 #: src/pages/memory-providers/SerenitySettingsForm.tsx:107
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx:82
-#: src/pages/ProvidersSettings.tsx:235
-#: src/pages/shell/message-cards.tsx:294
-#: src/pages/shell/screen-frame.tsx:44
+#: src/pages/ProvidersSettings.tsx:265
+#: src/pages/shell/message-cards.tsx:295
+#: src/pages/shell/screen-frame.tsx:34
 msgid "Connecting…"
 msgstr "Conectando…"
 
 #. placeholder {0}: item.name
-#: src/pages/plugins/use-integrations.ts:230
+#: src/pages/plugins/use-integrations.ts:195
 msgid "Connection to {0} is still pending. You can close this and check again."
 msgstr "La conexión con {0} sigue pendiente. Puedes cerrar esto y volver a comprobar."
 
@@ -1244,12 +1174,12 @@ msgstr "La conexión con {0} sigue pendiente. Puedes cerrar esto y volver a comp
 msgid "Content lives on the shared volume."
 msgstr ""
 
-#: src/pages/model-settings/model-detail.tsx:199
+#: src/pages/model-settings/model-detail.tsx:202
 #: src/pages/Onboarding.tsx:517
 msgid "Context limit"
 msgstr "Límite de contexto"
 
-#: src/components/integrations/IntegrationSetup.tsx:356
+#: src/components/integrations/IntegrationSetup.tsx:244
 #: src/pages/Invite.tsx:108
 #: src/pages/Onboarding.tsx:664
 msgid "Continue"
@@ -1267,7 +1197,7 @@ msgstr "Continuar con el correo"
 msgid "Conversation cleared"
 msgstr ""
 
-#: src/pages/SpaceGeneralSettings.tsx:260
+#: src/pages/SpaceGeneralSettings.tsx:265
 msgid "Copied"
 msgstr ""
 
@@ -1286,7 +1216,7 @@ msgstr ""
 msgid "Copy diagnostic"
 msgstr "Copiar diagnóstico"
 
-#: src/pages/SpaceGeneralSettings.tsx:260
+#: src/pages/SpaceGeneralSettings.tsx:265
 msgid "Copy link"
 msgstr ""
 
@@ -1294,12 +1224,7 @@ msgstr ""
 msgid "Could not add"
 msgstr "No se pudo agregar"
 
-#: src/pages/McpServersOverlay.tsx:157
-#: src/pages/McpServersOverlay.tsx:228
-msgid "Could not add MCP server"
-msgstr "No se pudo agregar el servidor MCP"
-
-#: src/pages/shell/message-cards.tsx:263
+#: src/pages/shell/message-cards.tsx:264
 msgid "Could not approve this server"
 msgstr "No se pudo aprobar este servidor"
 
@@ -1336,8 +1261,11 @@ msgstr "No se pudo completar OAuth"
 msgid "Could not complete the update. Try again."
 msgstr ""
 
-#: src/components/integrations/IntegrationSetup.tsx:76
-#: src/pages/plugins/use-integrations.ts:235
+#: src/components/integrations/IntegrationSetup.tsx:53
+#: src/pages/custom-apps/AppEditor.tsx:63
+#: src/pages/custom-apps/CustomApps.tsx:54
+#: src/pages/custom-apps/CustomApps.tsx:110
+#: src/pages/plugins/use-integrations.ts:200
 msgid "Could not connect"
 msgstr "No se pudo conectar"
 
@@ -1350,11 +1278,11 @@ msgstr "No se pudo conectar {0}"
 msgid "Could not connect OpenRouter"
 msgstr ""
 
-#: src/pages/model-settings/use-model-settings.ts:311
+#: src/pages/model-settings/use-model-settings.ts:313
 msgid "Could not connect this provider"
 msgstr "No se pudo conectar este proveedor"
 
-#: src/pages/ProvidersSettings.tsx:70
+#: src/pages/ProvidersSettings.tsx:92
 msgid "Could not connect this voice provider"
 msgstr "No se pudo conectar este proveedor de voz"
 
@@ -1396,10 +1324,6 @@ msgstr "No se pudo eliminar el bot"
 msgid "Could not delete group"
 msgstr "No se pudo eliminar el grupo"
 
-#: src/pages/McpServersOverlay.tsx:283
-msgid "Could not delete MCP server"
-msgstr "No se pudo eliminar el servidor MCP"
-
 #: src/pages/shell/dialogs.tsx:464
 msgid "Could not delete routine"
 msgstr "No se pudo eliminar la rutina"
@@ -1416,15 +1340,11 @@ msgstr ""
 msgid "Could not disconnect memory provider"
 msgstr "No se pudo desconectar el proveedor de memoria"
 
-#: src/pages/McpServersOverlay.tsx:294
-msgid "Could not disconnect OAuth"
-msgstr "No se pudo desconectar OAuth"
-
 #: src/pages/DecisionModelSettingsPanel.tsx:79
 msgid "Could not disconnect OpenRouter"
 msgstr ""
 
-#: src/pages/ProvidersSettings.tsx:86
+#: src/pages/ProvidersSettings.tsx:108
 msgid "Could not disconnect this voice provider"
 msgstr ""
 
@@ -1444,10 +1364,6 @@ msgstr "No se pudo descargar {name}. Inténtalo de nuevo."
 #: src/pages/KnowledgeSection.tsx:366
 msgid "Could not import skill"
 msgstr "No se pudo importar el skill"
-
-#: src/pages/plugins/use-integrations.ts:386
-msgid "Could not install connector"
-msgstr "No se pudo instalar el conector"
 
 #: src/pages/GroupPanel.tsx:378
 #: src/pages/shell/dialogs.tsx:514
@@ -1469,11 +1385,15 @@ msgstr "No se pudo cargar"
 msgid "Could not load · Retry"
 msgstr "No se pudo cargar · Intentarlo de nuevo"
 
-#: src/components/ApprovalRulesSettings.tsx:48
+#: src/components/ApprovalRulesSettings.tsx:40
 msgid "Could not load approval rules"
 msgstr "No se pudieron cargar las reglas de aprobación"
 
-#: src/pages/IntegrationSetup.tsx:72
+#: src/components/AutoReviewSettings.tsx:25
+msgid "Could not load Auto Review"
+msgstr "No se pudo cargar la revisión automática"
+
+#: src/pages/IntegrationSetup.tsx:74
 msgid "Could not load bots. Reload to try again."
 msgstr ""
 
@@ -1485,16 +1405,10 @@ msgstr ""
 msgid "Could not load decision model settings"
 msgstr ""
 
-#: src/components/integrations/IntegrationSetup.tsx:67
-#: src/pages/plugins/use-integrations.ts:109
-#: src/pages/PluginsOverlay.tsx:173
+#: src/components/integrations/IntegrationSetup.tsx:44
+#: src/pages/plugins/use-integrations.ts:74
 msgid "Could not load integrations"
 msgstr "No se pudieron cargar las integraciones"
-
-#: src/pages/McpServersOverlay.tsx:95
-#: src/pages/McpServersOverlay.tsx:113
-msgid "Could not load MCP servers"
-msgstr "No se pudieron cargar los servidores MCP"
 
 #: src/pages/model-settings/use-model-settings.ts:121
 msgid "Could not load model settings"
@@ -1523,7 +1437,7 @@ msgstr "No se pudo cargar este archivo."
 msgid "Could not load update status"
 msgstr "No se pudo cargar el estado de actualización"
 
-#: src/pages/ProvidersSettings.tsx:48
+#: src/pages/ProvidersSettings.tsx:70
 #: src/pages/VoiceSettingsOverlay.tsx:82
 #: src/pages/VoiceSettingsOverlay.tsx:170
 msgid "Could not load voice settings"
@@ -1553,19 +1467,15 @@ msgstr "No se pudo leer este archivo"
 msgid "Could not remove"
 msgstr "No se pudo quitar"
 
-#: src/pages/plugins/use-integrations.ts:399
-msgid "Could not remove connector"
-msgstr "No se pudo quitar el conector"
-
 #: src/pages/GroupPanel.tsx:377
 msgid "Could not remove group"
 msgstr "No se pudo quitar el grupo"
 
-#: src/components/ApprovalRulesSettings.tsx:92
+#: src/components/ApprovalRulesSettings.tsx:84
 msgid "Could not remove rule"
 msgstr "No se pudo quitar la regla"
 
-#: src/pages/plugins/use-integrations.ts:300
+#: src/pages/plugins/use-integrations.ts:265
 msgid "Could not rename connection"
 msgstr ""
 
@@ -1577,8 +1487,8 @@ msgstr ""
 msgid "Could not reset password"
 msgstr "No se pudo restablecer la contraseña"
 
-#: src/pages/plugins/use-integrations.ts:256
-#: src/pages/plugins/use-integrations.ts:279
+#: src/pages/plugins/use-integrations.ts:221
+#: src/pages/plugins/use-integrations.ts:244
 msgid "Could not revoke connection"
 msgstr "No se pudo revocar la conexión"
 
@@ -1593,7 +1503,7 @@ msgstr "No se pudo ejecutar la rutina"
 msgid "Could not save"
 msgstr "No se pudo guardar"
 
-#: src/components/ApprovalRulesSettings.tsx:103
+#: src/components/AutoReviewSettings.tsx:45
 msgid "Could not save Auto Review"
 msgstr "No se pudo guardar Auto Review"
 
@@ -1609,7 +1519,7 @@ msgstr "No se pudo guardar el modelo"
 msgid "Could not save routine"
 msgstr "No se pudo guardar la rutina"
 
-#: src/components/ApprovalRulesSettings.tsx:80
+#: src/components/ApprovalRulesSettings.tsx:72
 msgid "Could not save rule"
 msgstr "No se pudo guardar la regla"
 
@@ -1625,10 +1535,6 @@ msgstr "No se pudo guardar esa voz"
 msgid "Could not save this choice"
 msgstr "No se pudo guardar esta opción"
 
-#: src/pages/plugins/use-integrations.ts:327
-msgid "Could not search catalog"
-msgstr ""
-
 #: src/pages/Auth.tsx:87
 msgid "Could not send reset email"
 msgstr "No se pudo enviar el correo de restablecimiento"
@@ -1637,10 +1543,6 @@ msgstr "No se pudo enviar el correo de restablecimiento"
 #: src/pages/CallView.tsx:199
 msgid "Could not send that"
 msgstr "No se pudo enviar eso"
-
-#: src/pages/McpServersOverlay.tsx:252
-msgid "Could not start OAuth"
-msgstr "No se pudo iniciar OAuth"
 
 #: src/components/teach/TeachComputerOverlay.tsx:169
 msgid "Could not start teaching"
@@ -1661,7 +1563,6 @@ msgid "Could not update"
 msgstr "No se pudo actualizar"
 
 #: src/pages/KnowledgeSection.tsx:344
-#: src/pages/McpServersOverlay.tsx:268
 msgid "Could not update agent access"
 msgstr "No se pudo actualizar el acceso del agente"
 
@@ -1686,7 +1587,7 @@ msgstr "No se pudo actualizar el alcance de memoria predeterminado"
 msgid "Could not update your photo"
 msgstr ""
 
-#: src/pages/SpaceGeneralSettings.tsx:194
+#: src/pages/SpaceGeneralSettings.tsx:199
 msgid "Couldn't copy the link"
 msgstr ""
 
@@ -1695,7 +1596,7 @@ msgstr ""
 msgid "Couldn't create"
 msgstr "No se pudo crear"
 
-#: src/pages/SpaceGeneralSettings.tsx:184
+#: src/pages/SpaceGeneralSettings.tsx:189
 msgid "Couldn't invite them"
 msgstr ""
 
@@ -1703,7 +1604,7 @@ msgstr ""
 msgid "Couldn't load"
 msgstr ""
 
-#: src/pages/SpaceGeneralSettings.tsx:157
+#: src/pages/SpaceGeneralSettings.tsx:162
 msgid "Couldn't load members"
 msgstr ""
 
@@ -1712,15 +1613,15 @@ msgid "Couldn't load messaging settings"
 msgstr "No se pudo cargar la configuración de mensajería"
 
 #. placeholder {0}: member.name
-#: src/pages/SpaceGeneralSettings.tsx:235
+#: src/pages/SpaceGeneralSettings.tsx:240
 msgid "Couldn't remove {0}"
 msgstr ""
 
-#: src/pages/SpaceGeneralSettings.tsx:97
+#: src/pages/SpaceGeneralSettings.tsx:102
 msgid "Couldn't rename the space"
 msgstr "No se pudo cambiar el nombre del espacio"
 
-#: src/pages/SpaceGeneralSettings.tsx:272
+#: src/pages/SpaceGeneralSettings.tsx:277
 msgid "Couldn't revoke the invite link"
 msgstr ""
 
@@ -1740,7 +1641,7 @@ msgstr "No se pudo actualizar la configuración de mensajería"
 #: src/pages/bot-page/RoutineCreateForm.tsx:149
 #: src/pages/shell/bot-panel.tsx:155
 #: src/pages/shell/dialogs.tsx:202
-#: src/pages/shell/sidebar-header.tsx:78
+#: src/pages/shell/sidebar-header.tsx:112
 msgid "Create"
 msgstr "Crear"
 
@@ -1766,7 +1667,7 @@ msgid "Create group"
 msgstr "Crear grupo"
 
 #: src/pages/shell/bot-picker.tsx:74
-#: src/pages/shell/shell-main.tsx:177
+#: src/pages/shell/shell-main.tsx:205
 msgid "Create new Bot"
 msgstr "Crear nuevo bot"
 
@@ -1803,19 +1704,6 @@ msgstr "Creado"
 msgid "Creating…"
 msgstr "Creando…"
 
-#: src/pages/plugins/advanced-integrations.tsx:305
-msgid "Credential"
-msgstr "Credencial"
-
-#: src/pages/McpServersOverlay.tsx:34
-#: src/pages/plugins/advanced-integrations.tsx:363
-msgid "credential saved"
-msgstr "credencial guardada"
-
-#: src/pages/plugins/advanced-integrations.tsx:310
-msgid "Credentials are encrypted and never sent to the model."
-msgstr "Las credenciales se cifran y nunca se envían al modelo."
-
 #: src/pages/RoutineSchedule.tsx:155
 msgid "Cron"
 msgstr "Cron"
@@ -1832,14 +1720,19 @@ msgstr "Expresión cron"
 msgid "Current password"
 msgstr "Contraseña actual"
 
+#: src/pages/CustomizeOverlay.tsx:27
+#: src/pages/CustomizeOverlay.tsx:180
+msgid "Custom apps"
+msgstr "Apps personalizadas"
+
 #: src/pages/shell/dialogs.tsx:81
 msgid "Customer support"
 msgstr "Atención al cliente"
 
-#: src/pages/CustomizeOverlay.tsx:38
 #: src/pages/CustomizeOverlay.tsx:42
-#: src/pages/CustomizeOverlay.tsx:150
-#: src/pages/CustomizeOverlay.tsx:157
+#: src/pages/CustomizeOverlay.tsx:46
+#: src/pages/CustomizeOverlay.tsx:168
+#: src/pages/CustomizeOverlay.tsx:176
 #: src/pages/shell/sidebar-footer.tsx:191
 msgid "Customize"
 msgstr "Personalizar"
@@ -1861,7 +1754,7 @@ msgstr "días"
 msgid "Debug mode"
 msgstr "Modo de depuración"
 
-#: src/pages/SettingsOverlay.tsx:141
+#: src/pages/settings-sections.ts:46
 msgid "Decision Model"
 msgstr ""
 
@@ -1872,7 +1765,7 @@ msgstr "Rechazar"
 
 #: src/pages/bot-page/model-options.ts:28
 #: src/pages/bot-page/SettingDetails.tsx:118
-#: src/pages/model-settings/model-detail.tsx:185
+#: src/pages/model-settings/model-detail.tsx:188
 #: src/pages/model-settings/routing-settings.tsx:106
 #: src/pages/model-settings/routing-settings.tsx:133
 #: src/pages/Onboarding.tsx:511
@@ -1889,9 +1782,9 @@ msgid "Default scope"
 msgstr "Alcance predeterminado"
 
 #: src/pages/bot-page/BotPage.tsx:383
-#: src/pages/BotContextMenu.tsx:182
+#: src/pages/BotContextMenu.tsx:204
+#: src/pages/custom-apps/CustomApps.tsx:348
 #: src/pages/KnowledgeSection.tsx:687
-#: src/pages/McpServersOverlay.tsx:591
 #: src/pages/shell/dialogs.tsx:409
 #: src/pages/shell/dialogs.tsx:470
 #: src/pages/shell/sidebar-footer.tsx:99
@@ -1980,11 +1873,11 @@ msgstr ""
 msgid "Dictate"
 msgstr ""
 
-#: src/pages/shell/composer.tsx:440
+#: src/pages/shell/composer.tsx:433
 msgid "Dictating"
 msgstr ""
 
-#: src/components/integrations/IntegrationSetup.tsx:40
+#: src/components/integrations/IntegrationSetup.tsx:32
 msgid "Direct MCP"
 msgstr ""
 
@@ -2002,16 +1895,16 @@ msgstr ""
 msgid "Discarded"
 msgstr ""
 
+#: src/pages/custom-apps/CustomApps.tsx:327
 #: src/pages/DecisionModelSettingsPanel.tsx:111
-#: src/pages/McpServersOverlay.tsx:576
 #: src/pages/MemorySettingsOverlay.tsx:211
-#: src/pages/ProvidersSettings.tsx:252
+#: src/pages/ProvidersSettings.tsx:282
 msgid "Disconnect"
 msgstr "Desconectar"
 
 #: src/pages/DecisionModelSettingsPanel.tsx:111
 #: src/pages/MemorySettingsOverlay.tsx:211
-#: src/pages/ProvidersSettings.tsx:250
+#: src/pages/ProvidersSettings.tsx:280
 msgid "Disconnecting…"
 msgstr "Desconectando…"
 
@@ -2021,17 +1914,13 @@ msgstr "Desconectando…"
 msgid "Dismiss"
 msgstr "Descartar"
 
-#: src/pages/shell/composer-notices.tsx:95
+#: src/pages/shell/composer-notices.tsx:101
 msgid "Dismiss error"
 msgstr "Descartar error"
 
-#: src/pages/shell/message-cards.tsx:313
+#: src/pages/shell/message-cards.tsx:314
 msgid "Dismissed. Reconnect anytime from MCP settings."
 msgstr "Descartado: puedes volver a conectar cuando quieras desde la configuración de MCP."
-
-#: src/pages/plugins/advanced-integrations.tsx:253
-msgid "Display name"
-msgstr "Nombre para mostrar"
 
 #: src/components/teach/TeachRecordingChrome.tsx:49
 #: src/components/teach/TeachRecordingChrome.tsx:67
@@ -2068,7 +1957,7 @@ msgstr "Descargar {name}"
 msgid "Download as markdown"
 msgstr "Descargar como Markdown"
 
-#: src/components/integrations/IntegrationSetup.tsx:331
+#: src/components/integrations/IntegrationSetup.tsx:222
 msgid "Download Executor"
 msgstr ""
 
@@ -2080,8 +1969,12 @@ msgstr ""
 msgid "Draft skill"
 msgstr "Habilidad en borrador"
 
+#: src/pages/shell/shell-main.tsx:162
+msgid "Drop files to attach"
+msgstr ""
+
 #: src/pages/bot-page/BotPage.tsx:364
-#: src/pages/BotContextMenu.tsx:163
+#: src/pages/BotContextMenu.tsx:185
 msgid "Duplicate"
 msgstr "Duplicar"
 
@@ -2094,6 +1987,7 @@ msgid "Earlier messages summarized"
 msgstr ""
 
 #: src/components/AskCard.tsx:332
+#: src/pages/custom-apps/CustomApps.tsx:315
 msgid "Edit"
 msgstr "Editar"
 
@@ -2119,7 +2013,7 @@ msgid "Editing"
 msgstr ""
 
 #. placeholder {0}: rewindRemovedCount ?? 0
-#: src/pages/shell/composer-notices.tsx:127
+#: src/pages/shell/composer-notices.tsx:133
 msgid "Editing message from {rewindTime} · {0} messages after it will be removed"
 msgstr "Editando el mensaje de {rewindTime} · se eliminarán los {0} mensajes posteriores"
 
@@ -2131,7 +2025,7 @@ msgstr "Esfuerzo"
 msgid "Email"
 msgstr "Correo"
 
-#: src/pages/SpaceGeneralSettings.tsx:291
+#: src/pages/SpaceGeneralSettings.tsx:296
 msgid "Emails to invite"
 msgstr ""
 
@@ -2213,12 +2107,8 @@ msgstr ""
 msgid "Everyone who uses this bot can see its files and browser sign-ins."
 msgstr ""
 
-#: src/pages/plugins/advanced-integrations.tsx:304
-msgid "Executor token"
-msgstr "Token de Executor"
-
 #. placeholder {0}: group.title
-#: src/pages/shell/sidebar-roster.tsx:127
+#: src/pages/shell/sidebar-roster.tsx:138
 msgid "Expand {0}"
 msgstr "Expandir {0}"
 
@@ -2236,7 +2126,7 @@ msgid "External conversation"
 msgstr ""
 
 #: src/pages/bot-page/model-options.ts:14
-#: src/pages/model-settings/model-detail.tsx:181
+#: src/pages/model-settings/model-detail.tsx:184
 #: src/pages/Onboarding.tsx:507
 msgid "Extra high"
 msgstr "Extra alto"
@@ -2281,11 +2171,12 @@ msgstr "Alternativa"
 msgid "Fast"
 msgstr "Rápido"
 
-#: src/pages/PluginsOverlay.tsx:227
+#: src/pages/PluginsOverlay.tsx:194
 msgid "Featured"
 msgstr "Destacados"
 
 #: src/pages/bot-page/KnowledgeTab.tsx:67
+#: src/pages/shell/command-palette.tsx:172
 msgid "Files"
 msgstr "Archivos"
 
@@ -2293,12 +2184,12 @@ msgstr "Archivos"
 msgid "Filter skills"
 msgstr "Filtrar skills"
 
-#: src/pages/model-settings/model-detail.tsx:104
+#: src/pages/model-settings/model-detail.tsx:107
 #: src/pages/Onboarding.tsx:428
 msgid "Find models"
 msgstr "Buscar modelos"
 
-#: src/pages/model-settings/model-detail.tsx:104
+#: src/pages/model-settings/model-detail.tsx:107
 #: src/pages/Onboarding.tsx:428
 msgid "Finding…"
 msgstr "Buscando…"
@@ -2322,15 +2213,11 @@ msgstr "Finalizando conexión MCP…"
 msgid "Fixed"
 msgstr ""
 
-#: src/components/ApprovalRulesSettings.tsx:147
-msgid "Flag unexpected actions"
-msgstr "Marcar acciones inesperadas"
-
 #: src/pages/Auth.tsx:194
 msgid "Forgot password?"
 msgstr "¿Olvidaste la contraseña?"
 
-#: src/pages/model-settings/model-picker.tsx:310
+#: src/pages/model-settings/model-picker.tsx:311
 msgid "Free"
 msgstr "Gratis"
 
@@ -2346,11 +2233,11 @@ msgstr "Pantalla completa"
 msgid "FYI"
 msgstr ""
 
-#: src/pages/SettingsOverlay.tsx:137
+#: src/pages/settings-sections.ts:42
 msgid "General"
 msgstr "General"
 
-#: src/components/integrations/IntegrationSetup.tsx:209
+#: src/components/integrations/IntegrationSetup.tsx:143
 msgid "Get credentials"
 msgstr ""
 
@@ -2400,14 +2287,9 @@ msgstr "Cuelga y luego ingresa el código en pantalla."
 msgid "header"
 msgstr "Encabezado"
 
-#: src/pages/McpServersOverlay.tsx:450
-#: src/pages/plugins/advanced-integrations.tsx:291
+#: src/pages/custom-apps/AppEditor.tsx:127
 msgid "Header name"
 msgstr "Nombre del encabezado"
-
-#: src/pages/McpServersOverlay.tsx:455
-msgid "Header value"
-msgstr "Valor del encabezado"
 
 #: src/pages/VoiceSettingsOverlay.tsx:236
 msgid "Hear a sample"
@@ -2417,7 +2299,7 @@ msgstr "Escuchar una muestra"
 msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "Hola, así sonaré cuando lea las respuestas en voz alta."
 
-#: src/pages/shell/sidebar.tsx:133
+#: src/pages/shell/sidebar.tsx:80
 msgid "Hide bots"
 msgstr "Ocultar bots"
 
@@ -2430,7 +2312,7 @@ msgid "Hide password"
 msgstr "Ocultar contraseña"
 
 #: src/pages/bot-page/model-options.ts:17
-#: src/pages/model-settings/model-detail.tsx:180
+#: src/pages/model-settings/model-detail.tsx:183
 #: src/pages/Onboarding.tsx:506
 msgid "High"
 msgstr "Alto"
@@ -2484,13 +2366,17 @@ msgstr ""
 msgid "Image, from {sender}"
 msgstr ""
 
+#: src/pages/shell/shell-main.tsx:165
+msgid "Images, PDFs, text, CSV or JSON, up to {ATTACHMENT_MAX_MB} MB each"
+msgstr ""
+
 #: src/pages/KnowledgeSection.tsx:427
 msgid "Import"
 msgstr "Importar"
 
-#: src/pages/plugins/advanced-integrations.tsx:245
-msgid "Import OpenAPI JSON"
-msgstr "Importar JSON de OpenAPI"
+#: src/components/AutoReviewSettings.tsx:90
+msgid "Improve accuracy by setting up a decision model."
+msgstr "Configura un modelo de decisión para marcar acciones con más precisión."
 
 #: src/pages/bot-page/KnowledgeTab.tsx:136
 msgid "Inherit default"
@@ -2508,7 +2394,7 @@ msgstr "Entradas"
 msgid "Insert dictation"
 msgstr ""
 
-#: src/pages/PluginsOverlay.tsx:201
+#: src/pages/PluginsOverlay.tsx:168
 msgid "Installed integrations"
 msgstr "Integraciones instaladas"
 
@@ -2527,16 +2413,12 @@ msgstr "Instrucción"
 msgid "Instructions"
 msgstr "Instrucciones"
 
-#: src/pages/plugins/advanced-integrations.tsx:110
-msgid "Integration domain"
-msgstr ""
-
-#: src/components/integrations/IntegrationSetup.tsx:133
+#: src/components/integrations/IntegrationSetup.tsx:96
 msgid "Integration options"
 msgstr ""
 
-#: src/pages/CustomizeOverlay.tsx:23
-#: src/pages/CustomizeOverlay.tsx:159
+#: src/pages/CustomizeOverlay.tsx:26
+#: src/pages/CustomizeOverlay.tsx:178
 msgid "Integrations"
 msgstr "Integraciones"
 
@@ -2553,7 +2435,7 @@ msgstr "Cantidad del intervalo"
 msgid "Interval unit"
 msgstr "Unidad del intervalo"
 
-#: src/pages/SpaceGeneralSettings.tsx:295
+#: src/pages/SpaceGeneralSettings.tsx:300
 msgid "Invite"
 msgstr ""
 
@@ -2642,7 +2524,7 @@ msgstr ""
 msgid "Leave {0}?"
 msgstr ""
 
-#: src/pages/BotContextMenu.tsx:188
+#: src/pages/BotContextMenu.tsx:210
 #: src/pages/GroupPanel.tsx:426
 msgid "Leave group"
 msgstr "Salir del grupo"
@@ -2664,6 +2546,10 @@ msgstr "Claro"
 msgid "Link a chat app"
 msgstr "Vincular una app de chat"
 
+#: src/pages/shell/command-palette.tsx:173
+msgid "Links"
+msgstr ""
+
 #: src/pages/ExternalConversationSettings.tsx:99
 msgid "Listen"
 msgstr ""
@@ -2680,7 +2566,7 @@ msgstr "Cargar mensajes anteriores"
 msgid "Loading activity…"
 msgstr "Cargando actividad…"
 
-#: src/pages/PluginsOverlay.tsx:188
+#: src/pages/PluginsOverlay.tsx:155
 msgid "Loading integrations…"
 msgstr "Cargando integraciones…"
 
@@ -2688,7 +2574,7 @@ msgstr "Cargando integraciones…"
 msgid "Loading memory settings…"
 msgstr "Cargando configuración de memoria…"
 
-#: src/pages/model-settings/model-detail.tsx:366
+#: src/pages/model-settings/model-detail.tsx:369
 #: src/pages/ModelSettingsOverlay.tsx:33
 msgid "Loading model catalog…"
 msgstr "Cargando catálogo de modelos…"
@@ -2697,7 +2583,7 @@ msgstr "Cargando catálogo de modelos…"
 msgid "Loading preview…"
 msgstr "Cargando vista previa…"
 
-#: src/components/ApprovalRulesSettings.tsx:159
+#: src/components/ApprovalRulesSettings.tsx:115
 msgid "Loading rules…"
 msgstr "Cargando reglas…"
 
@@ -2710,7 +2596,7 @@ msgid "Loading voice providers…"
 msgstr "Cargando proveedores de voz…"
 
 #: src/App.tsx:71
-#: src/pages/IntegrationSetup.tsx:72
+#: src/pages/IntegrationSetup.tsx:74
 #: src/pages/Onboarding.tsx:378
 #: src/pages/PeerMessagesOverlay.tsx:142
 #: src/pages/shell/session-view.tsx:129
@@ -2727,7 +2613,7 @@ msgid "Log out"
 msgstr "Cerrar sesión"
 
 #: src/pages/bot-page/model-options.ts:15
-#: src/pages/model-settings/model-detail.tsx:178
+#: src/pages/model-settings/model-detail.tsx:181
 #: src/pages/Onboarding.tsx:504
 msgid "Low"
 msgstr "Bajo"
@@ -2736,11 +2622,7 @@ msgstr "Bajo"
 msgid "Make sure nothing is still running on this computer."
 msgstr "Asegúrate de que no quede nada en ejecución en este ordenador."
 
-#: src/pages/plugins/advanced-integrations.tsx:389
-msgid "Manage MCP servers"
-msgstr "Gestionar servidores MCP"
-
-#: src/pages/SpaceGeneralSettings.tsx:40
+#: src/pages/SpaceGeneralSettings.tsx:43
 msgid "Manage messaging settings"
 msgstr "Administrar configuración de mensajería"
 
@@ -2749,36 +2631,28 @@ msgstr "Administrar configuración de mensajería"
 msgid "Manage the Space semantic memory provider."
 msgstr "Administra el proveedor de memoria semántica del Space."
 
-#: src/pages/plugins/advanced-integrations.tsx:171
-msgid "Manual"
-msgstr ""
-
-#: src/pages/plugins/advanced-integrations.tsx:168
-msgid "Manual setup required"
-msgstr ""
-
-#: src/pages/BotContextMenu.tsx:145
-#: src/pages/BotContextMenu.tsx:196
+#: src/pages/BotContextMenu.tsx:167
+#: src/pages/BotContextMenu.tsx:218
 msgid "Mark as Read"
 msgstr "Marcar como leído"
 
-#: src/pages/BotContextMenu.tsx:145
-#: src/pages/BotContextMenu.tsx:196
+#: src/pages/BotContextMenu.tsx:167
+#: src/pages/BotContextMenu.tsx:218
 msgid "Mark as Unread"
 msgstr "Marcar como no leído"
 
 #: src/pages/bot-page/model-options.ts:19
-#: src/pages/model-settings/model-detail.tsx:182
+#: src/pages/model-settings/model-detail.tsx:185
 #: src/pages/Onboarding.tsx:508
 msgid "Max"
 msgstr "Máx."
 
-#: src/pages/model-settings/model-detail.tsx:213
+#: src/pages/model-settings/model-detail.tsx:216
 #: src/pages/Onboarding.tsx:523
 msgid "Maximum images per request"
 msgstr "Máximo de imágenes por solicitud"
 
-#: src/pages/model-settings/model-detail.tsx:192
+#: src/pages/model-settings/model-detail.tsx:195
 #: src/pages/Onboarding.tsx:514
 msgid "Maximum output tokens"
 msgstr "Máximo de tokens de salida"
@@ -2787,17 +2661,13 @@ msgstr "Máximo de tokens de salida"
 msgid "MCP endpoint"
 msgstr ""
 
-#: src/pages/McpServersOverlay.tsx:314
-msgid "MCP servers"
-msgstr "Servidores MCP"
-
 #: src/pages/bot-page/model-options.ts:16
-#: src/pages/model-settings/model-detail.tsx:179
+#: src/pages/model-settings/model-detail.tsx:182
 #: src/pages/Onboarding.tsx:505
 msgid "Medium"
 msgstr "Medio"
 
-#: src/pages/SpaceGeneralSettings.tsx:209
+#: src/pages/SpaceGeneralSettings.tsx:214
 msgid "Members"
 msgstr ""
 
@@ -2811,7 +2681,7 @@ msgstr "Miembros (elige {GROUP_MEMBER_MIN}–{GROUP_MEMBER_MAX})"
 
 #: src/pages/bot-page/KnowledgeTab.tsx:38
 #: src/pages/MemorySettingsOverlay.tsx:159
-#: src/pages/SettingsOverlay.tsx:140
+#: src/pages/settings-sections.ts:45
 msgid "Memory"
 msgstr "Memoria"
 
@@ -2829,7 +2699,7 @@ msgid "Mentions only"
 msgstr ""
 
 #: src/pages/bot-page/BotActivity.tsx:358
-#: src/pages/shell/composer.tsx:296
+#: src/pages/shell/composer.tsx:293
 #: src/pages/shell/message-view.tsx:93
 msgid "Message"
 msgstr "Mensaje"
@@ -2839,7 +2709,7 @@ msgstr "Mensaje"
 msgid "Message"
 msgstr "Mensaje"
 
-#: src/pages/shell/composer.tsx:295
+#: src/pages/shell/composer.tsx:292
 msgid "Message {activeName}"
 msgstr "Mensaje a {activeName}"
 
@@ -2847,7 +2717,7 @@ msgstr "Mensaje a {activeName}"
 msgid "Message actions"
 msgstr ""
 
-#: src/pages/shell/composer.tsx:314
+#: src/pages/shell/composer.tsx:311
 msgid "Message composer"
 msgstr "Redactor de mensajes"
 
@@ -2864,7 +2734,7 @@ msgstr ""
 msgid "Message from {peer}"
 msgstr "Mensaje de {peer}"
 
-#: src/pages/shell/composer.tsx:512
+#: src/pages/shell/composer.tsx:505
 msgid "Message…"
 msgstr "Mensaje…"
 
@@ -2873,8 +2743,12 @@ msgstr "Mensaje…"
 msgid "Messaged {peer}"
 msgstr "Mensaje enviado a {peer}"
 
+#: src/pages/shell/command-palette.tsx:170
+msgid "Messages"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx:99
-#: src/pages/SpaceGeneralSettings.tsx:34
+#: src/pages/SpaceGeneralSettings.tsx:37
 msgid "Messaging"
 msgstr "Mensajería"
 
@@ -2883,7 +2757,7 @@ msgid "Microphone failed"
 msgstr "Falló el micrófono"
 
 #: src/pages/bot-page/model-options.ts:18
-#: src/pages/model-settings/model-detail.tsx:177
+#: src/pages/model-settings/model-detail.tsx:180
 #: src/pages/Onboarding.tsx:503
 msgid "Minimal"
 msgstr "Mínimo"
@@ -2892,8 +2766,8 @@ msgstr "Mínimo"
 msgid "Minimize"
 msgstr "Minimizar"
 
-#: src/pages/shell/sidebar-header.tsx:48
-#: src/pages/shell/sidebar-header.tsx:49
+#: src/pages/shell/sidebar-header.tsx:61
+#: src/pages/shell/sidebar-header.tsx:62
 msgid "Minimize bots"
 msgstr "Minimizar bots"
 
@@ -2908,8 +2782,8 @@ msgstr "minutos"
 #: src/pages/bot-page/SettingDetails.tsx:106
 #: src/pages/bot-page/SettingsTab.tsx:29
 #: src/pages/DecisionModelSettingsPanel.tsx:156
-#: src/pages/model-settings/model-detail.tsx:109
-#: src/pages/model-settings/model-detail.tsx:219
+#: src/pages/model-settings/model-detail.tsx:112
+#: src/pages/model-settings/model-detail.tsx:222
 #: src/pages/model-settings/model-picker.tsx:198
 #: src/pages/Onboarding.tsx:433
 #: src/pages/Onboarding.tsx:529
@@ -2922,12 +2796,12 @@ msgstr "Modelo"
 msgid "Model error"
 msgstr "Error del modelo"
 
-#: src/pages/model-settings/model-detail.tsx:143
+#: src/pages/model-settings/model-detail.tsx:146
 #: src/pages/Onboarding.tsx:471
 msgid "Model id"
 msgstr "ID del modelo"
 
-#: src/pages/model-settings/model-picker.tsx:234
+#: src/pages/model-settings/model-picker.tsx:235
 msgid "Model options"
 msgstr "Opciones del modelo"
 
@@ -2940,14 +2814,14 @@ msgid "Model updated."
 msgstr "Modelo actualizado."
 
 #: src/pages/ModelSettingsOverlay.tsx:44
-#: src/pages/ProvidersSettings.tsx:114
-#: src/pages/ProvidersSettings.tsx:116
-#: src/pages/SettingsOverlay.tsx:138
+#: src/pages/ProvidersSettings.tsx:140
+#: src/pages/ProvidersSettings.tsx:142
+#: src/pages/settings-sections.ts:43
 #: src/pages/usage-settings.tsx:69
 msgid "Models"
 msgstr "Modelos"
 
-#: src/pages/model-settings/model-detail.tsx:122
+#: src/pages/model-settings/model-detail.tsx:125
 #: src/pages/Onboarding.tsx:450
 msgid "Models from server"
 msgstr "Modelos del servidor"
@@ -2968,7 +2842,8 @@ msgstr "Más acciones de computadora"
 msgid "Move them to your shared memory."
 msgstr "Muévelas a tu memoria compartida."
 
-#: src/pages/BotContextMenu.tsx:115
+#: src/pages/BotContextMenu.tsx:149
+#: src/pages/BotContextMenu.tsx:158
 msgid "Move to"
 msgstr "Mover a"
 
@@ -2988,7 +2863,7 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx:72
 #: src/pages/shell/dialogs.tsx:187
 #: src/pages/shell/dialogs.tsx:250
-#: src/pages/SpaceGeneralSettings.tsx:113
+#: src/pages/SpaceGeneralSettings.tsx:118
 msgid "Name"
 msgstr "Nombre"
 
@@ -3039,7 +2914,7 @@ msgstr "Nueva contraseña"
 msgid "New routine"
 msgstr "Nueva rutina"
 
-#: src/pages/BotContextMenu.tsx:133
+#: src/pages/BotContextMenu.tsx:103
 #: src/pages/shell/dialogs.tsx:180
 msgid "New section"
 msgstr "Nueva sección"
@@ -3069,21 +2944,9 @@ msgstr "Aún no hay actividad"
 msgid "No agent connections yet."
 msgstr "Aún no hay conexiones de agentes."
 
-#: src/pages/PluginsOverlay.tsx:280
+#: src/pages/PluginsOverlay.tsx:247
 msgid "No apps match your search."
 msgstr "Ninguna app coincide con tu búsqueda."
-
-#: src/pages/plugins/advanced-integrations.tsx:365
-msgid "no auth"
-msgstr "sin autenticación"
-
-#: src/pages/plugins/advanced-integrations.tsx:277
-msgid "No authentication"
-msgstr "Sin autenticación"
-
-#: src/pages/shell/command-palette.tsx:107
-msgid "No bots"
-msgstr "Sin bots"
 
 #: src/pages/shell/bot-picker.tsx:63
 msgid "No bots match"
@@ -3097,7 +2960,7 @@ msgstr "Aún no hay apps de chat vinculadas."
 msgid "No computers"
 msgstr ""
 
-#: src/components/ApprovalRulesSettings.tsx:163
+#: src/components/ApprovalRulesSettings.tsx:119
 msgid "No exceptions. Actions run automatically."
 msgstr "Sin excepciones. Las acciones se ejecutan automáticamente."
 
@@ -3109,7 +2972,7 @@ msgstr "Aún no hay archivos"
 msgid "No group chats yet."
 msgstr "Aún no hay chats de grupo."
 
-#: src/pages/PluginsOverlay.tsx:211
+#: src/pages/PluginsOverlay.tsx:178
 msgid "No integrations installed yet."
 msgstr "Aún no hay integraciones instaladas."
 
@@ -3119,27 +2982,19 @@ msgstr "Aún no hay integraciones instaladas."
 msgid "No longer active"
 msgstr "Ya no está activo"
 
-#: src/pages/PluginsOverlay.tsx:275
+#: src/pages/PluginsOverlay.tsx:242
 msgid "No managed app catalog is configured on this deployment."
 msgstr "No hay un catálogo de apps administradas configurado en este despliegue."
 
-#: src/pages/model-settings/model-picker.tsx:262
+#: src/pages/model-settings/model-picker.tsx:263
 msgid "No matching models"
 msgstr "No hay modelos coincidentes"
-
-#: src/pages/plugins/advanced-integrations.tsx:350
-msgid "No MCP or API tool sources installed yet."
-msgstr "Aún no hay fuentes de herramientas MCP o API instaladas."
-
-#: src/pages/McpServersOverlay.tsx:509
-msgid "No MCP servers yet."
-msgstr "Aún no hay servidores MCP."
 
 #: src/pages/PeerMessagesOverlay.tsx:159
 msgid "No messages with {peerBotName} yet."
 msgstr "Aún no hay mensajes con {peerBotName}."
 
-#: src/pages/model-settings/model-detail.tsx:370
+#: src/pages/model-settings/model-detail.tsx:373
 msgid "No model catalog is available."
 msgstr "No hay un catálogo de modelos disponible."
 
@@ -3147,20 +3002,15 @@ msgstr "No hay un catálogo de modelos disponible."
 msgid "No model connected"
 msgstr "Ningún modelo conectado"
 
-#: src/pages/ProvidersSettings.tsx:153
+#: src/pages/ProvidersSettings.tsx:181
 msgid "No providers found."
 msgstr "No se encontraron proveedores."
-
-#: src/components/integrations/IntegrationSetup.tsx:268
-msgid "No remote MCP servers found"
-msgstr ""
 
 #: src/pages/bot-page/BotActivity.tsx:479
 msgid "No report"
 msgstr "Sin informe"
 
-#: src/pages/plugins/advanced-integrations.tsx:127
-#: src/pages/SpaceSearch.tsx:23
+#: src/pages/shell/command-palette.tsx:244
 msgid "No results"
 msgstr "Sin resultados"
 
@@ -3192,17 +3042,17 @@ msgstr ""
 msgid "None yet"
 msgstr "Ninguno aún"
 
-#: src/pages/model-settings/model-detail.tsx:250
+#: src/pages/model-settings/model-detail.tsx:253
 msgid "Not connected"
 msgstr "No conectado"
 
-#: src/pages/PluginsOverlay.tsx:261
+#: src/pages/PluginsOverlay.tsx:228
 msgid "Not in the plugin catalog"
 msgstr "No está en el catálogo de plugins"
 
 #: src/components/AskCard.tsx:63
 #: src/lib/approval-labels.ts:18
-#: src/pages/shell/message-cards.tsx:301
+#: src/pages/shell/message-cards.tsx:302
 msgid "Not now"
 msgstr "Ahora no"
 
@@ -3253,17 +3103,9 @@ msgstr "Ahora usando {0}."
 msgid "OAuth authorization was cancelled."
 msgstr "Se canceló la autorización OAuth."
 
-#: src/pages/McpServersOverlay.tsx:32
-msgid "OAuth connected"
-msgstr "OAuth conectado"
-
 #: src/pages/McpOAuthCallback.tsx:52
 msgid "OAuth connection failed"
 msgstr "Falló la conexión OAuth"
-
-#: src/pages/McpServersOverlay.tsx:33
-msgid "OAuth expired"
-msgstr "OAuth expirado"
 
 #: src/pages/bot-page/routine-copy.ts:93
 #: src/pages/bot-page/RoutineTriggers.tsx:101
@@ -3300,7 +3142,7 @@ msgid "Open"
 msgstr "Abrir"
 
 #. placeholder {0}: group.title
-#: src/pages/shell/sidebar-roster.tsx:125
+#: src/pages/shell/sidebar-roster.tsx:136
 msgid "Open {0}"
 msgstr "Abrir {0}"
 
@@ -3320,7 +3162,7 @@ msgstr "Abrir en ventana completa"
 msgid "Open work"
 msgstr "Trabajo abierto"
 
-#: src/pages/model-settings/model-detail.tsx:82
+#: src/pages/model-settings/model-detail.tsx:85
 #: src/pages/Onboarding.tsx:416
 msgid "OpenAI-compatible server URL"
 msgstr "URL de servidor compatible con OpenAI"
@@ -3329,7 +3171,7 @@ msgstr "URL de servidor compatible con OpenAI"
 msgid "Opened its thread."
 msgstr "Se abrió su hilo."
 
-#: src/pages/Onboarding.tsx:690
+#: src/pages/Onboarding.tsx:689
 msgid "Opening chat…"
 msgstr "Abriendo el chat…"
 
@@ -3341,20 +3183,16 @@ msgstr "Abriendo tu Space…"
 msgid "OpenRouter API key"
 msgstr ""
 
-#: src/pages/model-settings/model-detail.tsx:287
+#: src/pages/model-settings/model-detail.tsx:290
 #: src/pages/Onboarding.tsx:636
 msgid "Optional"
 msgstr "Opcional"
 
-#: src/pages/SpaceGeneralSettings.tsx:52
+#: src/pages/SpaceGeneralSettings.tsx:57
 msgid "Optional controls most people never need"
 msgstr "Controles opcionales que la mayoría nunca necesita"
 
-#: src/pages/McpServersOverlay.tsx:459
-msgid "Optional header value"
-msgstr "Valor de encabezado opcional"
-
-#: src/pages/model-settings/model-detail.tsx:301
+#: src/pages/model-settings/model-detail.tsx:304
 msgid "Or connect an API key"
 msgstr "O conecta una clave de API"
 
@@ -3374,7 +3212,7 @@ msgstr "Clave de API de organización"
 msgid "Other answer"
 msgstr ""
 
-#: src/pages/model-settings/model-detail.tsx:130
+#: src/pages/model-settings/model-detail.tsx:133
 #: src/pages/Onboarding.tsx:198
 #: src/pages/Onboarding.tsx:460
 msgid "Other model…"
@@ -3389,7 +3227,7 @@ msgstr ""
 msgid "Output"
 msgstr "Salida"
 
-#: src/pages/SpaceGeneralSettings.tsx:222
+#: src/pages/SpaceGeneralSettings.tsx:227
 msgid "Owner"
 msgstr ""
 
@@ -3419,15 +3257,19 @@ msgstr "Contraseña actualizada"
 msgid "Passwords do not match"
 msgstr "Las contraseñas no coinciden"
 
-#: src/pages/ProvidersSettings.tsx:225
+#: src/pages/ProvidersSettings.tsx:255
 msgid "Paste a replacement key"
 msgstr "Pega una clave de reemplazo"
 
-#: src/pages/model-settings/model-detail.tsx:93
+#: src/pages/custom-apps/CustomApps.tsx:288
+msgid "Paste an app's MCP URL to give it to your agents."
+msgstr "Pega la URL MCP de una app para dársela a tus agentes."
+
+#: src/pages/model-settings/model-detail.tsx:96
 msgid "Paste the OpenAI-compatible address from your server. Tangow adds /v1 if needed."
 msgstr "Pega la dirección compatible con OpenAI de tu servidor. Tangow agrega /v1 si es necesario."
 
-#: src/pages/ProvidersSettings.tsx:225
+#: src/pages/ProvidersSettings.tsx:255
 msgid "Paste your API key"
 msgstr "Pega tu clave de API"
 
@@ -3443,11 +3285,11 @@ msgstr "Personas"
 msgid "Period"
 msgstr ""
 
-#: src/pages/model-settings/model-detail.tsx:244
+#: src/pages/model-settings/model-detail.tsx:247
 msgid "Personal credential"
 msgstr "Credencial personal"
 
-#: src/pages/BotContextMenu.tsx:110
+#: src/pages/BotContextMenu.tsx:143
 msgid "Pin"
 msgstr "Fijar"
 
@@ -3481,16 +3323,12 @@ msgstr ""
 msgid "Private workspace with its own bots and groups."
 msgstr ""
 
-#: src/pages/SettingsOverlay.tsx:134
+#: src/pages/settings-sections.ts:39
 msgid "Profile"
 msgstr "Perfil"
 
 #: src/pages/AccountProfileSettings.tsx:86
 msgid "Profile photo"
-msgstr ""
-
-#: src/components/integrations/IntegrationSetup.tsx:177
-msgid "Project ID"
 msgstr ""
 
 #: src/pages/MemorySettingsOverlay.tsx:219
@@ -3499,7 +3337,7 @@ msgstr ""
 msgid "Provider"
 msgstr "Proveedor"
 
-#: src/pages/SettingsOverlay.tsx:135
+#: src/pages/settings-sections.ts:40
 #: src/pages/VoiceSettingsOverlay.tsx:154
 msgid "Providers"
 msgstr "Proveedores"
@@ -3530,7 +3368,7 @@ msgstr "Leer respuestas en voz alta"
 msgid "read-only"
 msgstr "Solo lectura"
 
-#: src/pages/model-settings/model-detail.tsx:184
+#: src/pages/model-settings/model-detail.tsx:187
 #: src/pages/model-settings/routing-settings.tsx:132
 #: src/pages/Onboarding.tsx:510
 msgid "Reasoning effort"
@@ -3556,17 +3394,21 @@ msgstr ""
 msgid "Recommended · {description}"
 msgstr ""
 
+#: src/pages/custom-apps/CustomApps.tsx:365
+msgid "Reconnect"
+msgstr "Reconectar"
+
 #: src/components/DraftCard.tsx:318
 msgid "Reconnect {app}"
 msgstr ""
 
-#: src/pages/McpServersOverlay.tsx:39
-msgid "Reconnect OAuth"
-msgstr "Reconectar OAuth"
+#: src/pages/custom-apps/CustomApps.tsx:357
+msgid "Reconnect needed"
+msgstr "Es necesario reconectar"
 
 #: src/App.tsx:182
 #: src/components/ComputerUpdateProgress.tsx:58
-#: src/pages/shell/screen-frame.tsx:44
+#: src/pages/shell/screen-frame.tsx:34
 msgid "Reconnecting"
 msgstr "Reconectando"
 
@@ -3640,21 +3482,20 @@ msgstr ""
 msgid "Release interrupted computer?"
 msgstr ""
 
-#: src/components/ApprovalRulesSettings.tsx:179
+#: src/components/ApprovalRulesSettings.tsx:135
 #: src/pages/AccountProfileSettings.tsx:124
 #: src/pages/bot-page/RoutineTriggers.tsx:237
 #: src/pages/bot-page/RoutineTriggers.tsx:291
-#: src/pages/plugins/advanced-integrations.tsx:377
 #: src/pages/plugins/connection-detail.tsx:110
 #: src/pages/ScratchpadSection.tsx:165
-#: src/pages/SpaceGeneralSettings.tsx:239
+#: src/pages/SpaceGeneralSettings.tsx:244
 msgid "Remove"
 msgstr "Quitar"
 
 #. placeholder {0}: artifact.name
 #. placeholder {0}: attachment.file.name
-#: src/pages/shell/composer-attachments.tsx:136
-#: src/pages/shell/composer-attachments.tsx:146
+#: src/pages/shell/composer-attachments.tsx:149
+#: src/pages/shell/composer-attachments.tsx:159
 msgid "Remove {0}"
 msgstr "Quitar {0}"
 
@@ -3675,7 +3516,7 @@ msgstr "Quitar mención {0}"
 msgid "Remove message trigger?"
 msgstr "¿Quitar disparador de mensajes?"
 
-#: src/pages/shell/composer-attachments.tsx:160
+#: src/pages/shell/composer-attachments.tsx:173
 #: src/pages/shell/message-actions-sheet.tsx:84
 #: src/pages/shell/message-hover-actions.tsx:107
 #: src/pages/shell/message-hover-actions.tsx:108
@@ -3701,13 +3542,12 @@ msgstr "Eliminado junto con el chat, la computadora y la memoria."
 msgid "Removed, but list refresh failed"
 msgstr "Eliminado, pero falló la actualización de la lista"
 
-#: src/pages/plugins/advanced-integrations.tsx:377
 #: src/pages/plugins/connection-detail.tsx:75
 #: src/pages/plugins/connection-detail.tsx:110
 msgid "Removing…"
 msgstr "Quitando…"
 
-#: src/pages/BotContextMenu.tsx:138
+#: src/pages/BotContextMenu.tsx:108
 #: src/pages/shell/dialogs.tsx:246
 #: src/pages/shell/shell-overlays.tsx:439
 msgid "Rename section"
@@ -3718,12 +3558,12 @@ msgstr ""
 msgid "Reopen"
 msgstr "Reabrir"
 
-#: src/pages/model-settings/model-detail.tsx:299
-#: src/pages/model-settings/model-detail.tsx:331
+#: src/pages/model-settings/model-detail.tsx:302
+#: src/pages/model-settings/model-detail.tsx:334
 msgid "Replace API key"
 msgstr "Reemplazar clave de API"
 
-#: src/pages/ProvidersSettings.tsx:237
+#: src/pages/ProvidersSettings.tsx:267
 msgid "Replace key"
 msgstr "Reemplazar clave"
 
@@ -3741,7 +3581,7 @@ msgstr "Responder"
 msgid "Reply in several short messages"
 msgstr "Responder en varios mensajes cortos"
 
-#: src/pages/shell/composer-notices.tsx:109
+#: src/pages/shell/composer-notices.tsx:115
 msgid "Replying to {replyName}"
 msgstr "Respondiendo a {replyName}"
 
@@ -3833,7 +3673,7 @@ msgid "rev {0}"
 msgstr "rev. {0}"
 
 #: src/pages/MessagingSettingsOverlay.tsx:325
-#: src/pages/SpaceGeneralSettings.tsx:276
+#: src/pages/SpaceGeneralSettings.tsx:281
 msgid "Revoke"
 msgstr "Revocar"
 
@@ -3876,6 +3716,7 @@ msgid "Routine updated"
 msgstr "Rutina actualizada"
 
 #: src/pages/bot-page/BotPage.tsx:100
+#: src/pages/shell/command-palette.tsx:171
 msgid "Routines"
 msgstr "Rutinas"
 
@@ -3910,11 +3751,12 @@ msgstr ""
 
 #: src/components/AskCard.tsx:412
 #: src/components/teach/SkillDraftCard.tsx:142
+#: src/pages/custom-apps/AppEditor.tsx:154
 #: src/pages/ExternalConversationSettings.tsx:255
 #: src/pages/GroupPanel.tsx:503
 #: src/pages/KnowledgeSection.tsx:235
 #: src/pages/KnowledgeSection.tsx:706
-#: src/pages/model-settings/model-detail.tsx:329
+#: src/pages/model-settings/model-detail.tsx:332
 #: src/pages/shell/dialogs.tsx:266
 msgid "Save"
 msgstr "Guardar"
@@ -3935,7 +3777,7 @@ msgstr ""
 msgid "Saved, but list refresh failed"
 msgstr "Guardado, pero falló la actualización de la lista"
 
-#: src/pages/model-settings/use-model-settings.ts:309
+#: src/pages/model-settings/use-model-settings.ts:311
 msgid "Saved."
 msgstr "Guardado."
 
@@ -3951,7 +3793,7 @@ msgstr ""
 #: src/components/teach/SkillDraftCard.tsx:142
 #: src/pages/bot-page/page-kit.tsx:49
 #: src/pages/GroupPanel.tsx:503
-#: src/pages/model-settings/model-detail.tsx:327
+#: src/pages/model-settings/model-detail.tsx:330
 #: src/pages/shell/dialogs.tsx:266
 msgid "Saving…"
 msgstr "Guardando…"
@@ -3966,40 +3808,31 @@ msgstr "Di sí o no, o responde en una frase."
 msgid "Screen"
 msgstr "Pantalla"
 
-#: src/pages/model-settings/model-picker.tsx:223
-#: src/pages/plugins/advanced-integrations.tsx:119
+#: src/pages/model-settings/model-picker.tsx:224
 #: src/pages/shell/bot-picker.tsx:55
 #: src/pages/shell/bot-picker.tsx:56
-#: src/pages/shell/command-palette.tsx:102
-#: src/pages/shell/sidebar.tsx:99
+#: src/pages/shell/command-palette.tsx:227
+#: src/pages/shell/sidebar-header.tsx:77
+#: src/pages/shell/sidebar-header.tsx:87
 msgid "Search"
 msgstr "Buscar"
 
-#: src/components/integrations/IntegrationSetup.tsx:245
-#: src/components/integrations/IntegrationSetup.tsx:246
-#: src/pages/PluginsOverlay.tsx:150
-#: src/pages/PluginsOverlay.tsx:151
+#: src/pages/PluginsOverlay.tsx:139
+#: src/pages/PluginsOverlay.tsx:140
 msgid "Search apps"
 msgstr "Buscar apps"
 
-#: src/pages/shell/command-palette.tsx:91
-msgid "Search bots and switch conversations"
-msgstr "Buscar bots y cambiar de conversación"
-
-#: src/pages/plugins/advanced-integrations.tsx:89
-msgid "Search by domain"
+#: src/pages/shell/command-palette.tsx:228
+#: src/pages/shell/command-palette.tsx:239
+msgid "Search bots, chats, settings"
 msgstr ""
 
-#: src/components/integrations/IntegrationSetup.tsx:251
-msgid "Search integrations.sh"
-msgstr ""
-
-#: src/pages/model-settings/model-picker.tsx:218
+#: src/pages/model-settings/model-picker.tsx:219
 msgid "Search models"
 msgstr "Buscar modelos"
 
-#: src/pages/ProvidersSettings.tsx:104
-#: src/pages/ProvidersSettings.tsx:110
+#: src/pages/ProvidersSettings.tsx:130
+#: src/pages/ProvidersSettings.tsx:136
 msgid "Search providers"
 msgstr "Buscar proveedores"
 
@@ -4008,8 +3841,7 @@ msgstr "Buscar proveedores"
 msgid "Search skills"
 msgstr "Buscar skills"
 
-#: src/pages/plugins/advanced-integrations.tsx:119
-#: src/pages/SpaceSearch.tsx:16
+#: src/pages/shell/command-palette.tsx:244
 msgid "Searching…"
 msgstr "Buscando…"
 
@@ -4020,7 +3852,7 @@ msgstr "Selecciona un bot"
 #: src/components/ask/QuestionCard.tsx:209
 #: src/components/ask/QuestionCard.tsx:310
 #: src/components/DraftCard.tsx:329
-#: src/pages/shell/composer.tsx:410
+#: src/pages/shell/composer.tsx:403
 msgid "Send"
 msgstr "Enviar"
 
@@ -4041,28 +3873,34 @@ msgstr "Enviando…"
 msgid "Sent"
 msgstr ""
 
-#: src/components/integrations/IntegrationSetup.tsx:129
+#: src/components/integrations/IntegrationSetup.tsx:94
 #: src/pages/AccountSettingsOverlay.tsx:166
 msgid "Server integrations"
 msgstr ""
 
-#: src/pages/McpServersOverlay.tsx:341
+#: src/pages/custom-apps/AppEditor.tsx:79
+#: src/pages/custom-apps/AppEditor.tsx:80
+#: src/pages/custom-apps/CustomApps.tsx:178
 msgid "Server name"
 msgstr "Nombre del servidor"
 
-#: src/components/integrations/IntegrationSetup.tsx:277
-#: src/components/integrations/IntegrationSetup.tsx:295
-#: src/pages/McpServersOverlay.tsx:397
-#: src/pages/model-settings/model-detail.tsx:77
+#: src/components/integrations/IntegrationSetup.tsx:169
+#: src/components/integrations/IntegrationSetup.tsx:186
+#: src/pages/model-settings/model-detail.tsx:80
 #: src/pages/Onboarding.tsx:411
 msgid "Server URL"
 msgstr "URL del servidor"
 
+#: src/components/AutoReviewSettings.tsx:98
+msgid "Set up"
+msgstr "Configurar"
+
 #: src/pages/bot-page/BotPage.tsx:102
 #: src/pages/MessagingSettingsOverlay.tsx:362
-#: src/pages/SettingsOverlay.tsx:146
-#: src/pages/SettingsOverlay.tsx:221
-#: src/pages/SettingsOverlay.tsx:263
+#: src/pages/SettingsOverlay.tsx:147
+#: src/pages/SettingsOverlay.tsx:222
+#: src/pages/SettingsOverlay.tsx:273
+#: src/pages/shell/command-palette.tsx:292
 #: src/pages/shell/sidebar-footer.tsx:211
 #: src/pages/shell/sidebar-footer.tsx:218
 msgid "Settings"
@@ -4076,8 +3914,8 @@ msgstr "Configuración: General"
 msgid "Settings: Usage"
 msgstr "Configuración: Uso"
 
-#: src/components/integrations/IntegrationSetup.tsx:323
-#: src/pages/model-settings/model-detail.tsx:90
+#: src/components/integrations/IntegrationSetup.tsx:214
+#: src/pages/model-settings/model-detail.tsx:93
 msgid "Setup help"
 msgstr "Ayuda de configuración"
 
@@ -4087,7 +3925,7 @@ msgid "Shape {0}"
 msgstr "Forma {0}"
 
 #: src/pages/bot-page/BotPage.tsx:360
-#: src/pages/BotContextMenu.tsx:157
+#: src/pages/BotContextMenu.tsx:179
 msgid "Share"
 msgstr ""
 
@@ -4113,7 +3951,7 @@ msgstr "Documentos compartidos"
 msgid "Show agent steps, and every run in a bot's activity."
 msgstr "Muestra los pasos del agente y cada ejecución en la actividad de un bot."
 
-#: src/pages/shell/sidebar.tsx:133
+#: src/pages/shell/sidebar.tsx:80
 #: src/pages/shell/thread-header.tsx:86
 #: src/pages/shell/thread-header.tsx:87
 msgid "Show bots"
@@ -4134,7 +3972,7 @@ msgstr ""
 
 #: src/pages/bot-page/BotActivity.tsx:511
 #: src/pages/KnowledgeSection.tsx:893
-#: src/pages/PluginsOverlay.tsx:309
+#: src/pages/PluginsOverlay.tsx:276
 #: src/pages/shell/block-views.tsx:54
 msgid "Show more"
 msgstr "Mostrar más"
@@ -4178,8 +4016,8 @@ msgid "Skill updated · {name}"
 msgstr ""
 
 #: src/pages/bot-page/KnowledgeTab.tsx:70
-#: src/pages/CustomizeOverlay.tsx:24
-#: src/pages/CustomizeOverlay.tsx:161
+#: src/pages/CustomizeOverlay.tsx:28
+#: src/pages/CustomizeOverlay.tsx:182
 msgid "Skills"
 msgstr "Habilidades"
 
@@ -4188,7 +4026,7 @@ msgid "Skills this bot can use"
 msgstr ""
 
 #: src/components/ask/QuestionCard.tsx:198
-#: src/components/integrations/IntegrationSetup.tsx:359
+#: src/components/integrations/IntegrationSetup.tsx:247
 #: src/pages/shell/side-panel.tsx:502
 msgid "Skip"
 msgstr "Omitir"
@@ -4225,12 +4063,12 @@ msgstr "Predeterminado del Space"
 msgid "Spaces"
 msgstr ""
 
-#: src/pages/ProvidersSettings.tsx:187
+#: src/pages/ProvidersSettings.tsx:217
 #: src/pages/VoiceSettingsOverlay.tsx:183
 msgid "Speak + transcribe"
 msgstr "Hablar + transcribir"
 
-#: src/pages/ProvidersSettings.tsx:189
+#: src/pages/ProvidersSettings.tsx:219
 #: src/pages/VoiceSettingsOverlay.tsx:185
 msgid "Speak only"
 msgstr "Solo hablar"
@@ -4266,11 +4104,15 @@ msgstr "Iniciando…"
 msgid "Status"
 msgstr ""
 
+#: src/pages/custom-apps/CustomApps.tsx:268
+msgid "stdio command"
+msgstr "comando stdio"
+
 #: src/components/teach/SkillDraftCard.tsx:100
 msgid "Steps"
 msgstr "Pasos"
 
-#: src/pages/shell/composer.tsx:302
+#: src/pages/shell/composer.tsx:299
 #: src/pages/shell/side-panel.tsx:364
 #: src/pages/shell/side-panel.tsx:369
 msgid "Stop"
@@ -4291,12 +4133,12 @@ msgstr "Detener enseñanza"
 msgid "Stopped."
 msgstr "Detenido."
 
-#: src/pages/McpServersOverlay.tsx:418
-#: src/pages/McpServersOverlay.tsx:444
+#: src/pages/custom-apps/AppEditor.tsx:142
+#: src/pages/custom-apps/CustomApps.tsx:226
 msgid "Stored encrypted"
 msgstr "Almacenado cifrado"
 
-#: src/pages/model-settings/model-detail.tsx:255
+#: src/pages/model-settings/model-detail.tsx:258
 msgid "Stored securely. Never shown here."
 msgstr "Almacenado de forma segura. Nunca se muestra aquí."
 
@@ -4310,26 +4152,22 @@ msgstr ""
 msgid "Submit"
 msgstr "Enviar"
 
-#: src/pages/model-settings/model-detail.tsx:206
+#: src/pages/model-settings/model-detail.tsx:209
 #: src/pages/Onboarding.tsx:520
 msgid "Supports images"
 msgstr "Admite imágenes"
 
-#: src/pages/model-settings/model-detail.tsx:169
+#: src/pages/model-settings/model-detail.tsx:172
 #: src/pages/model-settings/routing-settings.tsx:119
 #: src/pages/Onboarding.tsx:497
 msgid "Supports thinking"
 msgstr "Admite razonamiento"
 
-#: src/pages/shell/command-palette.tsx:90
-msgid "Switch bot"
-msgstr "Cambiar de bot"
-
-#: src/pages/SettingsOverlay.tsx:499
+#: src/pages/SettingsOverlay.tsx:520
 msgid "Switch space"
 msgstr "Cambiar de espacio"
 
-#: src/pages/model-settings/model-detail.tsx:359
+#: src/pages/model-settings/model-detail.tsx:362
 msgid "Switching…"
 msgstr "Cambiando…"
 
@@ -4347,7 +4185,7 @@ msgstr ""
 msgid "Teach a task"
 msgstr "Enseñar una tarea"
 
-#: src/pages/shell/shell-main.tsx:244
+#: src/pages/shell/shell-main.tsx:272
 msgid "Teaching in progress. Stop teaching before sending a new message."
 msgstr "Enseñanza en curso: detén la enseñanza antes de enviar un nuevo mensaje."
 
@@ -4402,6 +4240,14 @@ msgstr "El proveedor de memoria seleccionado no está disponible en esta build."
 msgid "Thinking"
 msgstr "Pensando"
 
+#: src/pages/custom-apps/CustomApps.tsx:101
+msgid "This access token was refused."
+msgstr "Se rechazó este token de acceso."
+
+#: src/pages/custom-apps/CustomApps.tsx:102
+msgid "This app needs an access token."
+msgstr "Esta app necesita un token de acceso."
+
 #: src/components/AgentSteps.tsx:101
 msgid "This call ran before step details were recorded."
 msgstr "Esta llamada se ejecutó antes de que se registraran los detalles de los pasos."
@@ -4436,19 +4282,11 @@ msgstr "Esto elimina de forma permanente todos los mensajes y detiene el trabajo
 msgid "This reset link is invalid or expired"
 msgstr "Este enlace de restablecimiento no es válido o expiró"
 
-#: src/pages/shell/message-cards.tsx:247
+#: src/pages/shell/message-cards.tsx:248
 msgid "This server cannot be assigned without a bot."
 msgstr "Este servidor no se puede asignar sin un bot."
 
-#: src/pages/McpServersOverlay.tsx:247
-msgid "This server did not request browser authorization."
-msgstr "Este servidor no solicitó autorización del navegador."
-
-#: src/pages/McpServersOverlay.tsx:243
-msgid "This server is already connected. Disconnect it first to authorize again."
-msgstr "Este servidor ya está conectado. Desconéctalo primero para autorizarlo de nuevo."
-
-#: src/pages/model-settings/model-detail.tsx:341
+#: src/pages/model-settings/model-detail.tsx:344
 msgid "This subscription sign-in is not available in Tangow yet. Use a deployment credential or choose another provider."
 msgstr "Este inicio de sesión por suscripción aún no está disponible en Tangow. Usa una credencial de despliegue o elige otro proveedor."
 
@@ -4488,28 +4326,24 @@ msgstr "Hoy"
 msgid "Tokens"
 msgstr "Tokens"
 
-#: src/pages/plugins/advanced-integrations.tsx:346
-msgid "Tool sources"
-msgstr "Fuentes de herramientas"
-
 #: src/pages/plugins/connection-detail.tsx:136
 msgid "Tools"
 msgstr ""
 
+#: src/pages/custom-apps/AppEditor.tsx:86
+msgid "Transport"
+msgstr "Transporte"
+
 #: src/pages/ExternalConversationSettings.tsx:61
 msgid "Treat like a person"
 msgstr ""
-
-#: src/pages/plugins/advanced-integrations.tsx:302
-msgid "Treg token"
-msgstr "Token de Treg"
 
 #: src/pages/shell/session-view.tsx:231
 msgid "Trigger"
 msgstr "Disparador"
 
 #: src/components/DraftCard.tsx:329
-#: src/pages/Onboarding.tsx:685
+#: src/pages/Onboarding.tsx:684
 msgid "Try again"
 msgstr "Intentarlo de nuevo"
 
@@ -4517,7 +4351,7 @@ msgstr "Intentarlo de nuevo"
 msgid "Type your answer"
 msgstr "Escribe tu respuesta"
 
-#: src/pages/BotContextMenu.tsx:127
+#: src/pages/BotContextMenu.tsx:97
 msgid "Unassigned"
 msgstr "Sin asignar"
 
@@ -4537,7 +4371,7 @@ msgstr ""
 msgid "Unlink"
 msgstr "Desvincular"
 
-#: src/pages/BotContextMenu.tsx:110
+#: src/pages/BotContextMenu.tsx:143
 msgid "Unpin"
 msgstr "Desfijar"
 
@@ -4561,8 +4395,8 @@ msgstr ""
 
 #: src/components/ComputerMaintenanceActions.tsx:116
 #: src/components/SoftwareUpdateSection.tsx:260
-#: src/pages/SettingsOverlay.tsx:397
-#: src/pages/SettingsOverlay.tsx:397
+#: src/pages/SettingsOverlay.tsx:415
+#: src/pages/SettingsOverlay.tsx:415
 #: src/pages/shell/computer-preview.tsx:75
 msgid "Update available"
 msgstr "Actualización disponible"
@@ -4590,7 +4424,7 @@ msgstr ""
 msgid "Updated"
 msgstr "Actualizado"
 
-#: src/pages/SettingsOverlay.tsx:136
+#: src/pages/settings-sections.ts:41
 msgid "Updates"
 msgstr "Actualizaciones"
 
@@ -4618,13 +4452,13 @@ msgstr ""
 msgid "Updating…"
 msgstr "Actualizando…"
 
-#: src/pages/SettingsOverlay.tsx:143
+#: src/pages/settings-sections.ts:48
 #: src/pages/shell/sidebar-footer.tsx:223
 #: src/pages/shell/sidebar-footer.tsx:230
 msgid "Usage"
 msgstr "Uso"
 
-#: src/pages/model-settings/model-detail.tsx:155
+#: src/pages/model-settings/model-detail.tsx:158
 #: src/pages/Onboarding.tsx:486
 msgid "Use a found model"
 msgstr "Usar un modelo encontrado"
@@ -4638,23 +4472,15 @@ msgstr ""
 msgid "Use default guidance"
 msgstr ""
 
-#: src/pages/model-settings/model-detail.tsx:359
+#: src/pages/model-settings/model-detail.tsx:362
 msgid "Use this model"
 msgstr "Usar este modelo"
 
-#: src/pages/plugins/advanced-integrations.tsx:327
-msgid "Verify and add"
-msgstr "Verificar y agregar"
-
-#: src/pages/plugins/advanced-integrations.tsx:325
-msgid "Verifying…"
-msgstr "Verificando…"
-
 #: src/pages/bot-page/SettingDetails.tsx:185
 #: src/pages/bot-page/SettingDetails.tsx:189
-#: src/pages/ProvidersSettings.tsx:159
-#: src/pages/ProvidersSettings.tsx:161
-#: src/pages/SettingsOverlay.tsx:139
+#: src/pages/ProvidersSettings.tsx:187
+#: src/pages/ProvidersSettings.tsx:189
+#: src/pages/settings-sections.ts:44
 #: src/pages/shell/thread-header.tsx:142
 #: src/pages/shell/thread-header.tsx:143
 #: src/pages/VoiceSettingsOverlay.tsx:137
@@ -4798,6 +4624,10 @@ msgstr "Puedes cerrar esta ventana."
 #: src/pages/shell/side-panel.tsx:352
 msgid "You have control"
 msgstr "Tienes el control"
+
+#: src/components/AutoReviewSettings.tsx:80
+msgid "You'll be asked to confirm actions flagged as dangerous."
+msgstr "Se te pedirá confirmar las acciones marcadas como peligrosas."
 
 #: src/components/ask/AskSettled.tsx:47
 msgid "Your answer: {answer}"

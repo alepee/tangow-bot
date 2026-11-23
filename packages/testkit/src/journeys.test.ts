@@ -300,6 +300,11 @@ describeJourneys("required product journeys", () => {
 
     const pinned = await rpc<Bot>(app, ada, "bots/update", { botId: coder.id, pinned: true });
     expect(pinned.pinned).toBe(true);
+    const viking = await rpc<Bot>(app, ada, "bots/update", {
+      botId: coder.id,
+      avatarCharacter: "viking",
+    });
+    expect(viking).toMatchObject({ avatarCharacter: "viking", color: "#8287AD" });
     const [section, concurrentSection] = await Promise.all([
       rpc<{ id: string; name: string }>(app, ada, "botSections/create", {
         botId: chief.id,
@@ -359,12 +364,13 @@ describeJourneys("required product journeys", () => {
       description: chief.description,
       instructions: chief.instructions,
       notifyOnFinish: chief.notifyOnFinish,
-      color: chief.color,
       pinned: false,
       sectionId: null,
       unread: false,
     });
     expect(duplicate.id).not.toBe(chief.id);
+    expect(duplicate.avatarCharacter).toBeTruthy();
+    expect(duplicate.avatarCharacter).not.toBe(chief.avatarCharacter);
     expect((await rpc<Bot[]>(app, ada, "bots/list"))[0]?.id).toBe(coder.id);
 
     await sendAndWait(

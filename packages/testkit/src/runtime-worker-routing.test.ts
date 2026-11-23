@@ -1,4 +1,4 @@
-import { runContinueJob } from "@tangow/adapter-kit";
+import { runContinueJob, WorkerEnsureSettledError } from "@tangow/adapter-kit";
 import { createJobReconciler } from "@tangow/adapters";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ModelEmulatorRequest, ModelEmulatorStep } from "./model-emulator.js";
@@ -396,6 +396,31 @@ describe("where a product run executes", () => {
     expect(await attemptsOf(run, runId)).toEqual([{ workerState: "released" }]);
     expect(await attemptsOf(run, earlier)).toEqual([{ workerState: "releasing" }]);
     run.model.assertComplete();
+  });
+
+  it("fails setup at once with the provider's own error when it refused the create", async () => {
+    const run = await fixture([]);
+    const refusal = "Supervisor POST /workers failed with 500: invalid worker volume name";
+    run.provider.ensure = async () => {
+      throw new WorkerEnsureSettledError(refusal);
+    };
+    const runId = await run.send("Hello.");
+
+    for (let attempt = 1; attempt < 3; attempt++) {
+      await expect(run.continueRun(runId)).rejects.toThrow("Run setup failed; retrying");
+      expect(await attemptsOf(run, runId)).toEqual(
+        Array.from({ length: attempt }, () => ({ workerState: "released" })),
+      );
+    }
+    await run.continueRun(runId);
+
+    expect(await attemptsOf(run, runId)).toEqual(
+      Array.from({ length: 3 }, () => ({ workerState: "released" })),
+    );
+    expect(await run.prisma.run.findUniqueOrThrow({ where: { id: runId } })).toMatchObject({
+      status: "failed",
+      error: `Run setup failed after 3 attempts: The worker provider failed: ${refusal}`,
+    });
   });
 
   it.each(["volumes", "ensure", "prepare", "ensure-unreleased"] as const)(

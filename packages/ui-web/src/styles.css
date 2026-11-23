@@ -1,4 +1,4 @@
-/* Tailwind's layer order, declared first: `bot-avatar.tsx` loads this file on its own,
+/* Tailwind's layer order, declared first: `clay-avatar.tsx` loads this file on its own,
    before the app's sheet, and the first layer named sets the order for the page. */
 @layer theme, base, components, utilities;
 
@@ -117,6 +117,8 @@
   --animate-arrive: rk-arrive var(--duration-arrive) var(--motion-ease) backwards;
   /* The send arrow pivoting in with the first character. */
   --animate-pivot: rk-pivot var(--duration-pivot) var(--motion-ease) both;
+  /* A bot's avatar taking a new character: a short squash, then it settles. */
+  --animate-swap: rk-swap var(--duration-pivot) var(--motion-ease);
 
   --text-body: var(--type-body-size);
   --text-body--line-height: var(--type-body-leading);
@@ -254,6 +256,22 @@
   to {
     transform: none;
     opacity: 1;
+  }
+}
+
+/* Clay pressed down and springing back. */
+@keyframes rk-swap {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.06, 0.9);
+  }
+  70% {
+    transform: scale(0.97, 1.03);
+  }
+  100% {
+    transform: scale(1);
   }
 }
 
@@ -432,201 +450,16 @@
   }
 }
 
-@keyframes tangow-avatar-spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.tangow-bot-avatar-ring {
-  animation: tangow-avatar-spin 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-  opacity: 0;
-  transition: opacity 180ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.tangow-bot-avatar {
-  transition: box-shadow 180ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.tangow-bot-avatar[data-working="true"] .tangow-bot-avatar-ring {
-  opacity: 1;
-}
-
-.tangow-bot-avatar-eyes {
-  animation: var(--tangow-eye-animation-name) var(--tangow-eye-animation-duration)
-    var(--tangow-eye-animation-easing) var(--tangow-eye-animation-delay) infinite;
-  transition: opacity 180ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.tangow-bot-avatar-eyes-working {
-  opacity: 0;
-}
-
-.tangow-bot-avatar[data-working="true"] .tangow-bot-avatar-eyes-idle {
-  opacity: 0;
-}
-
-.tangow-bot-avatar[data-working="true"] .tangow-bot-avatar-eyes-working {
-  opacity: 1;
-}
-
-/* A working bot buzzes: a steady, linear left-right jitter. */
-@keyframes rk-buzz {
-  from {
-    transform: translateX(-1.5px) rotate(-2deg);
-  }
-  to {
-    transform: translateX(1.5px) rotate(2deg);
-  }
-}
-
-.rk-buzz {
-  animation: rk-buzz 120ms linear infinite alternate;
-}
-
-@keyframes tangow-eyes-idle-0 {
-  0%,
-  32%,
-  100% {
-    transform: translate(0, 0) scaleY(1);
-  }
-  35% {
-    transform: translate(0, 0) scaleY(0.08);
-  }
-  38% {
-    transform: translate(0, 0) scaleY(1);
-  }
-  48%,
-  62% {
-    transform: translate(3px, -0.5px) scaleY(1);
-  }
-  70%,
-  84% {
-    transform: translate(-2.5px, 0.5px) scaleY(1);
-  }
-  89% {
-    transform: translate(0, 0) scaleY(0.12);
-  }
-  91% {
-    transform: translate(0, 0) scaleY(1);
-  }
-}
-
-@keyframes tangow-eyes-idle-1 {
-  0%,
-  25%,
-  100% {
-    transform: translate(0, 0) scaleY(1);
-  }
-  32%,
-  48% {
-    transform: translate(-3px, -1px) scaleY(1);
-  }
-  54% {
-    transform: translate(0, 0) scaleY(0.08);
-  }
-  56% {
-    transform: translate(0, 0) scaleY(1);
-  }
-  59% {
-    transform: translate(0, 0) scaleY(0.08);
-  }
-  61% {
-    transform: translate(0, 0) scaleY(1);
-  }
-  68%,
-  82% {
-    transform: translate(2.5px, 0.5px) scaleY(1);
-  }
-}
-
-@keyframes tangow-eyes-idle-2 {
-  0%,
-  28%,
-  100% {
-    transform: translate(0, 0) scaleY(1);
-  }
-  36%,
-  52% {
-    transform: translate(0.5px, -1.8px) scaleY(1.05);
-  }
-  58% {
-    transform: translate(0, 0) scaleY(0.08);
-  }
-  60% {
-    transform: translate(0, 0) scaleY(1);
-  }
-  68%,
-  85% {
-    transform: translate(3px, 0) scaleY(1);
-  }
-  92% {
-    transform: translate(0, 0) scaleY(0.1);
-  }
-  94% {
-    transform: translate(0, 0) scaleY(1);
-  }
-}
-
-@keyframes tangow-eyes-idle-3 {
-  0%,
-  24%,
-  100% {
-    transform: translate(0, 0) scaleY(1);
-  }
-  30%,
-  46% {
-    transform: translate(-2.5px, 1.2px) scaleY(0.95);
-  }
-  52% {
-    transform: translate(0, 0) scaleY(0.08);
-  }
-  54% {
-    transform: translate(0, 0) scaleY(1);
-  }
-  62%,
-  78% {
-    transform: translate(2.8px, -1px) scaleY(1);
-  }
-  86% {
-    transform: translate(0, 0) scaleY(0.08);
-  }
-  88% {
-    transform: translate(0, 0) scaleY(1);
-  }
-}
-
-@keyframes tangow-eyes-working {
-  0% {
-    transform: translate(-4px, 0) scale(0.92, 0.95);
-  }
-  25% {
-    transform: translate(0, -2px) scale(1.08, 1.08);
-  }
-  50% {
-    transform: translate(4px, 0) scale(0.92, 0.95);
-  }
-  75% {
-    transform: translate(0, 2px) scale(1, 0.9);
-  }
-  100% {
-    transform: translate(-4px, 0) scale(0.92, 0.95);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .animate-arrive,
-  .animate-pivot {
+  .animate-pivot,
+  .animate-swap {
     animation: none;
   }
 
   .rk-bar,
   .rk-dot,
   .rk-halo,
-  .rk-buzz,
   .rk-shimmer,
   .rk-word-in {
     animation: none;
@@ -648,29 +481,6 @@
   [data-long-pressing="true"] [data-slot="user-bubble"],
   [data-long-pressing="true"] [data-slot="image-stack"] {
     transform: none;
-    transition: none;
-  }
-
-  .tangow-bot-avatar-ring {
-    animation: none;
-    transition: none;
-  }
-
-  .tangow-bot-avatar-eyes {
-    transition: none;
-  }
-
-  /* The blink is the one motion that survives reduced motion (design contract
-     §5): only the working eye loop stops. The organic avatar freezes in code. */
-  .tangow-bot-avatar-eyes-working {
-    animation: none;
-  }
-
-  .tangow-bot-avatar {
-    transition: none;
-  }
-
-  .tangow-bot-avatar-visor {
     transition: none;
   }
 }

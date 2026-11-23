@@ -23,6 +23,19 @@ export interface WorkerSpec {
 }
 
 /**
+ * `ensure` failed after the provider answered, so no creation for this attempt is still in flight:
+ * a `destroy` now is authoritative, with no need to wait out `ensureDeadline`. A failure that may
+ * leave a creation running (a network error, a timeout, an answer that is not the provider's own)
+ * must stay a plain error.
+ */
+export class WorkerEnsureSettledError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "WorkerEnsureSettledError";
+  }
+}
+
+/**
  * Temporary run workers, separate from computers: a worker has no screen and an MCP-only run needs
  * one without a computer. Volumes outlive every run: only deleting their bot or space deletes them.
  */
@@ -30,7 +43,8 @@ export interface WorkerProvider {
   describe(): AdapterDescriptor<WorkerCapabilities>;
   /**
    * Creates the VM tagged with `spec.attemptId`, called once per attempt. Must not create it after
-   * `spec.ensureDeadline`.
+   * `spec.ensureDeadline`. Throws {@link WorkerEnsureSettledError} only when the provider refused
+   * the create and nothing for this attempt is still being created.
    */
   ensure(spec: WorkerSpec, context: AdapterContext): Promise<{ providerRef: string }>;
   /** Fallible setup once the ref is recorded: mounts visible, runner reachable. Idempotent. */

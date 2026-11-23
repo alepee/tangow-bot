@@ -16,7 +16,7 @@ import {
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs, parseEnv } from "node:util";
-import { validateRuntime, verifyExited } from "../../scripts/tangow-deployment.mjs";
+import { composeArgs, validateRuntime, verifyExited } from "../../scripts/tangow-deployment.mjs";
 import { acquireSetupLock, HomeUpgrade } from "./e2b-upgrade.mjs";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
@@ -172,7 +172,6 @@ async function main() {
     "infra/sandboxes",
     "pnpm-lock.yaml",
   ]);
-  const compose = ["compose", "--env-file", envPath, "-f", composePath];
   const hadOverride = existsSync(overridePath);
   let previous = null;
   if (hadOverride) {
@@ -197,7 +196,7 @@ async function main() {
   } catch {
     throw new Error("Existing private Compose override is invalid JSON.");
   }
-  const oldCompose = hadOverride ? [...compose, "-f", overridePath] : compose;
+  const oldCompose = hadOverride ? composeArgs(root, overridePath) : composeArgs(root);
   validateRuntime((_label, args) => ({ stdout: run("docker", [...oldCompose, ...args]) }));
   const revisionFormat =
     '{{range .Config.Env}}{{if eq (index (split . "=") 0) "GIT_SHA"}}{{index (split . "=") 1}}{{end}}{{end}}';
@@ -330,7 +329,7 @@ async function main() {
   }
   const environment = { ...connection, SANDBOX_PROVIDER: "e2b", WORKER_TEMPLATE: workerTemplate };
   const next = { services: { api: { environment }, worker: { environment } } };
-  const nextCompose = [...compose, "-f", overridePath];
+  const nextCompose = composeArgs(root, overridePath);
   const start = ["up", "-d", "--no-deps", "--pull", "never", "api", "worker"];
   console.log("Switching API and worker to E2B...");
   atomicWrite(overridePath, `${JSON.stringify(next, null, 2)}\n`);

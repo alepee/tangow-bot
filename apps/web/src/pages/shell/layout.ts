@@ -116,9 +116,6 @@ export function panelIsOpen(
   return Boolean(panel && (active || activeGroup || panel === "create"));
 }
 
-/** Identity colour for bots the roster no longer knows about. */
-export const FALLBACK_BOT_COLOR = "#85858A";
-
 /** Below Tailwind's `md`: the phone layout, where the bot list is its own page. */
 export const PHONE_MEDIA = "(max-width: 767px)";
 

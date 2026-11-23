@@ -39,9 +39,7 @@ Cuts sit on the music's beats (160 BPM, beats at −0.771 + 0.375·k film time).
   the UI (`data-part` groups: ambient + status + nav buttons, earlier messages, her request, nav title + composer,
   the header avatar), drawn on rounded-rect meshes just above the glass and lifted 0 / 0.4 / 0.8 / 1.0 / 1.6 cm, scaled
   `1 − 0.06 · lift` so nothing leaves the silhouette. The base screen is turned off while the layers are up.
-- **The avatar**: the product's real engine (`packages/core`, bloub), bundled for the browser from
-  `template/avatar/avatar-entry.ts`. `frameAt(t)` is seek-safe; `workingGlances(seed, from, to)` scripts the glances.
-  In-product avatars keep the bots' identity colour; the end card's mark is ink.
+- **The avatar**: the clay character images from `packages/avatars/characters`, copied into the film's assets. The end card's mark is ink.
 - **The working line's label swap**: the new label takes the layout while both labels are invisible, so the counter
   moves past it instead of overlapping.
 

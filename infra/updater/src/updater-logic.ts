@@ -1,10 +1,10 @@
 import path from "node:path";
 import {
   DEFAULT_IMAGE_TAG,
+  DEFAULT_SERVER_IMAGE,
   IMAGE_TAG_ENV,
   isValidImageName,
   isValidImageTag,
-  OFFICIAL_SERVER_IMAGE,
   PREVIOUS_IMAGE_TAG_ENV,
   RECREATED_SERVICES,
   resolveComposeProjectName,
@@ -25,7 +25,7 @@ export interface UpdaterConfig {
   deployDir: string;
   /** Overlay order, absolute. Each becomes its own `--file`. */
   composeFiles: readonly string[];
-  /** Services the update pulls, recreates and rolls back. */
+  /** Services the update recreates and rolls back. */
   updateServices: readonly string[];
   envFile: string;
   /** Passed as `docker compose -p`. Compose injects this into running services. */
@@ -47,7 +47,7 @@ export function resolveUpdaterConfig(env: NodeJS.ProcessEnv): UpdaterConfig {
   if (deployDir === "" || !path.posix.isAbsolute(deployDir)) {
     throw new Error("Set TANGOW_DEPLOY_DIR to the absolute path of the deployment directory.");
   }
-  const image = env.TANGOW_IMAGE?.trim() || OFFICIAL_SERVER_IMAGE;
+  const image = env.TANGOW_IMAGE?.trim() || DEFAULT_SERVER_IMAGE;
   if (!isValidImageName(image))
     throw new Error(`TANGOW_IMAGE is not a usable image name: ${image}`);
   // Compose itself takes a list here (COMPOSE_FILE with COMPOSE_PATH_SEPARATOR), and a deployment

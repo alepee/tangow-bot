@@ -5,7 +5,6 @@ import { RPCHandler } from "@orpc/server/fetch";
 import type {
   AgentRuntime,
   JobPublisher,
-  ManagedConnectorProvider,
   MessagingSurface,
   RealtimeFanout,
   SandboxProvider,
@@ -16,7 +15,7 @@ import type {
   ComposioProvider,
   ConnectorRegistry,
   DestinationEmulator,
-  RemoteConnectorDependencies,
+  RemoteTransportDependencies,
 } from "@tangow/adapters";
 import {
   applyMessagingOutboundStatus,
@@ -46,21 +45,17 @@ import {
   GraphileJobPublisher,
   InMemoryJobQueue,
   InMemoryRealtimeFanout,
-  InstalledConnectorProvider,
   IntegrationProviderSettings,
   isComposioEnabled,
   isMessagingSurfaceEnabled,
-  isPipedreamEnabled,
   LocalAgentHomeStore,
   LocalArtifactStore,
   McpConnector,
   McpOAuthBroker,
   messagingPlatformsFromEnv,
   PiOAuthLogins,
-  PipedreamConnector,
   PostgresRealtimeFanout,
   PostgresSessionLog,
-  pipedreamConfigFromEnv,
   pushTokenPath,
   reconcileComputerUpdates,
   removeUserSkillDirs,
@@ -102,6 +97,7 @@ import {
   wakeMessageRoutines,
 } from "./messaging-inbound.js";
 import { mountMessagingWebhookRoutes } from "./messaging-webhook.js";
+import { moveMcpSources } from "./move-mcp-sources.js";
 import { mountApiRequestBodyLimits } from "./request-body-limit.js";
 import { createRouter } from "./router.js";
 import { mountScreenTarget } from "./screen-proxy.js";
@@ -138,10 +134,9 @@ export async function createApp(
     sandbox?: SandboxProvider;
     workers?: WorkerProvider & GuestConnector;
     composio?: ComposioProvider;
-    pipedream?: ManagedConnectorProvider;
     messaging?: MessagingSurface;
     email?: TransactionalEmailProvider;
-    remoteConnectors?: RemoteConnectorDependencies;
+    remoteConnectors?: RemoteTransportDependencies;
     logger?: Logger;
   } = {},
 ): Promise<AppHandles> {
@@ -151,7 +146,6 @@ export async function createApp(
     sandbox: sandboxOverride,
     workers: workersOverride,
     composio: composioOverride,
-    pipedream: pipedreamOverride,
     messaging: messagingOverride,
     email: emailOverride,
     remoteConnectors,
@@ -177,6 +171,7 @@ export async function createApp(
         })
       : new InMemoryRealtimeFanout());
   const secrets = new EncryptedSecretStore(env.encryptionKey);
+  await moveMcpSources(prisma, secrets, (message) => logger.warn(message));
   const events = createThreadEvents(prisma, realtime, {
     runSecretWriter: createRunSecretWriter(secrets),
   });
@@ -261,10 +256,6 @@ export async function createApp(
     },
     mcpOAuth,
   );
-  const pipedreamConfig = pipedreamConfigFromEnv(env);
-  const pipedream =
-    pipedreamOverride ??
-    (isPipedreamEnabled(pipedreamConfig) ? new PipedreamConnector(pipedreamConfig) : undefined);
   // This process registers the inbound sink (messaging.onInbound below),
   // so it's the one that must hold Telegram's live getUpdates connection —
   // see messagingPlatformsFromEnv's docstring for why a second poller
@@ -294,17 +285,14 @@ export async function createApp(
     (env.smtpUrl
       ? new SmtpEmailProvider({ url: env.smtpUrl, from: env.emailFrom ?? "" })
       : localEmailEmulator);
-  const installed = new InstalledConnectorProvider(prisma, secrets, remoteConnectors);
-  const integrationSettings = new IntegrationProviderSettings(prisma, secrets, env.encryptionKey, {
+  const integrationSettings = new IntegrationProviderSettings(prisma, secrets, {
     composio:
       composioOverride ??
       (isComposioEnabled(env.composioApiKey)
         ? new ComposioConnector(env.composioApiKey)
         : undefined),
-    pipedream,
   });
   const stack = createConnectorStack(false, composioOverride, [
-    installed,
     ...integrationSettings
       .providers()
       .filter((provider) => !composioOverride || provider.describe().id !== "composio"),
@@ -520,7 +508,6 @@ export async function createApp(
       updaterUrl: env.updaterUrl,
       updaterToken: env.updaterToken,
       imageTag: env.imageTag,
-      integrationsCatalogUrl: env.integrationsCatalogUrl,
       mcpStdioEnabled: env.mcpStdioEnabled,
       mcpStdioAllowedCommands: env.mcpStdioAllowedCommands,
     },
@@ -866,7 +853,6 @@ export async function createApp(
       runtime: env.agentRuntime,
       sandbox: env.sandboxProvider,
       composio: Boolean(stack.composio),
-      pipedream: Boolean(pipedream),
       messaging: Boolean(messaging),
       email: email?.describe().id ?? null,
       jobs: jobKind,

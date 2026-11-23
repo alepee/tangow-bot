@@ -6,6 +6,115 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### 2026-11-22
+
+#### Added
+
+- **Mentions stay where you type them.** Bots, groups, @everyone and skills now appear inline in your sentence, with the bot's face or a small glyph beside the name, in the composer and in messages, on web, desktop and iPhone, instead of as chips beside the field and names moved to the front of what you sent.
+
+#### Fixed
+
+- Mentioning a group with @ now keeps your message in the current chat and only tells the bot which group you mean, on web, desktop and mobile, instead of sending it to that group; in a bot's chat, @ only offers the groups that bot is in.
+- On a Docker-hosted Team Computer, a screen that fails to start now shows an error with Retry screen instead of staying on Connecting forever.
+
+### 2026-11-21
+
+#### Fixed
+
+- A routine's result in a conversation now has a bot message's actions on web, desktop and iOS (time, reply, react, copy, read aloud), and the bot knows which result you reply or react to.
+
+### 2026-11-20
+
+#### Added
+
+- **Clay characters come alive on iOS.** On a bot's page and in the conversation header, its character blinks and glances around; in lists and beside a working bot it comes alive while the bot works, reading with a focused look, then shows for a moment whether the task went well or failed. This replaces the spinning ring and the shaking avatar, conversation avatars are larger, and the face holds still when Reduce Motion is on.
+
+#### Fixed
+
+- A chat between two bots now opens right away on its latest messages, on web, desktop and iOS, and loads earlier ones as you scroll up, instead of reading the bot's whole history first and opening at the top on iOS.
+- On web and desktop, a chat between two bots now keeps its bubbles in the same column and at the same width as a chat with a bot, instead of stretching across the whole window.
+
+### 2026-11-19
+
+#### Added
+
+- **Clay characters come alive on web and desktop.** On a bot's page and in the conversation header, its character blinks, glances around and follows your pointer; in lists and beside a working bot it comes alive while the bot works, reading with a focused look, then shows for a moment whether the task went well or failed. This replaces the spinning ring and the shaking avatar beside a working bot's status, and the face holds still when the system asks to reduce motion.
+
+#### Changed
+
+- Each clay character now shows its own expression, matching its personality (curious, haughty, puzzled…), everywhere it appears on web, desktop and iOS, including iOS notifications.
+
+### 2026-11-18
+
+#### Added
+
+- **Bots are clay characters.** Every bot now shows a whole clay character from Tangow's catalogue, on web, desktop, iOS and Android, and in iOS notifications and the iOS share sheet. Tap the avatar on a bot's page to pick another character; a new bot gets one your other bots are not using yet, and existing bots received one with this update.
+
+#### Changed
+
+- A bot's colour and shape choices, and the Robot / Organic avatar style in account settings, are gone: a bot's look and colour now come from its character.
+
+- The iOS launch screen shows the Tangow mark instead of the animated avatar.
+
+- On Android, the notification of a working bot shows the app icon instead of the bot's shape.
+
+### 2026-11-17
+
+#### Added
+
+- **Auto-review on iOS and Android.** Settings on mobile now has the Auto-review bot actions switch, so actions flagged as dangerous wait for your confirmation without a trip to the web app.
+
+- **Host-specific Compose overrides for self-hosted servers.** An untracked `.env.tangow.compose.yml` at the checkout root is applied last by every `./tangow` command and by backup and restore, so a host tweak survives `./tangow update` without a dirty tree or a second restart. See [self-hosting](docs/self-host.md#host-specific-compose-tweaks).
+
+#### Changed
+
+- On web and desktop, the auto-review switch moves from Advanced to General settings, is called Auto-review bot actions, and suggests setting up a decision model when none is connected.
+
+- Search on web and desktop moves from the sidebar field to a search button beside Activity, which opens a larger ⌘K palette that finds bots, chats, messages, files, links, routines and settings sections.
+
+#### Fixed
+
+- On self-hosted servers, a run interrupted by a server update or restart while it is still starting now resumes within about a minute instead of staying stuck or failing.
+
+### 2026-11-16
+
+#### Added
+
+- **Custom apps on iOS and Android.** Add an app by its MCP URL, choose which agents can use it, and manage its connection from the native Custom apps screen.
+
+#### Changed
+
+- MCP sources added under Integrations › Advanced now appear in Custom apps automatically, and the domain catalog search is gone.
+
+- MCP servers now have their own Custom apps section in Customize on web and desktop: paste a URL and Tangow signs in or asks for a token, replacing the MCP servers window.
+
+- The web app's browser tab, home screen and installed app icon now show the same "tw" mark as the desktop and iOS apps, instead of the blue face.
+
+#### Fixed
+
+- A bot's computer screen now shows on web and desktop when Tangow sits behind a sign-in proxy such as Cloudflare Access or oauth2-proxy, instead of staying black.
+- On iPhone, a failed reply's error now sits above the message field, where you can dismiss it, instead of covering the conversation.
+
+### 2026-11-15
+
+#### Changed
+
+- Pipedream Connect is no longer offered as a managed app catalog on web, desktop and iOS; server owners connect apps through Composio or MCP instead, and existing Pipedream connections are removed, so disconnect them before updating to also revoke their accounts at Pipedream.
+- OpenAPI and GraphQL tool sources are no longer offered in Integrations on web, desktop and mobile, and the ones already added are removed, so bots reach outside tools through apps and MCP servers.
+- In a browser, Settings no longer lists Updates, since the web app always runs the version its server serves; the desktop app keeps the section.
+
+#### Fixed
+
+- The macOS desktop app now finds new Tangow versions on GitHub at launch and every hour, downloads them in the background and installs them on restart, instead of reporting that no desktop release was published.
+- When DuckDuckGo blocks the bot's built-in web search with a bot check, the bot now opens the search on its computer and asks you to solve the check, instead of treating every search as returning nothing.
+- When the computer service refuses to start a reply's or a routine's computer, the run now fails within seconds with the real reason, instead of after 15 minutes with an unrelated message.
+
+### 2026-11-14
+
+#### Fixed
+
+- On web and desktop, a file dragged anywhere onto the conversation now joins the message as an attachment, not only when dropped on the message field, and a file let go elsewhere in the app is ignored instead of the browser opening it in place of Tangow.
+
 ### 2026-11-13
 
 #### Changed

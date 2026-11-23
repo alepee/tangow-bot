@@ -137,7 +137,14 @@ describe("usageBreakdown", () => {
     });
 
     const cells = await usageBreakdown(prisma, { spaceId: SPACE, userId: USER }, "7d", NOW);
-    const bot_ = { id: bot.id, name: "Atlas", color: "#5B5BD6", shapeSeed: 3, deleted: false };
+    const bot_ = {
+      id: bot.id,
+      name: "Atlas",
+      color: "#5B5BD6",
+      shapeSeed: 3,
+      avatarCharacter: null,
+      deleted: false,
+    };
     expect(cells).toEqual(
       expect.arrayContaining([
         {
@@ -184,7 +191,14 @@ describe("usageBreakdown", () => {
 
     const cells = await usageBreakdown(prisma, { spaceId: SPACE, userId: USER }, "30d", NOW);
     expect(cells.find((cell) => cell.model === "gemma")).toEqual({
-      bot: { id: "bot_gone", name: "Juno", color: null, shapeSeed: null, deleted: true },
+      bot: {
+        id: "bot_gone",
+        name: "Juno",
+        color: null,
+        shapeSeed: null,
+        avatarCharacter: null,
+        deleted: true,
+      },
       provider: "anthropic",
       model: "gemma",
       category: null,

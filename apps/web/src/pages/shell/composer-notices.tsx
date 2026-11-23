@@ -69,7 +69,13 @@ export function ComposerNotices({
     }
     recordIfPresented();
     const observer = new MutationObserver(recordIfPresented);
-    observer.observe(document.body, { childList: true, subtree: true });
+    // Uncovering the thread (the phone's bot list closing) only flips these attributes.
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["inert", "aria-hidden"],
+    });
     document.addEventListener("transitionend", recordIfPresented);
     document.addEventListener("visibilitychange", recordIfPresented);
     return () => {

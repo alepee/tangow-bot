@@ -10,6 +10,8 @@ checkout from session context or private deployment configuration; do not bake r
 or credentials into this skill. SSH can reach the server, but Tangow has no `--host` option.
 
 Read [the operator guide](../../../docs/tangow.md) for prerequisites and provider migration details.
+A deployment installed under the Rakazo name (`RAKAZO_*` keys in `.env`, `rakazo-*` volumes) needs
+[the Rakazo to Tangow migration](../../../docs/migrate-from-rakazo.md) before or with its first update.
 Run `./tangow --help` in the target checkout to check the installed commands. This skill is for
 source Compose deployments; it does not install E2B infrastructure.
 

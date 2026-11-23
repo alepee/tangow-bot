@@ -100,40 +100,18 @@ test("bot creation, editing, and deletion persist", async ({ page }, testInfo) =
 
   await botPage.getByTestId("bot-appearance-trigger").click();
   const picker = page.getByTestId("bot-appearance-picker");
-  const colorSaved = page.waitForResponse(
+  const characterSaved = page.waitForResponse(
     (response) => response.url().includes("/rpc/bots/update") && response.ok(),
   );
-  await picker.getByRole("button", { name: "Color 7" }).click();
-  await colorSaved;
-  await expect(picker.getByRole("button", { name: "Color 7" })).toHaveAttribute(
+  await picker.getByRole("button", { name: "Viking végan" }).click();
+  await characterSaved;
+  await expect(picker.getByRole("button", { name: "Viking végan" })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
   await botPage.getByTestId("bot-appearance-trigger").click();
   await expect(picker).toBeHidden();
   await captureScreenshot(page, testInfo, "27a-new-bot");
-
-  // The avatar at the top of the page looks toward the mouse wherever it is.
-  const heroAvatar = botPage
-    .getByTestId("bot-appearance-trigger")
-    .locator(".tangow-organic-avatar");
-  const heroBox = await heroAvatar.boundingBox();
-  if (!heroBox) throw new Error("the bot page avatar has no box");
-  const gaze = () =>
-    heroAvatar.evaluate((svg) => {
-      const box = svg.getBoundingClientRect();
-      const eyes = [...svg.querySelectorAll("g[clip-path] > path")].map((eye) => {
-        const rect = eye.getBoundingClientRect();
-        return rect.left + rect.width / 2;
-      });
-      return eyes.reduce((sum, x) => sum + x, 0) / eyes.length - (box.left + box.width / 2);
-    });
-  const heroMiddle = heroBox.y + heroBox.height / 2;
-  await page.mouse.move(heroBox.x - 300, heroMiddle);
-  await expect.poll(gaze).toBeLessThan(-2);
-  await page.mouse.move(heroBox.x + heroBox.width + 300, heroMiddle);
-  await expect.poll(gaze).toBeGreaterThan(2);
-  await captureScreenshot(page, testInfo, "27a-bot-avatar-follows-pointer");
 
   // Writing instructions opens the wide editor; once saved, the link to write them goes.
   await created.getByRole("button", { name: "Write its first instructions" }).click();
@@ -211,14 +189,12 @@ test("bot creation, editing, and deletion persist", async ({ page }, testInfo) =
   await page.locator("main").getByRole("button", { name: "Atlas", exact: true }).click();
   await expect(nameInput).toHaveValue("Atlas");
   await expect(titleInput).toHaveValue("Research lead");
-  // The colour picked before the reload is the one the server kept.
   await botPage.getByTestId("bot-appearance-trigger").click();
-  await expect(picker.getByRole("button", { name: "Color 7" })).toHaveAttribute(
+  await expect(picker.getByRole("button", { name: "Viking végan" })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
   await botPage.getByTestId("bot-appearance-trigger").click();
-  await expect(picker).toBeHidden();
   await botPage.getByRole("tab", { name: "Settings" }).click();
   await expect(settings.getByRole("button", { name: /^Description/ })).toContainText(
     "Finds reliable sources",

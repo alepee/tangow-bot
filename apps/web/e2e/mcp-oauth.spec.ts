@@ -10,6 +10,7 @@ test("connects an MCP server through the OAuth popup callback", async ({ page },
 
   let oauthStatus: McpServer["oauthStatus"] = "none";
   let hasSecret = false;
+  let created = false;
   const server: McpServer = {
     id: "mcp-oauth-server",
     spaceId: "mcp-oauth-workspace",
@@ -42,7 +43,7 @@ test("connects an MCP server through the OAuth popup callback", async ({ page },
   await page.context().route("**/rpc/mcp/servers/list", async (route) => {
     await route.fulfill({
       contentType: "application/json",
-      body: JSON.stringify({ json: [{ ...server, hasSecret, oauthStatus }] }),
+      body: JSON.stringify({ json: created ? [{ ...server, hasSecret, oauthStatus }] : [] }),
     });
   });
   await page.context().route("**/rpc/mcp/assignments/all", async (route) => {
@@ -83,31 +84,32 @@ test("connects an MCP server through the OAuth popup callback", async ({ page },
     });
   });
 
-  await page.getByTestId("open-customize").click();
-  await page.getByTestId("integrations-advanced").evaluate((element) => {
-    (element as HTMLDetailsElement).open = true;
+  await page.context().route("**/rpc/mcp/servers/create", async (route) => {
+    expect(route.request().postDataJSON().json).toMatchObject({
+      name: "Linear",
+      slug: "linear",
+      transport: "streamable_http",
+      botIds: [expect.any(String)],
+    });
+    created = true;
+    await route.fulfill({ json: { json: server } });
   });
-  await page.getByRole("button", { name: "Manage MCP servers", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "MCP servers" })).toBeVisible();
-  await expect(page.getByText("Linear MCP", { exact: true })).toBeVisible();
-  await expect(page.getByLabel("Access token (optional)")).toBeHidden();
-  await captureScreenshot(page, testInfo, "mcp-oauth-ready");
-
-  await page.getByText("Advanced", { exact: true }).click();
-  await expect(page.getByLabel("Access token (optional)")).toBeVisible();
-  await page.getByText("Advanced", { exact: true }).click();
+  await page.getByTestId("open-customize").click();
+  await page.getByTestId("customize-nav-custom-apps").click();
+  await expect(page.getByRole("heading", { name: "Custom apps" })).toBeVisible();
+  await expect(page.getByLabel("Access token", { exact: true })).toBeHidden();
+  await page.getByLabel("App URL", { exact: true }).fill(server.endpoint!);
 
   const popupPromise = page.waitForEvent("popup");
-  await page.getByRole("button", { name: "Connect OAuth", exact: true }).click();
+  await page.getByRole("button", { name: "Add", exact: true }).click();
   const popup = await popupPromise;
   await completionStarted;
   await expect(popup.getByText("Finishing MCP connection…", { exact: true })).toBeVisible();
   await captureScreenshot(popup, testInfo, "mcp-oauth-callback");
 
   releaseCompletion();
-  await expect(page.getByText("OAuth connected", { exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Reconnect OAuth", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Disconnect", exact: true })).toBeVisible();
+  await expect(page.getByLabel("App URL", { exact: true })).toHaveValue("");
+  await expect(page.getByText("Linear MCP", { exact: true })).toBeVisible();
   await expect.poll(() => popup.isClosed()).toBe(true);
   await captureScreenshot(page, testInfo, "mcp-oauth-connected");
 
@@ -118,6 +120,79 @@ test("connects an MCP server through the OAuth popup callback", async ({ page },
     channel.postMessage({ type: "mcp-oauth-complete" });
     channel.close();
   }, MCP_OAUTH_CHANNEL);
-  await expect(page.getByText("OAuth expired", { exact: true })).toBeVisible();
-  await captureScreenshot(page, testInfo, "mcp-oauth-expired");
+  await expect(page.getByText("Reconnect needed", { exact: true })).toBeVisible();
+  await captureScreenshot(page, testInfo, "custom-apps-reconnect-desktop");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("button", { name: "Reconnect", exact: true })).toBeVisible();
+  await captureScreenshot(page, testInfo, "custom-apps-reconnect-phone");
+});
+
+test("reveals a token only after connection failure, retries and reuses the saved app", async ({
+  page,
+}, testInfo) => {
+  await signup(page, `mcp-token-${Date.now()}@tangow.test`, "password12", "Custom Apps");
+  await completeOnboarding(page);
+  let tokenSaved = false;
+  let creates = 0;
+  await page.route("**/rpc/mcp/servers/create", async (route) => {
+    creates++;
+    await route.continue();
+  });
+  await page.route("**/rpc/mcp/oauth/begin", async (route) => {
+    if (tokenSaved)
+      await route.fulfill({ json: { json: { status: "authorization_not_requested" } } });
+    else await route.fulfill({ json: { json: { status: "token_required" } } });
+  });
+  await page.goto("/integrations/setup?mode=mcp");
+  await expect(page.getByRole("heading", { name: "Custom apps" })).toBeVisible();
+  await page.getByLabel("App URL", { exact: true }).fill("https://mcp.linear.app/mcp");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(page.getByLabel("Access token", { exact: true })).toBeVisible();
+  await expect(page.getByText("This app needs an access token.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Actions for Linear", exact: true })).toBeVisible();
+  await captureScreenshot(page, testInfo, "custom-apps-token-desktop");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await captureScreenshot(page, testInfo, "custom-apps-token-phone");
+  await page.route("**/rpc/mcp/servers/update", async (route) => {
+    expect(route.request().postDataJSON().json.secret).toBe("fake-access-token");
+    const response = await route.fetch();
+    expect(response.ok()).toBe(true);
+    tokenSaved = true;
+    await route.fulfill({ response });
+  });
+  await page.getByLabel("Access token", { exact: true }).fill("fake-access-token");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(page.getByLabel("Access token", { exact: true })).toBeHidden();
+  await expect(page.getByText("Linear", { exact: true })).toBeVisible();
+  await page.getByLabel("App URL", { exact: true }).fill("https://mcp.linear.app/mcp");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(page.getByLabel("App URL", { exact: true })).toHaveValue("");
+  expect(creates).toBe(1);
+
+  tokenSaved = false;
+  await page.getByLabel("App URL", { exact: true }).fill("https://mcp.notion.so/mcp");
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(page.getByLabel("Access token", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page.getByLabel("Access token", { exact: true })).toBeHidden();
+  await expect(page.getByRole("button", { name: "Actions for Notion", exact: true })).toBeHidden();
+  await page.unroute("**/rpc/mcp/servers/update");
+  await page.getByRole("button", { name: "Actions for Linear", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Edit", exact: true }).click();
+  await page.getByLabel("Server name", { exact: true }).fill("Linear notes");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Actions for Linear notes", exact: true }),
+  ).toBeVisible();
+  const agent = page.getByRole("button", { name: "Chief", exact: true });
+  await expect(agent).toHaveAttribute("aria-pressed", "true");
+  await agent.click();
+  await expect(agent).toHaveAttribute("aria-pressed", "false");
+  await page.getByRole("button", { name: "Actions for Linear notes", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Confirm delete", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Actions for Linear notes", exact: true }),
+  ).toBeHidden();
 });

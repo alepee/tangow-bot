@@ -7,8 +7,7 @@ import { UserAvatar } from "./user-avatar";
 export interface GroupAvatarMember {
   botId?: string;
   name?: string;
-  color: string;
-  shapeSeed?: number | null;
+  avatarCharacter?: string | null;
   status?: string;
 }
 
@@ -25,14 +24,11 @@ export const GroupAvatar = memo(function GroupAvatar({
   size = 54,
   userInitials,
   userImage,
-  still,
 }: {
   members: GroupAvatarMember[];
   /** The group's other people, shown beside its bots. */
   people?: GroupAvatarPerson[];
   size?: number;
-  /** See `BotAvatar`'s `still`. */
-  still?: boolean;
   /** When set, a one-bot group without other people pairs the bot with the user's initials. */
   userInitials?: string;
   /** Profile photo shown instead of the initials tile, initials on failure. */
@@ -67,15 +63,14 @@ export const GroupAvatar = memo(function GroupAvatar({
     );
   }
 
+  // A pile of tiles stays still, as on web; a lone bot comes alive like any avatar.
   const renderTile = (tile: Tile, tileSize: number) =>
     "bot" in tile ? (
       <BotAvatar
-        color={tile.bot.color}
-        identity={tile.bot.botId ?? tile.bot.name}
-        shapeSeed={tile.bot.shapeSeed}
+        character={tile.bot.avatarCharacter}
         size={tileSize}
         status={tile.bot.status}
-        still={still}
+        still={tiles.length > 1}
       />
     ) : (
       <UserAvatar initials={tile.person.initials} image={tile.person.image} size={tileSize} />

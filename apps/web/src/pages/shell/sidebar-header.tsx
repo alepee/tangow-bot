@@ -1,11 +1,21 @@
 import { useLingui } from "@lingui/react/macro";
 import type { Bot } from "@tangow/contracts";
-import { Button, Popover, PopoverContent, PopoverTrigger } from "@tangow/ui-web";
-import { Bell, PanelLeftClose, Plus } from "lucide-react";
+import {
+  Button,
+  Kbd,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@tangow/ui-web";
+import { Bell, PanelLeftClose, Plus, Search } from "lucide-react";
 import type { Dispatch, SetStateAction } from "react";
 import { desktopBridge } from "../../lib/desktop";
 import { WindowChrome } from "../WindowChrome";
 import { BotCreatePicker } from "./bot-picker";
+import { commandModifierKey } from "./command-palette-hotkey";
 import type { Panel, SidebarGroup } from "./layout";
 
 export type SidebarHeaderProps = {
@@ -20,6 +30,7 @@ export type SidebarHeaderProps = {
   setNewSpaceOpen: Dispatch<SetStateAction<boolean>>;
   setPickerInfoTopic: Dispatch<SetStateAction<"group" | "space" | null>>;
   sidebarGroups: SidebarGroup[];
+  openSearch: () => void;
 };
 
 export function SidebarHeader({
@@ -34,8 +45,10 @@ export function SidebarHeader({
   setNewSpaceOpen,
   setPickerInfoTopic,
   sidebarGroups,
+  openSearch,
 }: SidebarHeaderProps) {
   const { t } = useLingui();
+  const modKey = commandModifierKey();
   const hasUnread = sidebarGroups.some((group) => group.bots.some((item) => item.chat.unread));
   return (
     <div className="app-drag flex h-11.5 shrink-0 items-center justify-between gap-2 px-4 ps-4.5">
@@ -54,6 +67,27 @@ export function SidebarHeader({
         </Button>
       </div>
       <div className="relative flex items-center gap-1">
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="roundIcon"
+                size="roundIconSm"
+                className="app-no-drag"
+                aria-label={t`Search`}
+                aria-keyshortcuts={modKey === "⌘" ? "Meta+K" : "Control+K"}
+                data-testid="sidebar-search"
+                onClick={openSearch}
+              />
+            }
+          >
+            <Search size={16} strokeWidth={1.8} aria-hidden="true" />
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            {t`Search`}
+            <Kbd>{modKey}K</Kbd>
+          </TooltipContent>
+        </Tooltip>
         <Button
           variant="roundIcon"
           size="roundIconSm"

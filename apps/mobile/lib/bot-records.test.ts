@@ -12,6 +12,7 @@ function bot(partial: Partial<Bot> = {}): Bot {
     instructions: "",
     color: "#3CC9A0",
     shapeSeed: null,
+    avatarCharacter: null,
     notifyOnFinish: true,
     pinned: false,
     sectionId: null,

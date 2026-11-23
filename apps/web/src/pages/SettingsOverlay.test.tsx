@@ -5,7 +5,13 @@ import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 
 vi.mock("@lingui/react/macro", () => ({
-  useLingui: () => ({ t: (parts: TemplateStringsArray) => parts.join("") }),
+  useLingui: () => ({
+    t: (parts: TemplateStringsArray | { message: string }) =>
+      "message" in parts ? parts.message : parts.join(""),
+  }),
+}));
+vi.mock("@lingui/core/macro", () => ({
+  msg: (parts: TemplateStringsArray) => ({ message: parts.join("") }),
 }));
 vi.mock("../lib/rpc", () => ({ rpc: { computer: { list: async () => [] } } }));
 vi.mock("./AccountSettingsOverlay", () => ({
@@ -50,8 +56,6 @@ async function open(initialSection?: SettingsSection) {
         initials="A"
         image={null}
         initialSection={initialSection}
-        avatarStyle="organic"
-        onAvatarStyleChange={async () => {}}
         memoryConfig={null}
         onMemoryConfigChange={() => {}}
         spaces={[]}
@@ -81,14 +85,14 @@ it("opens a phone on the section list and pushes then pops a section", async () 
   expect(byTestId("settings-nav")).toBeNull();
   expect(byTestId("settings-list-profile")).not.toBeNull();
 
-  await act(async () => byTestId("settings-list-updates")?.click());
-  expect(title()).toBe("Updates");
-  expect(document.body.textContent).toContain("updates body");
+  await act(async () => byTestId("settings-list-profile")?.click());
+  expect(title()).toBe("Profile");
+  expect(document.body.textContent).toContain("profile body");
   expect(document.activeElement).toBe(backButton());
 
   await act(async () => backButton()?.click());
   expect(title()).toBe("Settings");
-  expect(document.activeElement).toBe(byTestId("settings-list-updates"));
+  expect(document.activeElement).toBe(byTestId("settings-list-profile"));
   await close();
 });
 

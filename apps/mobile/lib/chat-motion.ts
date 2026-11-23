@@ -52,12 +52,6 @@ export const CHAT_MOTION = {
   decisionCollapseMs: 320,
   decisionCheckMs: 200,
 
-  /** 7f — peer-message avatar glance. */
-  glanceYawDeg: 24,
-  glanceHoldMs: 650,
-  /** Time for the look to ease back to centre after the hold. */
-  glanceSettleMs: 700,
-
   /** 7g — swipe to reply. */
   swipeResistanceStart: 40,
   swipeResistanceFactor: 0.6,

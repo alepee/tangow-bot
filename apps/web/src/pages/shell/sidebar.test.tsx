@@ -69,12 +69,6 @@ function renderSidebar(overrides: Partial<ComponentProps<typeof BotsSidebar>> = 
     navigate: vi.fn(),
     setNewSpaceOpen: vi.fn(),
     setPickerInfoTopic: vi.fn(),
-    query: "",
-    setQuery: vi.fn(),
-    showSpaceSearch: false,
-    searchHits: [],
-    searchLoading: false,
-    jumpToSearchHit: vi.fn(),
     sidebarGroups: [],
     collapsedSidebarSections: new Set<string>(),
     openSpaceChat: vi.fn(),
@@ -112,6 +106,7 @@ function renderSidebar(overrides: Partial<ComponentProps<typeof BotsSidebar>> = 
     setMenuOpen: vi.fn(),
     userName: "Archive Owner",
     openSettings: vi.fn(),
+    openSearch: vi.fn(),
     botsSidebarEdgeDragRef: { current: null },
   } satisfies ComponentProps<typeof BotsSidebar>;
   act(() => root.render(<BotsSidebar {...props} {...overrides} />));

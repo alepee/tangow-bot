@@ -4,10 +4,10 @@
     "toolPrefix": "mcp__notion__"
   },
   "github": {
-    "repos": ["RomainJeff/tangow-bot"]
+    "repos": ["tangow-ai/tangow-bot"]
   },
   "base": "main",
-  "permalinkRepo": "RomainJeff/tangow-bot",
+  "permalinkRepo": "tangow-ai/tangow-bot",
   "scoutWorktree": "~/dev/tangow-scout-wt",
   "refsDir": "~/dev/refs",
   "referenceRepos": [],

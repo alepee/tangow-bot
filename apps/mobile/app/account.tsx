@@ -1,4 +1,8 @@
-import type { ComputerListItem } from "@tangow/contracts";
+import type {
+  ActionAutoReviewSettings,
+  ComputerListItem,
+  SpaceDecisionConfig,
+} from "@tangow/contracts";
 import type { Href } from "expo-router";
 import { useRouter } from "expo-router";
 import { Fragment, useCallback, useEffect, useState } from "react";
@@ -62,6 +66,11 @@ export default function Account() {
   const [notificationPending, setNotificationPending] = useState(false);
   const [notificationError, setNotificationError] = useState<string | null>(null);
   const [archivedBots, setArchivedBots] = useState<MobileBot[]>([]);
+  const [autoReview, setAutoReview] = useState<ActionAutoReviewSettings | null>(null);
+  const [autoReviewPending, setAutoReviewPending] = useState(false);
+  // undefined while loading or unreadable: the decision-model hint stays hidden.
+  const [decision, setDecision] = useState<SpaceDecisionConfig | null | undefined>(undefined);
+  const tokens = useMobileTokens();
   const photo = useProfilePhoto();
   const styles = useThemedStyles(createAccountStyles);
   const versionInfo = getAppVersionInfo();
@@ -73,6 +82,7 @@ export default function Account() {
     { label: t("Voice"), href: "/voice" },
     { label: t("Computer"), href: "/computer-settings" },
     { label: t("Integrations"), href: "/integrations" },
+    { label: t("Custom apps"), href: "/custom-apps" },
     { label: t("Skills"), href: "/skills" },
     { label: t("Usage"), href: "/usage" },
   ];
@@ -92,6 +102,12 @@ export default function Account() {
       rpc<MobileBot[]>("bots/listArchived")
         .then(setArchivedBots)
         .catch(() => undefined),
+      rpc<ActionAutoReviewSettings>("autoReview/get")
+        .then(setAutoReview)
+        .catch(() => undefined),
+      rpc<SpaceDecisionConfig | null>("decision/providerConfig")
+        .then(setDecision)
+        .catch(() => setDecision(undefined)),
       Platform.OS === "android"
         ? getLiveNotificationSettings()
             .then(setNotifications)
@@ -161,6 +177,20 @@ export default function Account() {
         t("Could not restore bot"),
         restoreError instanceof Error ? restoreError.message : t("Try again."),
       );
+    }
+  }
+
+  async function toggleAutoReview(enabled: boolean) {
+    setAutoReviewPending(true);
+    try {
+      setAutoReview(await rpc<ActionAutoReviewSettings>("autoReview/set", { enabled }));
+    } catch (cause) {
+      Alert.alert(
+        t("Could not save Auto Review"),
+        cause instanceof Error ? cause.message : t("Try again."),
+      );
+    } finally {
+      setAutoReviewPending(false);
     }
   }
 
@@ -315,6 +345,36 @@ export default function Account() {
             </Fragment>
           ))}
         </View>
+
+        {autoReview ? (
+          <View accessibilityLabel={t("Action confirmations")} style={styles.card}>
+            <Text style={styles.settingsTitle}>{t("Action confirmations")}</Text>
+            <SettingSwitch
+              label={t("Auto-review bot actions")}
+              detail={
+                autoReview.enabled && !autoReview.checkerAvailable
+                  ? t("Add a model in Settings to use this.")
+                  : t("You'll be asked to confirm actions flagged as dangerous.")
+              }
+              value={autoReview.enabled}
+              disabled={autoReviewPending || switching}
+              onChange={(enabled) => void toggleAutoReview(enabled)}
+            />
+            {autoReview.enabled && autoReview.checkerAvailable && decision === null ? (
+              <View style={styles.hint}>
+                <NativeSymbol
+                  ios="exclamationmark.triangle.fill"
+                  android="warning"
+                  size={13}
+                  color={tokens.warning}
+                />
+                <Text style={styles.hintLabel}>
+                  {t("Improve accuracy by setting up a decision model.")}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
 
         {Platform.OS === "android" ? (
           <View accessibilityLabel={t("Notifications")} style={styles.card}>
@@ -613,6 +673,16 @@ function createAccountStyles() {
       color: tokens.destructive,
       fontSize: 14,
       marginTop: 10,
+    },
+    hint: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+    },
+    hintLabel: {
+      flex: 1,
+      color: native.secondaryLabel,
+      fontSize: 12.5,
     },
     disabled: {
       opacity: 0.45,

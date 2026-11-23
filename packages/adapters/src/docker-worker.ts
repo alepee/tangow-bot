@@ -9,7 +9,7 @@ import type {
   WorkerProvider,
   WorkerSpec,
 } from "@tangow/adapter-kit";
-import { workerHarness } from "@tangow/adapter-kit";
+import { WorkerEnsureSettledError, workerHarness } from "@tangow/adapter-kit";
 import { getLogger } from "@tangow/logging";
 import type { FrameChannel } from "./runtime-worker/framing.js";
 import { streamChannel } from "./runtime-worker/framing.js";
@@ -95,9 +95,13 @@ export class DockerWorkerProvider implements WorkerProvider, GuestConnector {
       parsed = JSON.parse(text) as T & { error?: string };
     } catch {}
     if (!response.ok || !parsed) {
-      throw new Error(
-        `Supervisor ${method} ${route.split("?")[0]} failed with ${response.status}: ${parsed?.error ?? "no JSON body"}`,
-      );
+      const message = `Supervisor ${method} ${route.split("?")[0]} failed with ${response.status}: ${parsed?.error ?? "no JSON body"}`;
+      // The supervisor's handler is sequential, so its own refusal means no create is still running.
+      // A proxy's answer says nothing about it.
+      if (method === "POST" && !response.ok && typeof parsed?.error === "string") {
+        throw new WorkerEnsureSettledError(message);
+      }
+      throw new Error(message);
     }
     return parsed;
   }

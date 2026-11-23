@@ -6,13 +6,24 @@ import {
   SCREEN_TARGET_ENDPOINT,
 } from "@tangow/core/node/screen-capability";
 
-const SENSITIVE_FORWARD_HEADERS = new Set([
-  "authorization",
-  "cookie",
-  "host",
-  "proxy-authenticate",
-  "proxy-authorization",
+/**
+ * The computer is untrusted: send only what websockify needs to upgrade its socket, never
+ * credentials a browser, the desktop app or an auth proxy attached.
+ */
+const FORWARDED_HEADERS = new Set([
+  "connection",
+  "upgrade",
+  "sec-websocket-key",
+  "sec-websocket-version",
+  "sec-websocket-protocol",
 ]);
+
+const CAPABILITY_FILE = /^\/novnc\/session\/(?:view|control)\/\d+\.[A-Za-z0-9_-]+\/([^?#]*)/;
+
+/** The file a screen request names inside its capability directory, e.g. `embed.html`. */
+export function screenFile(url: string) {
+  return CAPABILITY_FILE.exec(url)?.[1] ?? null;
+}
 
 /** Fail closed when the authoritative lifecycle check is unavailable. */
 export async function resolveNovncTarget(
@@ -37,19 +48,11 @@ export async function resolveNovncTarget(
   }
 }
 
-function isHttp2PseudoHeader(key: string) {
-  return key.startsWith(":");
-}
-
 export function safeProxyHeaders(headers: IncomingHttpHeaders) {
   return Object.fromEntries(
-    Object.entries(headers).filter(([key, value]) => {
-      return (
-        value != null &&
-        !isHttp2PseudoHeader(key) &&
-        !SENSITIVE_FORWARD_HEADERS.has(key.toLowerCase())
-      );
-    }),
+    Object.entries(headers).filter(
+      ([key, value]) => value != null && FORWARDED_HEADERS.has(key.toLowerCase()),
+    ),
   );
 }
 

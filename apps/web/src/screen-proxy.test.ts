@@ -79,29 +79,31 @@ describe("screen proxy", () => {
     await vi.advanceTimersByTimeAsync(1000);
     expect(revoke).toHaveBeenCalledTimes(1);
   });
-  it("does not forward application credentials", () => {
+  it("forwards only the WebSocket handshake to the computer", () => {
+    const handshake = {
+      connection: "Upgrade",
+      upgrade: "websocket",
+      "sec-websocket-key": "key",
+      "sec-websocket-version": "13",
+      "sec-websocket-protocol": "binary",
+    };
     expect(
       safeProxyHeaders({
-        host: "app.example",
-        cookie: "session=secret",
-        authorization: "Bearer secret",
-        "proxy-authorization": "Basic secret",
-        upgrade: "websocket",
-        "sec-websocket-key": "key",
-      }),
-    ).toEqual({ upgrade: "websocket", "sec-websocket-key": "key" });
-  });
-
-  it("does not forward HTTP/2 pseudo-headers to the HTTP/1 upstream", () => {
-    expect(
-      safeProxyHeaders({
-        ":method": "GET",
-        ":path": "/novnc/embed.html",
+        ...handshake,
         ":authority": "localhost:5173",
-        ":scheme": "https",
-        upgrade: "websocket",
-        "sec-websocket-key": "key",
+        host: "app.example",
+        cookie: "session=fake",
+        authorization: "Bearer fake",
+        "proxy-authorization": "Basic fake",
+        "cf-access-client-id": "fake-id",
+        "cf-access-client-secret": "fake-secret",
+        "cf-access-jwt-assertion": "fake-jwt",
+        "x-forwarded-access-token": "fake-token",
+        "x-auth-request-access-token": "fake-token",
+        "x-forwarded-user": "fake-user",
+        "x-forwarded-email": "user@example.com",
+        "x-api-key": "fake-key",
       }),
-    ).toEqual({ upgrade: "websocket", "sec-websocket-key": "key" });
+    ).toEqual(handshake);
   });
 });

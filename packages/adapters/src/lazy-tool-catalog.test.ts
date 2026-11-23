@@ -4,9 +4,7 @@ import corpus from "./fixtures/composio-search-corpus.json" with { type: "json" 
 import {
   assertConnectorToolArgs,
   catalogEntries,
-  catalogGroupLabel,
   catalogIndexText,
-  disambiguateInstalledToolNames,
   executeLazyCatalogControl,
   lazyCatalogTools,
   loadCatalogEntry,
@@ -14,7 +12,6 @@ import {
   SELECTED_SCHEMA_MAX_BYTES,
   searchCatalog,
   TOOL_SEARCH_LIMIT,
-  uniquifyInstalledToolName,
 } from "./lazy-tool-catalog.js";
 
 function tools(count: number, group = "source"): ConnectorTool[] {
@@ -109,12 +106,6 @@ describe("lazy tool catalog", () => {
     expect("tools" in result && result.tools.map((tool) => tool.name)).toContain(expected);
   });
   it("offers the fallback search, load and execute controls", () => {
-    expect(lazyCatalogTools("mcp", "mcp", "MCP")).toHaveLength(3);
-    expect(lazyCatalogTools("installed", "installed", "API").map((tool) => tool.name)).toEqual([
-      "installed_search_tools",
-      "installed_load_tool",
-      "installed_execute_tool",
-    ]);
     expect(lazyCatalogTools("mcp", "mcp", "MCP").map((tool) => tool.name)).toEqual([
       "mcp_search_tools",
       "mcp_load_tool",
@@ -491,48 +482,5 @@ describe("lazy tool catalog", () => {
     expect(() => assertConnectorToolArgs(schema, { "x-a": "ok" })).toThrow(
       /patternProperties with additionalProperties false/,
     );
-  });
-
-  it("uniquifies installed tool names across installs", () => {
-    expect(uniquifyInstalledToolName("install-A", "delete_item")).toBe(
-      "installed__install-A__delete_item",
-    );
-    expect(uniquifyInstalledToolName("install-B", "delete_item")).toBe(
-      "installed__install-B__delete_item",
-    );
-  });
-
-  it("only prefixes installed names when they collide across installs", () => {
-    const tools = disambiguateInstalledToolNames([
-      {
-        name: "unique_op",
-        description: "Only on A",
-        inputSchema: { type: "object" },
-        route: { connectorId: "installed", resourceId: "install-A", toolName: "unique_op" },
-      },
-      {
-        name: "delete_item",
-        description: "On A",
-        inputSchema: { type: "object" },
-        route: { connectorId: "installed", resourceId: "install-A", toolName: "delete_item" },
-      },
-      {
-        name: "delete_item",
-        description: "On B",
-        inputSchema: { type: "object" },
-        route: { connectorId: "installed", resourceId: "install-B", toolName: "delete_item" },
-      },
-    ]);
-    expect(tools.map((tool) => tool.name)).toEqual([
-      "unique_op",
-      "installed__install-A__delete_item",
-      "installed__install-B__delete_item",
-    ]);
-  });
-
-  it("labels nameless installs with kind and a short id", () => {
-    expect(catalogGroupLabel("Gmail", "api", "abcdefghij")).toBe("Gmail");
-    expect(catalogGroupLabel("  ", "api", "abcdefghij")).toBe("api-abcdefgh");
-    expect(catalogGroupLabel(undefined, "mcp", "xyz")).toBe("mcp-xyz");
   });
 });

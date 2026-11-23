@@ -5,18 +5,14 @@ import { useThemedStyles } from "../lib/native";
 import type { StackedAvatarSize } from "../lib/stacked-avatars-layout";
 import { STACKED_AVATAR_OVERLAP, stackedAvatarsLayout } from "../lib/stacked-avatars-layout";
 import { nativeTextStyle } from "../lib/typography";
-import type { BotAvatarGlance } from "./bot-avatar";
 import { BotAvatar } from "./bot-avatar";
 
 export type { StackedAvatarSize };
 
 export interface StackedAvatarItem {
-  color: string;
   identity?: string;
   working?: boolean;
-  shapeSeed?: number | null;
-  /** 7f: this item's bloub glances once toward the other item, at mount. */
-  glance?: BotAvatarGlance;
+  character?: string | null;
 }
 
 export interface StackedAvatarsProps extends Omit<ViewProps, "children"> {
@@ -37,8 +33,6 @@ export interface StackedAvatarsProps extends Omit<ViewProps, "children"> {
    * uses.
    */
   pillOverflow?: boolean;
-  /** Forwarded to each `BotAvatar`: rest on one frame, for stacks repeated down a thread. */
-  still?: boolean;
 }
 
 /**
@@ -51,7 +45,6 @@ export function StackedAvatars({
   max = 3,
   label,
   pillOverflow = false,
-  still = false,
   style,
   ...props
 }: StackedAvatarsProps) {
@@ -70,17 +63,14 @@ export function StackedAvatars({
     >
       {shown.map((item, index) => (
         <View
-          key={item.identity ?? `${item.color}-${index}`}
+          key={item.identity ?? index}
           style={index === 0 ? undefined : { marginStart: -overlap }}
         >
           <BotAvatar
-            color={item.color}
-            identity={item.identity}
-            shapeSeed={item.shapeSeed}
+            character={item.character}
             size={size}
             status={item.working ? "running" : undefined}
-            glance={item.glance}
-            still={still}
+            still
           />
         </View>
       ))}

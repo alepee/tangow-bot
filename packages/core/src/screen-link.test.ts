@@ -1,10 +1,4 @@
 import { describe, expect, it } from "vitest";
-import {
-  encodeStateMessage,
-  MESSAGE_TYPE,
-  MESSAGE_VERSION,
-  SCREEN_STATES,
-} from "../../../infra/sandboxes/computer/screen-link-machine.js";
 import type { ScreenLinkClock } from "./screen-link.js";
 import {
   createScreenLink,
@@ -12,9 +6,6 @@ import {
   isScreenDocumentUrl,
   parseScreenLinkMessage,
   reduceScreenLink,
-  SCREEN_LINK_MESSAGE_TYPE,
-  SCREEN_LINK_STATES,
-  SCREEN_LINK_VERSION,
   screenLinkChannel,
   screenNavigationAllowed,
 } from "./screen-link.js";
@@ -100,17 +91,6 @@ describe("screen link URL gates", () => {
     expect(screenNavigationAllowed("https://evil.example/", EMBED)).toBe(false);
     expect(screenNavigationAllowed(`${ORIGIN}/`, EMBED)).toBe(false);
     expect(screenNavigationAllowed("javascript:alert(1)", EMBED)).toBe(false);
-  });
-});
-
-describe("embed drift", () => {
-  it("shares the wire vocabulary with the embed machine", () => {
-    expect([...SCREEN_STATES]).toEqual([...SCREEN_LINK_STATES]);
-    expect(MESSAGE_TYPE).toBe(SCREEN_LINK_MESSAGE_TYPE);
-    expect(MESSAGE_VERSION).toBe(SCREEN_LINK_VERSION);
-    expect(SCREEN_STATES.map((state) => parseScreenLinkMessage(encodeStateMessage(state)))).toEqual(
-      ["connecting", "connected", "reconnecting", "stalled", "failed"],
-    );
   });
 });
 

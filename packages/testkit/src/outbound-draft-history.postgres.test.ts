@@ -6,7 +6,7 @@ import { latestCard } from "./index.js";
 import type { ModelEmulatorRequest, ModelEmulatorStep } from "./model-emulator.js";
 import { prepares } from "./model-emulator.js";
 import type { JourneyFixture } from "./pi-journey.test-support.js";
-import { DONE, journey, reply, rpc, WAITING } from "./pi-journey.test-support.js";
+import { DONE, journey, reply, rpc } from "./pi-journey.test-support.js";
 
 const databaseAvailable = process.env.VERIFY_DATABASE === "1" && Boolean(process.env.DATABASE_URL);
 
@@ -14,7 +14,7 @@ const SENT_NOTE = "The user sent this message from the draft card,";
 const DISCARDED_NOTE = "The user discarded this draft,";
 const PAUSED = "paused: awaiting approval";
 
-const TOOL = "acme_deliver_message";
+const TOOL = "mcp__acme__acme_deliver_message";
 
 const mailTo = (address: string, id: string, extra: Record<string, unknown> = {}) =>
   ({
@@ -78,7 +78,6 @@ describe.skipIf(!databaseAvailable)("a draft's outcome in the bot's history", ()
       [
         mailTo("anna@example.test", "mail-a"),
         prepareMail("anna@example.test"),
-        WAITING,
         {
           expect(request) {
             const [first, ...rest] = sends(request);
@@ -90,7 +89,6 @@ describe.skipIf(!databaseAvailable)("a draft's outcome in the bot's history", ()
           response: mailTo("ben@example.test", "mail-b").response,
         },
         prepareMail("ben@example.test"),
-        WAITING,
         {
           expect(request) {
             const [first, second, ...rest] = sends(request);
@@ -133,7 +131,6 @@ describe.skipIf(!databaseAvailable)("a draft's outcome in the bot's history", ()
       [
         mailTo("anna@example.test", "mail-1", { thought: "Mail Anna." }),
         prepareMail("anna@example.test", { thought: "Mail Anna." }),
-        WAITING,
         {
           expect(request) {
             const [only, ...rest] = sends(request);
@@ -146,7 +143,6 @@ describe.skipIf(!databaseAvailable)("a draft's outcome in the bot's history", ()
           },
           response: mailTo("anna@example.test", "mail-2", { thought: "Mail Anna." }).response,
         },
-        WAITING,
         {
           expect(request) {
             answered = JSON.parse(
@@ -191,7 +187,6 @@ describe.skipIf(!databaseAvailable)("a draft's outcome in the bot's history", ()
         },
         mailTo("anna@example.test", "mail-h"),
         prepareMail("anna@example.test"),
-        WAITING,
         {
           expect(request) {
             const history = JSON.stringify(request.messages);
@@ -221,7 +216,6 @@ describe.skipIf(!databaseAvailable)("a draft's outcome in the bot's history", ()
       [
         mailTo("anna@example.test", "mail-1"),
         prepareMail("anna@example.test"),
-        WAITING,
         {
           expect(request) {
             expect(JSON.stringify(request.messages)).toContain(edit);
@@ -256,7 +250,7 @@ describe.skipIf(!databaseAvailable)("a draft's outcome in the bot's history", ()
     it("is told to the bot as a result that says it may or may not have left", async () => {
       const acme = acmeApp();
       await journey(
-        [mailTo("anna@example.test", "mail-1"), prepareMail("anna@example.test"), WAITING],
+        [mailTo("anna@example.test", "mail-1"), prepareMail("anna@example.test")],
         async (fixture) => {
           const { runId, effect } = await stranded(fixture, acme);
           const { threadId } = await fixture.prisma.run.findUniqueOrThrow({ where: { id: runId } });
@@ -308,7 +302,7 @@ describe.skipIf(!databaseAvailable)("a draft's outcome in the bot's history", ()
     it("leaves a cancelled run's log as it is, without failing the stop", async () => {
       const acme = acmeApp();
       await journey(
-        [mailTo("anna@example.test", "mail-1"), prepareMail("anna@example.test"), WAITING],
+        [mailTo("anna@example.test", "mail-1"), prepareMail("anna@example.test")],
         async (fixture) => {
           const { runId, effect } = await stranded(fixture, acme);
           await fixture.prisma.externalEffect.update({

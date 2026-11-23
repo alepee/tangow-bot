@@ -1,4 +1,7 @@
 export * from "./attachments.js";
+export * from "./avatar-characters.js";
+export * from "./avatar-face.js";
+export * from "./avatar-face-motion.js";
 export * from "./bot-secrets.js";
 export * from "./desktop.js";
 export * from "./domain.js";

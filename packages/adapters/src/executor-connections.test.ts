@@ -67,7 +67,7 @@ describe("run connection selection", () => {
   it("preserves live connection recovery and connected accounts from other providers", () => {
     const pending = { connectorId: "composio", provider: "youtube", status: "pending" };
     const revoked = { ...pending, status: "revoked" };
-    const other = { connectorId: "pipedream", provider: "youtube", status: "connected" };
+    const other = { connectorId: "mcp", provider: "youtube", status: "connected" };
     const disconnected = { ...other, status: "error" };
     expect(selectRunConnections([pending, revoked, other, disconnected], ["youtube"])).toEqual([
       pending,

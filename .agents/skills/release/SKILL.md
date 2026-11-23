@@ -1,6 +1,6 @@
 ---
 name: release
-description: Release Tangow clients with automatic Home Assistant style calendar versions based on changes, production iOS EAS build and submission, desktop packaging and installation, and a GitHub Release with IPA and DMG. Use for /release, release desktop, or release mobile. With no argument, release both clients.
+description: Release Tangow clients with automatic Home Assistant style calendar versions based on changes, production iOS EAS build and submission, desktop packaging and installation, and a GitHub Release with the IPA, the DMG and the macOS update feed. Use for /release, release desktop, or release mobile. With no argument, release both clients.
 ---
 
 # Release
@@ -14,8 +14,8 @@ create or edit this skill does not run a release.
 
 | Invocation | Targets | GitHub assets |
 | --- | --- | --- |
-| `/release` | Desktop and iOS | Fresh DMG and IPA |
-| `/release desktop` | Desktop | Fresh DMG |
+| `/release` | Desktop and iOS | Fresh DMG, update feed and IPA |
+| `/release desktop` | Desktop | Fresh DMG and update feed |
 | `/release mobile` | iOS only | Fresh IPA |
 
 Accept the same arguments when invoked as `$release` or in natural language.
@@ -135,18 +135,27 @@ Skip this section for `mobile`.
 Run from `apps/desktop`:
 
 ```sh
-npm run pack -- --publish never
+npm run release
 ```
 
-The current `pack` script targets macOS, Windows, and Linux. Keep the requested
-script; do not replace it with `pack:dir` or silently change the package scripts.
-`--publish never` reserves GitHub publication for the final step.
+The `release` script builds the web app and packages only for the host, macOS:
+no Windows or Linux build. Do not replace it with `pack` or `pack:dir` or silently
+change the package scripts. Its `--publish never` reserves GitHub publication for
+the final step.
 
 Identify the fresh DMG under the configured `build.directories.output`, currently
 `apps/desktop/out`. Check its app version against the package and its architecture
 against the host. If the run produces several DMGs, keep the host-compatible one
 for installation and attach all fresh DMGs for the requested architectures.
 Do not pick an older file left in `out`.
+
+From the same `out` run, also select the macOS update feed that installed
+desktop apps read through electron-updater: `latest-mac.yml`, every `-mac.zip` it
+names (one per architecture), and each ZIP's `.blockmap` when present. Require the yml's `version` to
+equal the desktop version and every `files[].url` and `path` it lists to exist
+next to it in `out`. Leave any `latest.yml`, `latest-linux.yml` or Windows and
+Linux artifacts left in `out` by other runs out of the release. A missing
+blockmap only costs clients a full download and must not fail the release.
 
 Mount the selected DMG read-only with `hdiutil attach -readonly -nobrowse` and
 record the mount point. Locate the `.app` inside it and read its bundle identifier,
@@ -169,15 +178,20 @@ succeeds. Do not run the desktop Playwright suite on the maintainer's machine.
 Publish only after every selected build, submission, and installation succeeds.
 Confirm `HEAD` still equals `release_sha` and the tracked checkout is still clean.
 Stage a copy of each selected artifact under the ignored `artifacts/` directory
-with distinct release filenames. Require every file to be nonempty. The default
-release requires both an IPA and a DMG; never publish a partial default release.
+with distinct release filenames. Keep the update feed files under their exact
+electron-builder names: `latest-mac.yml` refers to each ZIP by name and checksum,
+so a renamed file breaks every installed client's update. Require every file to
+be nonempty. The default release requires the IPA, the DMG, `latest-mac.yml` and
+every ZIP it lists; a desktop release requires all but the IPA. Never publish a partial release.
 
 Push the recorded commit to the resolved GitHub remote if it is not already
 available there, without force-pushing or merging branches. Create an annotated
 tag at exactly `release_sha`, then push only that tag. Never move an existing tag.
 
 Create one GitHub Release for this tag with `gh release create --verify-tag` and
-the explicit artifact paths as positional arguments. Use `--repo` for the resolved
+the explicit artifact paths as positional arguments. Installed desktop apps only
+look at the release marked Latest, so pass `--latest` when the release includes
+desktop and `--latest=false` for an iOS-only release. Use `--repo` for the resolved
 repository and `--notes-file` for concise public release notes describing the
 selected clients, their versions, and the iOS submission status. Keep local paths,
 account details, credentials, and raw tool logs out of release notes.
@@ -189,7 +203,9 @@ Do not replace published assets with `--clobber`, delete a release, move its tag
 or repeat an iOS submission without establishing what already succeeded.
 
 Verify the remote tag resolves to `release_sha` and use `gh release view` to check
-the published state and asset names and sizes against the local files. Return
+the published state and asset names and sizes against the local files. For a
+desktop release, also confirm it is the Latest release and that the published
+`latest-mac.yml` names the desktop version and only ZIPs attached to this release. Return
 the release URL, tag, attached artifacts, installed desktop version, and iOS
 submission result as applicable. If any stage fails, report the successful stages
 and the precise stage to resume; do not claim the release is complete.

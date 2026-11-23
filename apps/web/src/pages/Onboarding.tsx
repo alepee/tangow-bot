@@ -668,7 +668,6 @@ export function OnboardingPage() {
         ) : null}
         {step === "integrations" ? (
           <IntegrationSetup
-            serverSetup
             initialState={integrationSetup}
             onDone={() => setStep("bot")}
             onServerConnected={(id) =>

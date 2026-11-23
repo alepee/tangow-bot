@@ -39,6 +39,33 @@ async function deployment(env = "TANGOW_IMAGE_TAG=v1.0.0\nTANGOW_IMAGE_TAG_PREVI
   };
 }
 
+async function checkoutDeployment(env?: string) {
+  const fixture = await deployment(env);
+  await mkdir(path.join(fixture.deployDir, ".git"));
+  return fixture;
+}
+
+/**
+ * A clean checkout on `currentCommit` whose remote branch is at `targetCommit`. Docker calls go to
+ * `docker`, so each test only describes the part it is about.
+ */
+function checkoutRunner(
+  docker: (args: string[]) => ReturnType<typeof ok> | Promise<ReturnType<typeof ok>> = () => ok(),
+  remote = "https://github.com/tangow-ai/tangow-bot",
+): UpdaterCommandRunner {
+  let merged = false;
+  return async (command, args) => {
+    if (command !== "git") return docker(args);
+    const joined = args.join(" ");
+    if (args[0] === "merge") merged = true;
+    if (joined === "rev-parse HEAD") return ok(merged ? targetCommit : currentCommit);
+    if (joined === "rev-parse --abbrev-ref HEAD") return ok("main");
+    if (joined === "remote get-url origin") return ok(remote);
+    if (args.includes("ls-remote")) return ok(`${targetCommit}\trefs/heads/main\n`);
+    return ok();
+  };
+}
+
 function ok(output = "") {
   return { ok: true, exitCode: 0, output };
 }
@@ -111,12 +138,15 @@ describe("updater HTTP surface", () => {
     const response = await app.request("/apply", {
       method: "POST",
       headers: authorized,
-      body: JSON.stringify({ repoUrl: "https://github.com/elie222/rakazo", branch: "--exec=id" }),
+      body: JSON.stringify({
+        repoUrl: "https://github.com/tangow-ai/tangow-bot",
+        branch: "--exec=id",
+      }),
     });
     expect(response.status).toBe(400);
   });
 
-  it("refuses a fork build when the deployment has no checkout to build from", async () => {
+  it("refuses an update when the deployment has no checkout to build from", async () => {
     const fixture = await deployment();
     const response = await createUpdaterApp(fixture.config).request("/apply", {
       method: "POST",
@@ -162,7 +192,7 @@ describe("updater HTTP surface", () => {
 
 describe("updater orchestration", () => {
   it("serializes updates before their asynchronous preflight can race", async () => {
-    const fixture = await deployment();
+    const fixture = await checkoutDeployment();
     let releaseGate: ((result: ReturnType<typeof ok>) => void) | undefined;
     const pendingRelease = new Promise<ReturnType<typeof ok>>((resolve) => {
       releaseGate = resolve;
@@ -171,25 +201,26 @@ describe("updater orchestration", () => {
     const atRemote = new Promise<void>((resolve) => {
       reachedRemote = resolve;
     });
-    const run: UpdaterCommandRunner = async (command, args) => {
+    const checkout = checkoutRunner();
+    const run: UpdaterCommandRunner = async (command, args, options) => {
       if (command === "git" && args.includes("ls-remote")) {
         reachedRemote();
         return pendingRelease;
       }
-      return ok();
+      return checkout(command, args, options);
     };
     const subject = createUpdaterApp(fixture.config, { run });
-    const input = { repoUrl: "https://github.com/elie222/rakazo", branch: "main" };
+    const input = { repoUrl: "https://github.com/tangow-ai/tangow-bot", branch: "main" };
     const first = request(subject, "/apply", input);
     await atRemote;
     const second = await request(subject, "/apply", input);
     expect(second.status).toBe(400);
     await expect(second.json()).resolves.toEqual({ error: "An update is already running." });
-    releaseGate?.(ok(`${targetCommit}\trefs/tags/v1.1.0\n`));
+    releaseGate?.(ok(`${targetCommit}\trefs/heads/main\n`));
     expect((await first).status).toBe(200);
   });
 
-  it("restores the previous remote when a fork update fails after repointing it", async () => {
+  it("restores the previous remote when an update fails after repointing it", async () => {
     const fixture = await deployment();
     await mkdir(path.join(fixture.deployDir, ".git"));
     const calls: Array<{ command: string; args: string[] }> = [];
@@ -219,104 +250,26 @@ describe("updater orchestration", () => {
     ]);
   });
 
-  it("restores the prior image after a recreate fails health checks", async () => {
-    const fixture = await deployment();
+  it("restores the prior checkout and image after a recreate fails health checks", async () => {
+    const fixture = await checkoutDeployment();
     const calls: Array<{ command: string; args: string[]; env?: Record<string, string> }> = [];
     let upCalls = 0;
-    const run: UpdaterCommandRunner = async (command, args, options) => {
-      calls.push({ command, args, env: options.env });
-      if (command === "git") return ok(`${targetCommit}\trefs/tags/v1.1.0\n`);
-      if (args.includes("pull")) return ok("pulled");
+    const checkout = checkoutRunner((args) => {
+      if (!args.includes("up")) return ok();
       upCalls += 1;
       return upCalls === 1 ? failed("api did not become healthy") : ok("restored");
+    });
+    const run: UpdaterCommandRunner = async (command, args, options) => {
+      calls.push({ command, args, env: options.env });
+      return checkout(command, args, options);
     };
     const subject = createUpdaterApp(fixture.config, { run });
     const response = await request(subject, "/apply", {
-      repoUrl: "https://github.com/elie222/rakazo",
+      repoUrl: "https://github.com/tangow-ai/tangow-bot",
       branch: "main",
     });
     const record = (await response.json()) as ServerUpdateRun;
     expect(record).toMatchObject({ ok: false, restart: "not-required" });
-    expect(record.steps.map((step) => step.id)).toEqual([
-      "pull",
-      "recreate",
-      "stop-migrate",
-      "recover",
-    ]);
-    expect(record.restartAdvice).toMatch(/restored the previously running v1\.0\.0 image/);
-    const composeUp = calls.filter(({ args }) => args.includes("up"));
-    expect(composeUp).toHaveLength(2);
-    expect(composeUp[0]?.args).toEqual(expect.arrayContaining(["--wait", "--pull", "never"]));
-    expect(composeUp[0]?.args).toContain("--no-build");
-    expect(composeUp[1]?.args).toContain("--no-build");
-    expect(waitTimeout(composeUp[0]?.args)).toBe("3600");
-    expect(composeUp[0]?.args).not.toContain("--no-deps");
-    expect(composeUp[1]?.args).toContain("--no-deps");
-    expect(composeUp[0]?.env?.TANGOW_IMAGE_TAG).toBe(`sha-${targetCommit}`);
-    expect(composeUp[1]?.env?.TANGOW_IMAGE_TAG).toBe("v1.0.0");
-    expect(await readFile(path.join(fixture.deployDir, ".env"), "utf8")).toContain(
-      "TANGOW_IMAGE_TAG=v1.0.0",
-    );
-
-    const state = await subject.request("/state", { method: "GET", headers: authorized });
-    expect(state.status).toBe(200);
-    await expect(state.json()).resolves.toMatchObject({
-      running: false,
-      lastRun: { ok: false, fromTag: "v1.0.0", toTag: `sha-${targetCommit}` },
-    });
-  });
-
-  it("leaves the services down rather than restore an image older than the moved conversations", async () => {
-    const fixture = await deployment();
-    const ups: string[][] = [];
-    const run: UpdaterCommandRunner = async (command, args) => {
-      if (command === "git") return ok(`${targetCommit}\trefs/tags/v1.1.0\n`);
-      if (args.includes("--entrypoint")) return failed("the image has no session log");
-      if (args.includes("exec")) return ok("t\n");
-      if (!args.includes("up")) return ok();
-      ups.push(args);
-      return failed("api did not become healthy");
-    };
-    const response = await request(createUpdaterApp(fixture.config, { run }), "/apply", {
-      repoUrl: "https://github.com/elie222/rakazo",
-      branch: "main",
-    });
-    const record = (await response.json()) as ServerUpdateRun;
-    expect(record).toMatchObject({ ok: false, restart: "manual" });
-    expect(record.steps.map((step) => step.id)).toEqual(["pull", "recreate", "stop-migrate"]);
-    expect(record.restartAdvice).toMatch(/v1\.0\.0 cannot read this database/);
-    expect(ups).toHaveLength(1);
-  });
-
-  it("resets a fork checkout when recreate fails after the fast-forward", async () => {
-    const fixture = await deployment("TANGOW_IMAGE_TAG=local\n");
-    await mkdir(path.join(fixture.deployDir, ".git"));
-    const calls: string[][] = [];
-    let upCalls = 0;
-    const run: UpdaterCommandRunner = async (command, args) => {
-      calls.push(args);
-      const joined = args.join(" ");
-      if (joined === "rev-parse HEAD") {
-        // After the merge step the checkout is on the target; before that it is still current.
-        const merged = calls.some((seen) => seen[0] === "merge");
-        return ok(merged ? targetCommit : currentCommit);
-      }
-      if (joined === "rev-parse --abbrev-ref HEAD") return ok("main");
-      if (joined === "remote get-url origin") return ok("https://github.com/example/fork");
-      if (args.includes("status") || joined === "ls-files --others --exclude-standard") return ok();
-      if (args.includes("ls-remote")) return ok(`${targetCommit}\trefs/heads/main\n`);
-      if (command === "docker" && args.includes("up")) {
-        upCalls += 1;
-        return upCalls === 1 ? failed("api did not become healthy") : ok("restored");
-      }
-      return ok();
-    };
-    const response = await request(createUpdaterApp(fixture.config, { run }), "/apply", {
-      repoUrl: "https://github.com/example/fork",
-      branch: "main",
-    });
-    const record = (await response.json()) as ServerUpdateRun;
-    expect(record.ok).toBe(false);
     expect(record.steps.map((step) => step.id)).toEqual([
       "fetch",
       "checkout",
@@ -326,10 +279,56 @@ describe("updater orchestration", () => {
       "restore-checkout",
       "recover",
     ]);
-    expect(calls).toContainEqual(["checkout", "-B", "main", currentCommit]);
+    expect(calls.map(({ args }) => args)).toContainEqual(["checkout", "-B", "main", currentCommit]);
+    expect(record.restartAdvice).toMatch(/restored the previously running v1\.0\.0 image/);
+    const composeUp = calls.filter(({ args }) => args.includes("up"));
+    expect(composeUp).toHaveLength(2);
+    expect(composeUp[0]?.args).toEqual(expect.arrayContaining(["--wait", "--pull", "never"]));
+    expect(composeUp[0]?.args).toContain("--build");
+    expect(composeUp[1]?.args).toContain("--no-build");
+    expect(waitTimeout(composeUp[0]?.args)).toBe("3600");
+    expect(composeUp[0]?.args).not.toContain("--no-deps");
+    expect(composeUp[1]?.args).toContain("--no-deps");
+    expect(composeUp[0]?.env?.TANGOW_IMAGE_TAG).toBe(`local-${targetCommit}`);
+    expect(composeUp[1]?.env?.TANGOW_IMAGE_TAG).toBe("v1.0.0");
     expect(await readFile(path.join(fixture.deployDir, ".env"), "utf8")).toContain(
-      "TANGOW_IMAGE_TAG=local",
+      "TANGOW_IMAGE_TAG=v1.0.0",
     );
+
+    const state = await subject.request("/state", { method: "GET", headers: authorized });
+    expect(state.status).toBe(200);
+    await expect(state.json()).resolves.toMatchObject({
+      running: false,
+      lastRun: { ok: false, fromTag: "v1.0.0", toTag: `local-${targetCommit}` },
+    });
+  });
+
+  it("leaves the services down rather than restore an image older than the moved conversations", async () => {
+    const fixture = await checkoutDeployment();
+    const ups: string[][] = [];
+    const run = checkoutRunner((args) => {
+      if (args.includes("--entrypoint")) return failed("the image has no session log");
+      if (args.includes("exec")) return ok("t\n");
+      if (!args.includes("up")) return ok();
+      ups.push(args);
+      return failed("api did not become healthy");
+    });
+    const response = await request(createUpdaterApp(fixture.config, { run }), "/apply", {
+      repoUrl: "https://github.com/tangow-ai/tangow-bot",
+      branch: "main",
+    });
+    const record = (await response.json()) as ServerUpdateRun;
+    expect(record).toMatchObject({ ok: false, restart: "manual" });
+    expect(record.steps.map((step) => step.id)).toEqual([
+      "fetch",
+      "checkout",
+      "merge",
+      "recreate",
+      "stop-migrate",
+      "restore-checkout",
+    ]);
+    expect(record.restartAdvice).toMatch(/v1\.0\.0 cannot read this database/);
+    expect(ups).toHaveLength(1);
   });
 
   it("restores the prior branch when merge fails after checkout switches", async () => {
@@ -362,7 +361,7 @@ describe("updater orchestration", () => {
     expect(calls).toContainEqual(["checkout", "-B", "deploy", currentCommit]);
   });
 
-  it("rolls back from the cached image without trusting the registry tag again", async () => {
+  it("rolls back from the cached image without rebuilding", async () => {
     const fixture = await deployment();
     const calls: string[][] = [];
     const run: UpdaterCommandRunner = async (_command, args) => {
@@ -398,14 +397,13 @@ describe("updater orchestration", () => {
   });
 
   it("preserves the environment owner and surrounding values with mode 0600", async () => {
-    const fixture = await deployment("FAKE_SETTING=kept\nTANGOW_IMAGE_TAG=v1.0.0\n");
+    const fixture = await checkoutDeployment("FAKE_SETTING=kept\nTANGOW_IMAGE_TAG=v1.0.0\n");
     const envFile = path.join(fixture.deployDir, ".env");
     await chmod(envFile, 0o644);
     const before = await lstat(envFile);
-    const run: UpdaterCommandRunner = async (command) =>
-      command === "git" ? ok(`${targetCommit}\trefs/tags/v1.1.0\n`) : ok();
+    const run = checkoutRunner();
     const response = await request(createUpdaterApp(fixture.config, { run }), "/apply", {
-      repoUrl: "https://github.com/elie222/rakazo",
+      repoUrl: "https://github.com/tangow-ai/tangow-bot",
       branch: "main",
     });
     expect(response.status).toBe(200);
@@ -420,16 +418,15 @@ describe("updater orchestration", () => {
   });
 
   it("refuses to replace a symlinked deployment environment", async () => {
-    const fixture = await deployment();
+    const fixture = await checkoutDeployment();
     const envFile = path.join(fixture.deployDir, ".env");
     const target = path.join(fixture.deployDir, "fake-target");
     await writeFile(target, "TANGOW_IMAGE_TAG=v1.0.0\n");
     await rm(envFile);
     await symlink(target, envFile);
-    const run: UpdaterCommandRunner = async (command) =>
-      command === "git" ? ok(`${targetCommit}\trefs/tags/v1.1.0\n`) : ok();
+    const run = checkoutRunner();
     const response = await request(createUpdaterApp(fixture.config, { run }), "/apply", {
-      repoUrl: "https://github.com/elie222/rakazo",
+      repoUrl: "https://github.com/tangow-ai/tangow-bot",
       branch: "main",
     });
     expect(response.status).toBe(200);

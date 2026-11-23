@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import type { Router } from "@orpc/server";
 import { implement, ORPCError } from "@orpc/server";
 import type {
   AdapterContext,
@@ -26,7 +27,7 @@ import type {
   IntegrationProviderSettings,
   MemoryProviderResolver,
   PiOAuthLogins,
-  RemoteConnectorDependencies,
+  RemoteTransportDependencies,
   SkillOwnerLock,
   WorkerLifecycle,
 } from "@tangow/adapters";
@@ -59,8 +60,6 @@ import {
   modelCredentialDto,
   onOwnBot,
   planLiveConnectionSync,
-  prepareApiInstall,
-  prepareGraphqlInstall,
   probeOpenAiCompatibleModels,
   provisionComputer,
   queueComputerUpdate,
@@ -85,7 +84,6 @@ import {
   touchRunningComputer,
   updateRoutine,
   validateConnectedModelChoice,
-  verifyMcpInstall,
 } from "@tangow/adapters";
 import type { Auth } from "@tangow/auth";
 import type {
@@ -102,6 +100,7 @@ import type {
 } from "@tangow/contracts";
 import {
   appContract,
+  botDisplayColor,
   IntegrationProviderIdSchema,
   ModelCategorySchema,
   OPENAI_COMPATIBLE_PROVIDER_ID,
@@ -111,7 +110,6 @@ import {
 import {
   ACTIVE_RUN_STATUSES,
   AttachmentValidationError,
-  containsSecret,
   expandSkillReferencesInPrompt,
   groupLeadBotId,
   hasMixedOneShotSchedule,
@@ -214,7 +212,6 @@ import {
   serializeSpaceDecisionConfig,
 } from "./decision-provider-config.js";
 import { addDeclaredMcp, declaresSecretAddress, getDeclaredMcp } from "./declared-mcp.js";
-import { searchIntegrationCatalog } from "./integration-catalog.js";
 import type { LinkPreviewApiDeps } from "./link-preview.js";
 import { previewLinkForComposer, removeMessageLinkPreview } from "./link-preview.js";
 import { buildMcpUpdateMaterial } from "./mcp-material.js";
@@ -250,6 +247,7 @@ import {
   forwardedThreadEvent,
   loadChain,
   loadEntryPage,
+  loadPeerPage,
   threadSessionId,
   withoutHiddenPeerRuns,
 } from "./thread-message-pages.js";
@@ -361,28 +359,6 @@ function shouldRestoreLocalAfterRemoteRevokeFailure(error: unknown): boolean {
   // Pre-delete list/network failures never reached DELETE — always keep retry state.
   // Post-delete timeouts stay ambiguous and leave the row revoked.
   return isRemoteRevokePreDeleteFailure(error) || !isAmbiguousRemoteRevokeFailure(error);
-}
-
-/**
- * Concrete account ids still referenced by active local rows. When any row still
- * only has the provider slug (or no ref), orphan cleanup must not run — a sibling
- * may have created its remote account before persisting the concrete id.
- */
-function concreteKeepAccountIds(
-  refs: Array<string | null | undefined>,
-  provider: string,
-): { keepIds: string[]; canRevokeUnreferenced: boolean } {
-  const keepIds: string[] = [];
-  let canRevokeUnreferenced = true;
-  for (const ref of refs) {
-    const value = ref?.trim();
-    if (!value || value === provider) {
-      canRevokeUnreferenced = false;
-      continue;
-    }
-    keepIds.push(value);
-  }
-  return { keepIds, canRevokeUnreferenced };
 }
 
 async function lockProviderConnectionScope(
@@ -507,7 +483,7 @@ export interface RouterDeps {
   composio?: ComposioProvider;
   mcpOAuth?: McpOAuthBroker;
   connectors: ConnectorRegistry;
-  remoteConnectors?: RemoteConnectorDependencies;
+  remoteConnectors?: RemoteTransportDependencies;
   artifacts: ArtifactStore;
   /** Test seams of the link preview reader. */
   linkPreview?: LinkPreviewApiDeps["linkPreview"];
@@ -530,7 +506,6 @@ export interface RouterDeps {
     updaterUrl?: string;
     updaterToken?: string;
     imageTag?: string;
-    integrationsCatalogUrl?: string;
     mcpStdioEnabled?: boolean;
     mcpStdioAllowedCommands?: string[];
   };
@@ -592,9 +567,11 @@ function mapSpaceLifecycleError(error: unknown): unknown {
   return error;
 }
 
-export function createRouter(deps: RouterDeps) {
+type RouterContext = { actor: Actor | null; signal?: AbortSignal };
+
+export function createRouter(deps: RouterDeps): Router<typeof appContract, RouterContext> {
   const os = implement(appContract)
-    .$context<{ actor: Actor | null; signal?: AbortSignal }>()
+    .$context<RouterContext>()
     .use(async ({ next }) => {
       try {
         return await next();
@@ -1444,6 +1421,7 @@ export function createRouter(deps: RouterDeps) {
             notifyOnFinish: input.notifyOnFinish,
             color: input.color,
             shapeSeed: input.shapeSeed,
+            avatarCharacter: input.avatarCharacter,
             pinned: input.pinned,
             memoryScope: input.memoryScope,
             sectionId: input.sectionId,
@@ -1746,6 +1724,13 @@ export function createRouter(deps: RouterDeps) {
         const target = await resolveThreadTarget(deps.prisma, context.actor, input);
         const sessionId = await threadSessionId(deps.prisma, target.threadId);
         return loadEntryPage(deps, { threadId: target.threadId, sessionId }, input);
+      }),
+      peerMessages: authed.threads.peerMessages.handler(async ({ context, input }) => {
+        const target = await resolveThreadTarget(deps.prisma, context.actor, {
+          botId: input.botId,
+        });
+        const sessionId = await threadSessionId(deps.prisma, target.threadId);
+        return loadPeerPage(deps.prisma, { threadId: target.threadId, sessionId }, input);
       }),
       subscribe: authed.threads.subscribe.handler(async function* ({ context, input }) {
         const target = await resolveThreadTarget(deps.prisma, context.actor, input);
@@ -3159,11 +3144,15 @@ export function createRouter(deps: RouterDeps) {
     capabilities: {
       list: authed.capabilities.list.handler(async ({ context }) => {
         const rows = await deps.prisma.capabilityInstall.findMany({
-          where: { spaceId: context.actor.spaceId, userId: context.actor.userId },
+          where: {
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+            kind: { not: "mcp" },
+          },
         });
         return rows.map((row) => ({
           id: row.id,
-          kind: row.kind as "skill" | "plugin" | "mcp" | "api" | "connection",
+          kind: row.kind as "skill" | "plugin" | "connection",
           name: row.name,
           source: row.source,
           version: row.version,
@@ -3173,118 +3162,16 @@ export function createRouter(deps: RouterDeps) {
           createdAt: row.createdAt.toISOString(),
         }));
       }),
-      catalogSearch: authed.capabilities.catalogSearch.handler(async ({ context, input }) => {
-        const baseUrl =
-          deps.env.integrationsCatalogUrl ??
-          (input.usePublicCatalog ? "https://integrations.sh" : undefined);
-        if (!baseUrl) return { enabled: false, results: [] };
-        try {
-          const results = await searchIntegrationCatalog({
-            baseUrl,
-            query: input.query,
-            signal: context.signal ?? new AbortController().signal,
-            fetch: deps.remoteConnectors?.fetch,
-          });
-          return { enabled: true, results };
-        } catch (error) {
-          throw new ORPCError("BAD_GATEWAY", {
-            message: error instanceof Error ? error.message : "Integration catalog search failed",
-          });
-        }
-      }),
       install: authed.capabilities.install.handler(async ({ context, input }) => {
-        let source = input.source.trim();
-        let config = input.config;
-        const credential = input.credential?.trim() || undefined;
-        if (
-          credential &&
-          credential.length >= 8 &&
-          (source.includes(credential) || containsSecret(config, [credential]))
-        ) {
-          throw new ORPCError("BAD_REQUEST", {
-            message: "Put credentials only in the encrypted credential field",
-          });
-        }
+        const source = input.source.trim();
+        const config = input.config;
         if (JSON.stringify(config).length > 2_000_000) {
           throw new ORPCError("BAD_REQUEST", { message: "Capability configuration is too large" });
         }
-        if (
-          credential &&
-          input.kind !== "mcp" &&
-          input.kind !== "api" &&
-          input.kind !== "graphql"
-        ) {
-          throw new ORPCError("BAD_REQUEST", {
-            message: "Credentials are only accepted for MCP, API, and GraphQL tool sources",
-          });
-        }
-        try {
-          if (input.kind === "mcp") {
-            if (config.preset === "treg") {
-              source = "https://treg.to/mcp/";
-              config = { ...config, preset: "treg", auth: { type: "bearer" } };
-            }
-            const verified = await verifyMcpInstall({
-              source,
-              config,
-              credential,
-              signal: context.signal,
-              remote: deps.remoteConnectors,
-            });
-            config = verified.config;
-          }
-          if (input.kind === "api") {
-            const prepared = await prepareApiInstall({
-              source,
-              config,
-              credential,
-              signal: context.signal,
-              remote: deps.remoteConnectors,
-            });
-            source = prepared.source;
-            config = prepared.config;
-          }
-          if (input.kind === "graphql") {
-            const prepared = await prepareGraphqlInstall({
-              source,
-              config,
-              credential,
-              signal: context.signal,
-              remote: deps.remoteConnectors,
-            });
-            source = prepared.source;
-            config = prepared.config;
-          }
-        } catch (error) {
-          const message = sanitizeComposioError(error);
-          throw new ORPCError("BAD_REQUEST", {
-            message: credential ? message.split(credential).join("[redacted]") : message,
-          });
-        }
-        const stored = credential
-          ? await deps.secrets.put(credential, {
-              operationId: "capabilities.install",
-              traceId: "capabilities.install",
-              spaceId: context.actor.spaceId,
-              userId: context.actor.userId,
-              signal: context.signal ?? new AbortController().signal,
-            })
-          : undefined;
         const digest = `sha256:${createHash("sha256")
           .update(JSON.stringify({ kind: input.kind, source, config }))
           .digest("hex")}`;
         const row = await deps.prisma.$transaction(async (tx) => {
-          if (stored) {
-            await tx.secret.create({
-              data: {
-                id: stored.id,
-                spaceId: context.actor.spaceId,
-                userId: context.actor.userId,
-                kind: "connector",
-                ciphertext: stored.ciphertext,
-              },
-            });
-          }
           return tx.capabilityInstall.create({
             data: {
               spaceId: context.actor.spaceId,
@@ -3292,7 +3179,6 @@ export function createRouter(deps: RouterDeps) {
               kind: input.kind,
               name: input.name.trim(),
               source,
-              secretId: stored?.id,
               config: config as Prisma.InputJsonValue,
               digest,
               version: "1.0.0",
@@ -3301,7 +3187,7 @@ export function createRouter(deps: RouterDeps) {
         });
         return {
           id: row.id,
-          kind: row.kind as "skill" | "plugin" | "mcp" | "api" | "connection",
+          kind: row.kind as "skill" | "plugin" | "connection",
           name: row.name,
           source: row.source,
           version: row.version,
@@ -3370,7 +3256,25 @@ export function createRouter(deps: RouterDeps) {
           );
         }),
         create: authed.mcp.servers.create.handler(async ({ context, input }) => {
-          const row = await createMcpServer(deps, context.actor, input);
+          const row = await createMcpServer(deps, context.actor, input, async (tx, server) => {
+            for (const botId of new Set(input.botIds ?? [])) {
+              const bot = await tx.bot.findFirst({
+                where: { id: botId, spaceId: context.actor.spaceId, userId: context.actor.userId },
+                select: { id: true },
+              });
+              if (!bot) throw new IsolationError();
+              await tx.botMcpServer.create({
+                data: {
+                  spaceId: context.actor.spaceId,
+                  userId: context.actor.userId,
+                  botId,
+                  serverId: server.id,
+                  allowAllTools: true,
+                  allowedTools: [],
+                },
+              });
+            }
+          });
           return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
         }),
         update: authed.mcp.servers.update.handler(async ({ context, input }) => {
@@ -3739,6 +3643,7 @@ export function createRouter(deps: RouterDeps) {
           : [];
         return {
           canConfigure,
+          mcpStdioEnabled: Boolean(deps.env.mcpStdioEnabled),
           needsSetup: canConfigure && !providers.some((provider) => provider.configured),
           webUrl: new URL("/integrations/setup", deps.env.webOrigin).toString(),
           providers,
@@ -3814,8 +3719,7 @@ export function createRouter(deps: RouterDeps) {
       }),
       begin: authed.connections.begin.handler(async ({ context, input }) => {
         const connector =
-          deps.integrationSettings &&
-          (input.connectorId === "composio" || input.connectorId === "pipedream")
+          deps.integrationSettings && input.connectorId === "composio"
             ? await deps.integrationSettings.resolve(input.connectorId)
             : deps.connectors.managed(input.connectorId);
         if (!connector) {
@@ -3918,56 +3822,6 @@ export function createRouter(deps: RouterDeps) {
                   await connector.revoke(revokeRef, adapterContext).catch(() => undefined);
                 }
               }
-            } else if (state === input.provider) {
-              // Pipedream begin only returns the app slug. Drop remotes that no
-              // remaining local row still references so a lost race cannot leave
-              // an orphan authorization, without wiping sibling accounts.
-              const revokeUnreferenced = (
-                connector as {
-                  revokeUnreferencedAccounts?: (
-                    slug: string,
-                    keepAccountIds: string[],
-                    context: ReturnType<typeof connectionContext>,
-                  ) => Promise<void>;
-                }
-              ).revokeUnreferencedAccounts;
-              if (revokeUnreferenced) {
-                // Hold the provider lock across the keep-id snapshot and remote
-                // cleanup so a concurrent complete cannot persist a providerRef
-                // that this cleanup then deletes as unreferenced.
-                await deps.prisma
-                  .$transaction(
-                    async (tx) => {
-                      await lockProviderConnectionScope(
-                        tx,
-                        context.actor,
-                        input.connectorId,
-                        input.provider,
-                      );
-                      const kept = await tx.connection.findMany({
-                        where: {
-                          spaceId: context.actor.spaceId,
-                          userId: context.actor.userId,
-                          connectorId: input.connectorId,
-                          provider: input.provider,
-                          status: { in: ["connected", "pending", "error"] },
-                        },
-                        select: { providerRef: true },
-                      });
-                      const { keepIds, canRevokeUnreferenced } = concreteKeepAccountIds(
-                        kept.map((entry) => entry.providerRef),
-                        input.provider,
-                      );
-                      // Skip while any sibling still lacks a concrete account id —
-                      // otherwise slug-only pending refs are dropped from keepIds and
-                      // revokeUnreferencedAccounts deletes that sibling's remote auth.
-                      if (!canRevokeUnreferenced) return;
-                      await revokeUnreferenced(input.provider, keepIds, adapterContext);
-                    },
-                    { timeout: 60_000 },
-                  )
-                  .catch(() => undefined);
-              }
             }
             throw new IsolationError();
           }
@@ -4003,10 +3857,8 @@ export function createRouter(deps: RouterDeps) {
         }
         let row = existing;
         if (existing.status !== "connected") {
-          // Hold the provider lock across remote completion, account-id resolution,
-          // providerRef persistence, and any overlapping revokeUnreferenced cleanup
-          // so a concurrent begin-loss cleanup cannot delete the account we are about
-          // to persist.
+          // Hold the provider lock across remote completion, account-id resolution
+          // and providerRef persistence so a concurrent revoke cannot race them.
           row = await deps.prisma.$transaction(
             async (tx) => {
               await lockProviderConnectionScope(
@@ -4026,8 +3878,7 @@ export function createRouter(deps: RouterDeps) {
               if (current.status === "connected") return current;
               if (current.status === "revoked") {
                 // Authorization URLs from a revoke-win begin can still finish
-                // remotely. Cancel leftover Composio request ids / drop Pipedream
-                // remotes no active local row still references before rejecting.
+                // remotely. Cancel leftover Composio request ids before rejecting.
                 const revokedContext = connectionContext(
                   context.actor,
                   "connections.complete",
@@ -4086,35 +3937,6 @@ export function createRouter(deps: RouterDeps) {
                       }
                       if (revokeRef) {
                         await connector.revoke(revokeRef, revokedContext);
-                      }
-                    }
-                  } else {
-                    const revokeUnreferenced = (
-                      connector as {
-                        revokeUnreferencedAccounts?: (
-                          slug: string,
-                          keepAccountIds: string[],
-                          context: typeof revokedContext,
-                        ) => Promise<void>;
-                      }
-                    ).revokeUnreferencedAccounts;
-                    if (revokeUnreferenced) {
-                      const kept = await tx.connection.findMany({
-                        where: {
-                          spaceId: context.actor.spaceId,
-                          userId: context.actor.userId,
-                          connectorId: existing.connectorId,
-                          provider: existing.provider,
-                          status: { in: ["connected", "pending", "error"] },
-                        },
-                        select: { providerRef: true },
-                      });
-                      const { keepIds, canRevokeUnreferenced } = concreteKeepAccountIds(
-                        kept.map((entry) => entry.providerRef),
-                        existing.provider,
-                      );
-                      if (canRevokeUnreferenced) {
-                        await revokeUnreferenced(existing.provider, keepIds, revokedContext);
                       }
                     }
                   }
@@ -4384,7 +4206,7 @@ export function createRouter(deps: RouterDeps) {
 
             // Slug-only remote delete is provider-wide. Run it before commit while
             // still holding the begin/revoke lock so a new authorization cannot be
-            // created and then wiped by Pipedream's slug-scoped DELETE.
+            // created and then wiped by the slug-scoped DELETE.
             if (!accountSpecific) {
               const connector = deps.connectors.managed(row.connectorId);
               if (!connector) {
@@ -5323,8 +5145,9 @@ async function spaceNavigationDto(
           spaceId: bot.spaceId,
           name: bot.name,
           title: bot.title,
-          color: bot.color,
+          color: botDisplayColor(bot),
           shapeSeed: bot.shapeSeed,
+          avatarCharacter: bot.avatarCharacter,
           notifyOnFinish: bot.notifyOnFinish,
           pinned: bot.pinned,
           sectionId: bot.sectionId,

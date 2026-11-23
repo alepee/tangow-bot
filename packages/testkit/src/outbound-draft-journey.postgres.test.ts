@@ -7,7 +7,7 @@ import { latestCard } from "./index.js";
 import type { ModelEmulatorRequest, ModelEmulatorStep } from "./model-emulator.js";
 import { prepares } from "./model-emulator.js";
 import type { JourneyFixture } from "./pi-journey.test-support.js";
-import { DONE, journey, reply, rpc, WAITING } from "./pi-journey.test-support.js";
+import { DONE, journey, reply, rpc } from "./pi-journey.test-support.js";
 
 /** The tools a worker offers the model, by their own names: the controller's carry an MCP prefix. */
 const offeredTools = (request: ModelEmulatorRequest) =>
@@ -37,13 +37,13 @@ describe.skipIf(!databaseAvailable)("offline product journey", () => {
     });
     const proposeMessage: ModelEmulatorStep = {
       expect(request) {
-        expect(offeredTools(request)).toContain("acme_deliver_message");
+        expect(offeredTools(request)).toContain("mcp__acme__acme_deliver_message");
         expect(JSON.stringify(request.messages)).not.toContain(RESUME_NOTE);
       },
       response: {
         type: "tool",
         id: "journey-message",
-        name: "acme_deliver_message",
+        name: "mcp__acme__acme_deliver_message",
         arguments: message,
       },
     };
@@ -64,7 +64,6 @@ describe.skipIf(!databaseAvailable)("offline product journey", () => {
         [
           proposeMessage,
           prepareMessage,
-          WAITING,
           {
             expect(request) {
               const seen = JSON.stringify(request.messages);
@@ -104,7 +103,7 @@ describe.skipIf(!databaseAvailable)("offline product journey", () => {
           await sent.settled("completed");
           expect(acme.delivered).toEqual([
             {
-              tool: "acme_deliver_message",
+              tool: "mcp__acme__acme_deliver_message",
               args: {
                 recipient: "ana@example.test",
                 copies: ["bo@example.test", "cy@example.test"],
@@ -116,7 +115,7 @@ describe.skipIf(!databaseAvailable)("offline product journey", () => {
           ]);
           // The run also records its message_user call, so the message's row is read by its tool.
           const effects = await fixture.prisma.externalEffect.findMany({
-            where: { runId: sent.runId, kind: "acme_deliver_message" },
+            where: { runId: sent.runId, kind: "mcp__acme__acme_deliver_message" },
           });
           expect(effects).toMatchObject([
             { status: "completed", draft: { state: "sent", proposed: "Draft from the bot." } },
@@ -133,23 +132,23 @@ describe.skipIf(!databaseAvailable)("offline product journey", () => {
         [
           {
             expect(request) {
-              expect(offeredTools(request)).toContain("acme_find_room");
+              expect(offeredTools(request)).toContain("mcp__acme__acme_find_room");
             },
             response: {
               type: "tool",
               id: "journey-room-search",
-              name: "acme_find_room",
+              name: "mcp__acme__acme_find_room",
               arguments: { query: "launch" },
             },
           },
           {
             expect(request) {
-              expect(offeredTools(request)).toContain("acme_post_update");
+              expect(offeredTools(request)).toContain("mcp__acme__acme_post_update");
             },
             response: {
               type: "tool",
               id: "journey-update",
-              name: "acme_post_update",
+              name: "mcp__acme__acme_post_update",
               arguments: update,
             },
           },
@@ -173,7 +172,6 @@ describe.skipIf(!databaseAvailable)("offline product journey", () => {
               expect(recent.join("\n")).toContain("#launch");
             },
           },
-          WAITING,
           {
             expect(request) {
               expect(JSON.stringify(request.messages)).toContain("Edited by me.");
@@ -199,7 +197,7 @@ describe.skipIf(!databaseAvailable)("offline product journey", () => {
             { role: "to", address: "#launch" },
           ]);
           expect(acme.delivered).toEqual([
-            { tool: "acme_post_update", args: { ...update, text: "Edited by me." } },
+            { tool: "mcp__acme__acme_post_update", args: { ...update, text: "Edited by me." } },
           ]);
         },
         { remoteConnectors: acme.remote },
@@ -209,7 +207,7 @@ describe.skipIf(!databaseAvailable)("offline product journey", () => {
     it("asks the user to check the app when the answer was lost after it left, sending nothing more", async () => {
       const acme = acmeApp();
       await journey(
-        [proposeMessage, prepareMessage, WAITING],
+        [proposeMessage, prepareMessage],
         async (fixture) => {
           await acme.install(fixture.prisma, fixture);
           acme.failNext({ kind: "delivered_unanswered" });
@@ -239,7 +237,6 @@ describe.skipIf(!databaseAvailable)("offline product journey", () => {
         [
           proposeMessage,
           prepareMessage,
-          WAITING,
           {
             expect(request) {
               const seen = JSON.stringify(request.messages);
@@ -279,7 +276,6 @@ describe.skipIf(!databaseAvailable)("offline product journey", () => {
         [
           proposeMessage,
           prepareMessage,
-          WAITING,
           {
             expect(request) {
               const seen = JSON.stringify(request.messages);
@@ -311,7 +307,7 @@ describe.skipIf(!databaseAvailable)("offline product journey", () => {
 
           expect(acme.delivered).toEqual([]);
           const effect = await fixture.prisma.externalEffect.findFirstOrThrow({
-            where: { runId: sent.runId, kind: "acme_deliver_message" },
+            where: { runId: sent.runId, kind: "mcp__acme__acme_deliver_message" },
           });
           expect(effect).toMatchObject({
             status: "denied",
@@ -361,7 +357,6 @@ describe.skipIf(!databaseAvailable)("offline product journey", () => {
         [
           proposeMessage,
           prepareMessage,
-          WAITING,
           {
             expect(request) {
               expect(told(request)).toBe(1);
@@ -373,7 +368,6 @@ describe.skipIf(!databaseAvailable)("offline product journey", () => {
               arguments: { question: "Formal or casual?", options: ["Formal", "Casual"] },
             },
           },
-          WAITING,
           {
             expect(request) {
               expect(told(request)).toBe(1);
@@ -423,7 +417,6 @@ describe.skipIf(!databaseAvailable)("offline product journey", () => {
             arguments: { question: "Formal or casual?", options: ["Formal", "Casual"] },
           },
         },
-        WAITING,
         {
           expect(request) {
             expect(JSON.stringify(request.messages)).toContain("Casual");

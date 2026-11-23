@@ -1,4 +1,4 @@
-import type { AdapterContext } from "@tangow/adapter-kit";
+import type { AgentRunRequest } from "@tangow/adapter-kit";
 import type { BotSecretDestination } from "@tangow/contracts";
 import type { PrismaClient } from "@tangow/db";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -7,12 +7,13 @@ import { redactToolArgsForReview } from "./auto-review.js";
 import { requestWithBotSecret } from "./bot-secrets.js";
 import { sanitizeComposioError } from "./composio-connector.js";
 import { redactConnectorPayload, sanitizeConnectorError } from "./connector-safety.js";
+import { createRunExecutor } from "./executor.js";
+import { FakeWebProvider } from "./fake-web.js";
 import { McpConnector } from "./mcp-connector.js";
 import type { OAuthMaterial } from "./mcp-oauth.js";
 import { oauthMaterialSecrets } from "./mcp-oauth.js";
-import { PipedreamConnector } from "./pipedream-connector.js";
-import * as remoteMcp from "./remote-mcp.js";
 import { EncryptedSecretStore } from "./secrets.js";
+import { recordingSessionLog } from "./session-log/recording.test-support.js";
 
 /**
  * Offline conformance: bot secrets and connector OAuth material must never
@@ -229,76 +230,6 @@ describe("secrets model-visibility conformance", () => {
     });
   });
 
-  describe("Pipedream connector OAuth boundary", () => {
-    it("redacts access token and client secret from echoed tool results", async () => {
-      const accessToken = "pd-access-token-conformance";
-      const clientSecret = "pd-client-secret-conformance";
-      vi.spyOn(remoteMcp, "callRemoteMcpTool").mockResolvedValue({
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify({
-              access_token: accessToken,
-              client_secret: clientSecret,
-              ok: true,
-            }),
-          },
-        ],
-        isError: false,
-      });
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(async (input: string | URL | Request) => {
-          const url = String(input);
-          if (url.includes("/v1/oauth/token")) {
-            return Response.json({ access_token: accessToken, expires_in: 3_600 });
-          }
-          throw new Error(`Unexpected fetch ${url}`);
-        }),
-      );
-
-      const connector = new PipedreamConnector({
-        clientId: "pd-client-id",
-        clientSecret,
-        projectId: "pd-project",
-        environment: "development",
-        identitySecret: "pd-identity-secret",
-      });
-      const context = {
-        operationId: "conformance",
-        traceId: "conformance",
-        spaceId: "space-1",
-        userId: "user-1",
-        signal: new AbortController().signal,
-        connectedConnections: [
-          {
-            id: "c1",
-            connectorId: "pipedream",
-            externalId: "gmail",
-            displayName: "Gmail",
-          },
-        ],
-      } as AdapterContext;
-
-      const events = [];
-      for await (const event of connector.execute(
-        {
-          tool: "gmail.list",
-          args: {},
-          executionId: "exec-1",
-          route: { connectorId: "pipedream", resourceId: "gmail", toolName: "gmail.list" },
-        },
-        context,
-      )) {
-        events.push(event);
-      }
-
-      expect(events).toHaveLength(1);
-      expect(events[0]?.type).toBe("result");
-      assertNoLeak(events, [accessToken, clientSecret]);
-    });
-  });
-
   describe("MCP connector OAuth boundary", () => {
     it("redacts OAuth tokens and client secrets echoed by tool results", async () => {
       const material: OAuthMaterial = {
@@ -423,6 +354,109 @@ describe("secrets model-visibility conformance", () => {
       expect(events[0]).toMatchObject({ type: "result" });
       assertNoLeak(events, [OAUTH_ACCESS, OAUTH_REFRESH, OAUTH_CLIENT_SECRET, "mcp-static-token"]);
       await connector.close();
+    });
+  });
+
+  describe("executor tool results", () => {
+    it("masks a run secret that a tool result echoes before the runtime gets it", async () => {
+      const run = {
+        id: "run-1",
+        botId: "bot-1",
+        threadId: "thread-1",
+        taskId: "task-1",
+        spaceId: "space-1",
+        userId: "user-1",
+        status: "queued",
+        trigger: "user",
+        leaseFence: 0,
+      };
+      const log = recordingSessionLog();
+      const prisma = {
+        sessionEntry: log.sessionEntry,
+        $queryRaw: log.queryRaw,
+        $transaction: async (work: (tx: unknown) => unknown) => work(prisma),
+        run: {
+          findMany: async () => [],
+          findUnique: async () => run,
+          findUniqueOrThrow: async () => run,
+          updateMany: async ({ data }: { data: Record<string, unknown> }) => {
+            Object.assign(run, data);
+            return { count: 1 };
+          },
+        },
+        bot: {
+          findFirst: async () => ({ visibility: "private" }),
+          findUniqueOrThrow: async () => ({ id: run.botId, userId: run.userId, name: "Bot" }),
+          findMany: async () => [],
+        },
+        attempt: {
+          count: async () => 0,
+          create: async () => ({ id: "attempt-1" }),
+          update: async () => undefined,
+          updateMany: async () => ({ count: 1 }),
+        },
+        thread: { findUniqueOrThrow: async () => ({ id: run.threadId, groupId: null }) },
+        task: { findUniqueOrThrow: async () => ({ id: run.taskId, prompt: "Read the page" }) },
+        connection: { findMany: async () => [] },
+        spaceMember: { findUnique: async () => ({ modelAuto: false }) },
+        spaceModelCategory: { findMany: async () => [] },
+        spaceModelPreference: { findFirst: async () => null },
+        userModelCredential: { findFirst: async () => null },
+        deploymentSettings: {
+          findUnique: async () => ({
+            defaultModelProvider: "scripted",
+            defaultModelId: "scripted",
+          }),
+        },
+        taughtSkill: { findMany: async () => [], findFirst: async () => null },
+        agentSecret: { findMany: async () => [] },
+        agentSkill: { findMany: async () => [] },
+        skillSetting: { findMany: async () => [] },
+        botSkill: { findMany: async () => [] },
+        scratchpadItem: { findMany: async () => [] },
+        actionApprovalRule: { findMany: async () => [] },
+        actionAutoReviewPreference: { findUnique: async () => null },
+        externalEffect: {
+          findMany: async () => [],
+          findUnique: async () => null,
+          create: async ({ data }: { data: object }) => ({ ...data, id: "effect-1" }),
+          update: async () => undefined,
+          updateMany: async () => ({ count: 1 }),
+        },
+      };
+      const web = new FakeWebProvider();
+      web.fetchResult = {
+        url: "https://dashboard.example.test/keys",
+        title: "API keys",
+        text: `Your key: ${BOT_SECRET}`,
+        truncated: false,
+      };
+      let result: unknown;
+      const executor = createRunExecutor({
+        sessionLog: log.sessionLog,
+        prisma,
+        runtime: {
+          describe: () => ({ capabilities: { scripted: false } }),
+          async *run(request: AgentRunRequest) {
+            result = await request.executeTool!("web_fetch", { url: web.fetchResult.url }, "c1");
+            yield { type: "done" as const, text: "Done" };
+          },
+        },
+        web,
+        memory: { read: async () => ({ documents: [] }) },
+        memoryProviders: { resolve: async () => null },
+        events: {
+          append: async () => undefined,
+          finalizeRun: async () => ({ continuationRunId: null }),
+        },
+        jobs: { enqueue: async () => undefined },
+        secrets: [BOT_SECRET],
+      } as unknown as Parameters<typeof createRunExecutor>[0]);
+
+      await executor.continueRun(run.id, "worker-1");
+
+      assertNoLeak(result, [BOT_SECRET]);
+      expect(result).toMatchObject({ title: "API keys", text: "Your key: [redacted]" });
     });
   });
 

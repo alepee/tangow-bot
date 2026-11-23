@@ -2,7 +2,8 @@
 
 The `./tangow` operator CLI runs **directly on the server**, from a Tangow source checkout. It updates the application
 and the computer builds for the configured provider. Run `./tangow` or `pnpm tangow`; it operates the source Compose stack. Coding agents can use the project [Tangow skill](../.agents/skills/tangow/SKILL.md)
-for lifecycle operations and recovery.
+for lifecycle operations and recovery. A deployment installed under the Rakazo name first follows
+[Migrate a Rakazo deployment to Tangow](migrate-from-rakazo.md).
 
 ```bash
 ./tangow status

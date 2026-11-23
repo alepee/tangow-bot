@@ -66,16 +66,14 @@ describe("onboarding connection suggestions", () => {
   });
   it("uses the available connector and omits unavailable apps", async () => {
     const { deps, actor } = fixture([
-      { connectorId: "pipedream", slug: "slack", name: "Slack", connected: false, logo: null },
+      { connectorId: "mcp", slug: "slack", name: "Slack", connected: false, logo: null },
     ]);
     await chooseFocus(deps, actor, "bot", "day");
     expect(
       posted
         .flatMap((message) => message.blocks)
         .filter((block) => (block as { kind: string }).kind === "app_connect"),
-    ).toEqual([
-      expect.objectContaining({ connectorId: "pipedream", provider: "slack", name: "Slack" }),
-    ]);
+    ).toEqual([expect.objectContaining({ connectorId: "mcp", provider: "slack", name: "Slack" })]);
     expect(logged).toEqual([
       { type: "card.answered", botId: "bot", payload: { target: "choice", answerId: "day" } },
     ]);
@@ -90,7 +88,7 @@ it("logs a focus card put away without a choice as dismissed", async () => {
   ]);
 });
 
-const slackCards = ["composio", "pipedream"].map((connectorId) => ({
+const slackCards = ["composio", "mcp"].map((connectorId) => ({
   kind: "app_connect",
   connectorId,
   provider: "slack",
@@ -103,12 +101,12 @@ const slackCards = ["composio", "pipedream"].map((connectorId) => ({
 it("marks only the authorized connector when provider slugs collide", async () => {
   const { deps, actor, log } = fixture([]);
   log.cards = [{ id: "cards", payload: { blocks: slackCards } }] as never;
-  await markAppConnected(deps, actor, "bot", "slack", "pipedream");
+  await markAppConnected(deps, actor, "bot", "slack", "mcp");
   expect(logged).toEqual([
     {
       type: "card.answered",
       botId: "bot",
-      payload: { target: "cards", answerId: "pipedream:slack" },
+      payload: { target: "cards", answerId: "mcp:slack" },
     },
   ]);
   expect(deps.events.notify).toHaveBeenCalledWith("thread", 1);

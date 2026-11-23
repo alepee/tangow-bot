@@ -160,34 +160,20 @@ async function main() {
       await mkdir(impactDir, { recursive: true });
       process.env.E2E_IMPACT_DIR = impactDir;
     }
-    const [
-      { ComposioEmulator, EmailEmulator, PipedreamConnector, ThirdPartyConnectorEmulator },
-      { createApp },
-    ] = await Promise.all([import("@tangow/adapters"), import("../../../../apps/api/src/app.ts")]);
+    const [{ ComposioEmulator, EmailEmulator, ThirdPartyConnectorEmulator }, { createApp }] =
+      await Promise.all([import("@tangow/adapters"), import("../../../../apps/api/src/app.ts")]);
     const { serve } = await import("@hono/node-server");
     const thirdParties = new ThirdPartyConnectorEmulator();
-    const pipedream = new PipedreamConnector(
-      {
-        clientId: "fake-client-id",
-        clientSecret: "fake-client-secret",
-        projectId: "fake-project-id",
-        environment: "development",
-        identitySecret: process.env.ENCRYPTION_KEY,
-      },
-      { fetch: thirdParties.fetch, resolveHostname: thirdParties.resolveHostname },
-    );
     const email = new EmailEmulator();
     const handles = await createApp({
       databaseUrl,
       prisma: undefined,
       composio: new ComposioEmulator(),
-      pipedream,
       email,
       remoteConnectors: {
         fetch: thirdParties.fetch,
         resolveHostname: thirdParties.resolveHostname,
       },
-      integrationsCatalogUrl: "https://catalog.example.test/",
     });
     let activeRequests = 0;
     const requestWaiters = new Set<() => void>();

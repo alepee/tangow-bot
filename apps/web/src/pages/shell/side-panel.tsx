@@ -319,13 +319,7 @@ export function ComputerOverlay({
           <div className="app-no-drag flex min-w-0 flex-1 items-center gap-3">
             {/* The overlay covers the shell header, so it reserves room for the window controls itself. */}
             {desktopBridge() ? <WindowChrome /> : null}
-            <BotAvatar
-              color={bot.color}
-              identity={bot.id}
-              shapeSeed={bot.shapeSeed}
-              size={28}
-              status={bot.status}
-            />
+            <BotAvatar character={bot.avatarCharacter} size={28} status={bot.status} />
             <div className="flex min-w-0 flex-1 flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-3">
               {recordingSkill ? (
                 <TeachRecordingChrome

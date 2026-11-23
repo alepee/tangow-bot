@@ -63,6 +63,7 @@ const BOT: Bot = {
     : "You watch the shared inbox for the team and surface only what needs a person. You never reply to a sender yourself.\n\nEvery weekday morning, group what arrived overnight into three buckets: needs a decision, needs a reply, can wait.",
   color: "#3BC9A0",
   shapeSeed: null,
+  avatarCharacter: "scout",
   notifyOnFinish: true,
   pinned: false,
   sectionId: null,

@@ -1,11 +1,9 @@
-import type { SearchHit } from "@tangow/contracts";
 import { groupBotsForSidebar } from "@tangow/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { NavigateFunction } from "react-router-dom";
 import { readActivityMode, writeActivityMode } from "../../lib/activity-mode";
 import { readBotsSidebarCollapsed, writeBotsSidebarCollapsed } from "../../lib/bots-sidebar-pref";
-import { rpc, selectedSpaceId, selectSpace } from "../../lib/rpc";
-import { threadJumpLocation } from "./layout";
+import { selectedSpaceId, selectSpace } from "../../lib/rpc";
 import type { Roster } from "./use-roster";
 
 function collapsedSidebarSectionsStorageKey(userId: string | null | undefined): string | null {
@@ -29,7 +27,7 @@ function readCollapsedSidebarSections(userId: string | null | undefined): Set<st
 
 /**
  * The sidebar's own state: its sections across spaces, which are collapsed,
- * whether it is hidden, the activity list toggle, and the space search.
+ * whether it is hidden, and the activity list toggle.
  */
 export function useSidebarState({
   userId,
@@ -55,9 +53,6 @@ export function useSidebarState({
   useEffect(() => {
     setBotsSidebarCollapsed(readBotsSidebarCollapsed(userId));
   }, [userId]);
-  const [query, setQuery] = useState("");
-  const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
   const [activityMode, setActivityMode] = useState(readActivityMode);
   const toggleActivityMode = useCallback(() => {
     setActivityMode((on) => {
@@ -68,7 +63,6 @@ export function useSidebarState({
   }, []);
 
   const sidebarGroups = useMemo(() => {
-    const needle = query.toLowerCase();
     const sidebarSpaces =
       spaces.length > 0
         ? spaces.map((space) =>
@@ -90,16 +84,10 @@ export function useSidebarState({
           : [];
     const showSpaceNames = sidebarSpaces.length > 1;
     return sidebarSpaces.flatMap((space) => {
-      const visibleBots = space.bots.filter((bot) =>
-        `${bot.name} ${bot.title ?? ""} ${bot.preview ?? ""}`.toLowerCase().includes(needle),
-      );
-      const visibleGroups = space.groups.filter((group) =>
-        `${group.name} ${group.preview}`.toLowerCase().includes(needle),
-      );
       const sections = groupBotsForSidebar(
         [
-          ...visibleBots.map((chat) => ({ kind: "bot" as const, chat })),
-          ...visibleGroups.map((chat) => ({ kind: "group" as const, chat })),
+          ...space.bots.map((chat) => ({ kind: "bot" as const, chat })),
+          ...space.groups.map((chat) => ({ kind: "group" as const, chat })),
         ].map((item) => ({ ...item, pinned: item.chat.pinned, sectionId: item.chat.sectionId })),
         space.botSections,
       ).map((group, index) => ({
@@ -120,7 +108,6 @@ export function useSidebarState({
       if (sections.length > 0) return sections;
       // Keep empty spaces selectable; chat clicks are the only switch control.
       if (!showSpaceNames) return [];
-      if (needle && (space.bots.length > 0 || space.groups.length > 0)) return [];
       return [
         {
           key: `space:${space.id}:empty`,
@@ -135,7 +122,7 @@ export function useSidebarState({
         },
       ];
     });
-  }, [bootstrapMe, botSections, bots, groups, spaces, query]);
+  }, [bootstrapMe, botSections, bots, groups, spaces]);
 
   const openSpaceChat = useCallback(
     (spaceId: string, path: string) => {
@@ -184,42 +171,6 @@ export function useSidebarState({
     },
     [userId],
   );
-  const spaceQuery = query.trim();
-  const showSpaceSearch = spaceQuery.length > 0;
-
-  useEffect(() => {
-    if (!showSpaceSearch) {
-      setSearchHits([]);
-      setSearchLoading(false);
-      return;
-    }
-    const abort = new AbortController();
-    const timer = window.setTimeout(() => {
-      setSearchLoading(true);
-      void rpc.search
-        .query({ q: spaceQuery })
-        .then((result) => {
-          if (!abort.signal.aborted) setSearchHits(result.hits);
-        })
-        .catch(() => {
-          if (!abort.signal.aborted) setSearchHits([]);
-        })
-        .finally(() => {
-          if (!abort.signal.aborted) setSearchLoading(false);
-        });
-    }, 200);
-    return () => {
-      abort.abort();
-      window.clearTimeout(timer);
-    };
-  }, [showSpaceSearch, spaceQuery]);
-
-  async function jumpToSearchHit(hit: SearchHit) {
-    setQuery("");
-    setSearchHits([]);
-    navigate(threadJumpLocation(hit));
-  }
-
   function setBotsSidebarCollapsedPref(collapsed: boolean) {
     setBotsSidebarCollapsed(collapsed);
     writeBotsSidebarCollapsed(userId, collapsed);
@@ -237,12 +188,6 @@ export function useSidebarState({
     setDraggedBotId,
     activityMode,
     toggleActivityMode,
-    query,
-    setQuery,
-    showSpaceSearch,
-    searchHits,
-    searchLoading,
-    jumpToSearchHit,
     sidebarGroups,
     openSpaceChat,
   };

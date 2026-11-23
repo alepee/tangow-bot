@@ -79,6 +79,18 @@ describe("keyless HTTP web provider", () => {
     expect(extracted.text).toContain("just text here");
   });
 
+  it("returns the challenge instructions as a tool error when DuckDuckGo blocks the search", async () => {
+    const html = `<form id="challenge-form" action="//duckduckgo.com/anomaly.js" method="POST"></form>
+      <div class="anomaly-modal__title">Unfortunately, bots use DuckDuckGo too.</div>`;
+    const provider = new KeylessHttpWebProvider({
+      fetch: async () =>
+        new Response(html, { status: 202, headers: { "content-type": "text/html" } }),
+      resolveHostname: publicResolver,
+    });
+    const result = await webSearchFromTool(provider, ctx, { query: "alpha" });
+    expect(result).toEqual({ error: expect.stringContaining("request_takeover") });
+  });
+
   it("parses HTML search results with a cap", () => {
     const html = Array.from({ length: 12 }, (_, i) => {
       return `<div class="result"><a class="result__a" href="https://example.test/${i}">T${i}</a><div class="result__snippet">S${i}</div></div>`;

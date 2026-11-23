@@ -1,5 +1,5 @@
 import type { ConnectorProvider } from "@tangow/adapter-kit";
-import { EncryptedSecretStore, InstalledConnectorProvider } from "@tangow/adapters";
+import { EncryptedSecretStore, McpConnector } from "@tangow/adapters";
 import type { PrismaClient } from "@tangow/db";
 
 const TOOLS = [
@@ -46,7 +46,7 @@ export type AcmeFault = { kind: "refuse"; error: string } | { kind: "delivered_u
 export function acmeApp() {
   const delivered: Array<{ tool: string; args: Record<string, unknown> }> = [];
   let fault: AcmeFault | undefined;
-  let installed: InstalledConnectorProvider | undefined;
+  let installed: McpConnector | undefined;
   const call = async (tool: string, args: Record<string, unknown>) => {
     if (tool === "acme_find_room") {
       return {
@@ -63,7 +63,7 @@ export function acmeApp() {
       };
     }
     await app.beforeDeliver?.();
-    delivered.push({ tool, args });
+    delivered.push({ tool: `mcp__acme__${tool}`, args });
     if (next?.kind === "delivered_unanswered")
       return { isError: true, content: [{ type: "text", text: "Timeout" }] };
     return { content: [{ type: "text", text: "Delivered." }] };
@@ -72,7 +72,9 @@ export function acmeApp() {
     resolveHostname: async () => [{ address: "8.8.8.8", family: 4 as const }],
     fetch: (async (_input: string | URL | Request, init?: RequestInit) => {
       const body =
-        init?.body instanceof Uint8Array ? new TextDecoder().decode(init.body) : init?.body;
+        init?.body instanceof Uint8Array || init?.body instanceof ArrayBuffer
+          ? new TextDecoder().decode(init.body)
+          : init?.body;
       const request = JSON.parse(typeof body === "string" ? body : "{}") as {
         id?: unknown;
         method?: string;
@@ -102,7 +104,7 @@ export function acmeApp() {
     },
     connector: {
       describe: () => ({
-        id: "installed",
+        id: "mcp",
         contractVersion: "1",
         adapterVersion: "1",
         capabilities: { discover: true, oauth: false, secretsBrokered: true },
@@ -116,19 +118,24 @@ export function acmeApp() {
       { spaceId, userId }: { spaceId: string; userId: string },
       asks: AcmeTool[] = ["acme_deliver_message", "acme_post_update"],
     ) {
-      installed ??= new InstalledConnectorProvider(
+      installed ??= new McpConnector(
         prisma,
         new EncryptedSecretStore("acme-fixture-encryption-key"),
-        remote,
+        { network: remote },
       );
-      await prisma.capabilityInstall.create({
+      const server = await prisma.mcpServer.create({
         data: {
           spaceId,
           userId,
-          kind: "mcp",
+          slug: "acme",
+          transport: "streamable_http",
           name: "Acme",
-          source: "https://acme.example.test/mcp",
+          endpoint: "https://acme.example.test/mcp",
         },
+      });
+      const bots = await prisma.bot.findMany({ where: { spaceId, userId, archivedAt: null } });
+      await prisma.botMcpServer.createMany({
+        data: bots.map((bot) => ({ spaceId, userId, botId: bot.id, serverId: server.id })),
       });
       for (const tool of asks) {
         await prisma.actionApprovalRule.create({
@@ -137,7 +144,7 @@ export function acmeApp() {
             createdByUserId: userId,
             effect: "require_approval",
             matchKind: "tool",
-            matchValue: tool,
+            matchValue: `mcp__acme__${tool}`,
           },
         });
       }

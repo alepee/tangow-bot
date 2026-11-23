@@ -11,12 +11,13 @@ vi.mock("./api", () => ({
   selectedSpaceId: () => server.space,
   rpc: vi.fn(async (proc: string) => {
     if (proc === "me") return { userId: "user-1", ...server.defaults[server.space] };
+    if (proc === "bots/update") return { id: "bot-1", avatarCharacter: "viking", color: "#8287AD" };
     return [];
   }),
 }));
 
-import { loadModelCatalog, selectedModelCatalog, shownSave } from "./bot-page";
-import { resetBotPage } from "./bot-page-state";
+import { loadModelCatalog, selectedModelCatalog, shownSave, updateBot } from "./bot-page";
+import { resetBotPage, subscribeBotSaved, withSavedAvatar } from "./bot-page-state";
 
 /** What the Model rows show once they open, as `useModelCatalog` reads it on mount. */
 async function openModelRows() {
@@ -69,5 +70,27 @@ describe("the save a shared meta line shows", () => {
       at: 2_000,
       until: 5_000,
     });
+  });
+});
+
+describe("a character saved on the bot page", () => {
+  const listed = [
+    { id: "bot-1", avatarCharacter: "scout", color: "#A34B50", name: "Researcher" },
+    { id: "bot-2", avatarCharacter: "ivy", color: "#96BCA3", name: "Writer" },
+  ];
+  const others = [listed[1]!];
+
+  it("reaches the lists already open: only that bot's avatar changes, other lists stay as they are", async () => {
+    const lists: unknown[][] = [];
+    const stop = subscribeBotSaved((saved) =>
+      lists.push(withSavedAvatar(listed, saved), withSavedAvatar(others, saved)),
+    );
+    await updateBot("bot-1", { avatarCharacter: "viking" });
+    stop();
+    expect(lists[0]).toEqual([
+      { id: "bot-1", avatarCharacter: "viking", color: "#8287AD", name: "Researcher" },
+      listed[1],
+    ]);
+    expect(lists[1]).toBe(others);
   });
 });

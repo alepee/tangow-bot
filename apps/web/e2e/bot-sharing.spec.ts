@@ -110,9 +110,9 @@ test("a bot shared with one person gives them their own thread until it is unsha
   // The member adds the declared MCP server with their own key, in the form filled in for them.
   const linearCard = guest.getByRole("group", { name: "Linear connection" });
   await linearCard.getByRole("button", { name: "Add" }).click();
-  const serverUrl = guest.getByLabel("Server URL");
+  const serverUrl = guest.getByLabel("App URL");
   await expect(serverUrl).toHaveValue("https://mcp.linear.example/mcp");
-  await expect(serverUrl).toBeDisabled();
+  await expect(serverUrl).toHaveAttribute("readonly", "");
   await expect(guest.getByLabel("Server name")).toHaveValue("Linear");
   const memberKey = guest.getByLabel("X-Api-Key");
   await expect(memberKey).toHaveValue("");
@@ -121,10 +121,14 @@ test("a bot shared with one person gives them their own thread until it is unsha
   await captureScreenshot(guest, testInfo, "declared-mcp-form-phone");
   await guest.setViewportSize({ width: 1280, height: 720 });
   await memberKey.fill("grace-key");
-  await guest.getByRole("button", { name: "Add server" }).click();
-  await expect(serverUrl).toBeHidden();
+  const added = guest.waitForResponse(
+    (response) => response.url().endsWith("/rpc/bots/addDeclaredMcp") && response.ok(),
+  );
+  await guest.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(guest.getByLabel("Server name")).toBeHidden();
   // Their own copy, with the key they typed.
-  await expect(guest.getByText("credential saved")).toBeVisible();
+  await expect(guest.getByRole("button", { name: "Actions for Linear" })).toBeVisible();
+  expect((await (await added).json()).json).toMatchObject({ name: "Linear", hasSecret: true });
   await guest.keyboard.press("Escape");
   await expect(linearCard.getByText("Connected")).toBeVisible();
 

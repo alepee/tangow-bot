@@ -7,7 +7,8 @@ export type McpOauthResult =
   | "connected"
   | "cancelled"
   | "already_connected"
-  | "authorization_not_requested";
+  | "authorization_not_requested"
+  | "token_required";
 
 /** Run the browser OAuth popup flow for an MCP server: request an
  * authorization URL, open the popup, and wait until the callback page

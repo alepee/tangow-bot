@@ -57,6 +57,51 @@ for (const theme of ["light", "dark"] as const) {
   }
 }
 
+const HERO_VIEWPORTS = [
+  { name: "default", size: null },
+  { name: "phone", size: { width: 390, height: 844 } },
+] as const;
+
+for (const theme of ["light", "dark"] as const) {
+  for (const viewport of HERO_VIEWPORTS) {
+    test(`the hero shows the clay character alive and its picker, ${viewport.name}, ${theme}`, async ({
+      page,
+    }, testInfo) => {
+      if (viewport.size) await page.setViewportSize(viewport.size);
+      // Still, so the capture shows the face at rest, as the still image draws it.
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.goto(`${FIXTURE}?tab=settings&theme=${theme}`);
+      await expect(
+        page.getByTestId("bot-appearance-trigger").locator(".tangow-clay-face"),
+      ).toBeVisible();
+      await captureScreenshot(page, testInfo, `bot-page-hero-${viewport.name}-${theme}`);
+
+      await page.getByTestId("bot-appearance-trigger").click();
+      const picker = page.getByTestId("bot-appearance-picker");
+      await picker.getByRole("button", { name: "Viking végan" }).click();
+      await expect(picker.getByRole("button", { name: "Viking végan" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      await expect
+        .poll(() =>
+          picker
+            .locator("img")
+            .evaluateAll((images: HTMLImageElement[]) =>
+              images.every((image) => image.naturalWidth > 0),
+            ),
+        )
+        .toBe(true);
+      await expect(page.getByTestId("bot-page").getByText(/^Saved/)).toBeVisible();
+      // Playwright scrolled the panel to reach the tile; the capture shows the hero.
+      await page.getByTestId("bot-appearance-trigger").evaluate((trigger) => {
+        for (let node = trigger.parentElement; node; node = node.parentElement) node.scrollTop = 0;
+      });
+      await captureScreenshot(page, testInfo, `bot-page-picker-${viewport.name}-${theme}`);
+    });
+  }
+}
+
 test("the tabs are one tab stop, moved with the arrow keys", async ({ page }) => {
   await page.goto(`${FIXTURE}?tab=activity`);
   const tabs = page.getByRole("tablist");

@@ -1,0 +1,12 @@
+{
+  "name": "@tangow/avatars",
+  "version": "0.1.0",
+  "private": true,
+  "license": "SEE LICENSE IN LICENSE",
+  "type": "module",
+  "exports": {
+    "./bodies/*": "./bodies/*",
+    "./characters/*": "./characters/*",
+    "./face/*": "./face/*"
+  }
+}

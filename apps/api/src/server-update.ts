@@ -8,12 +8,12 @@ import type {
 } from "@tangow/contracts";
 import { ServerUpdateRunSchema } from "@tangow/contracts";
 import {
+  DEFAULT_SERVER_IMAGE,
   DEFAULT_UPDATE_BRANCH,
   detectRestartSupervisor,
   isOfficialRepoUrl,
   manualUpgradeCommands,
   OFFICIAL_REPO_URL,
-  OFFICIAL_SERVER_IMAGE,
   readBoundedResponseBytes,
   resolveInstallKind,
   restartSupervisorAdvice,
@@ -30,7 +30,7 @@ export interface UpdaterProxyConfig {
   url: string | null;
   token: string | null;
   gitSha: string | undefined;
-  /** Current `TANGOW_IMAGE_TAG` when known; selects compose pull vs rebuild commands. */
+  /** Current `TANGOW_IMAGE_TAG` when known. */
   imageTag?: string | null;
   disabled?: boolean;
   /** Override for tests; defaults to process.cwd(). */
@@ -107,7 +107,7 @@ export async function readServerUpdateStatus(
     supported: install.kind === "sidecar",
     unsupportedReason: install.kind === "sidecar" ? null : install.reason,
     installKind: install.kind,
-    manualCommands: [...manualUpgradeCommands(install.kind, { imageTag: imageTagHint })],
+    manualCommands: [...manualUpgradeCommands(install.kind)],
     mode: install.mode,
     strategy: null,
     strategyNote: null,
@@ -161,16 +161,13 @@ export async function readServerUpdateStatus(
       ...base,
       supported: true,
       unsupportedReason: null,
-      strategy: official ? "pull" : "build",
-      strategyNote: official
-        ? "Official releases pull the published image."
-        : "This fork builds on the server.",
+      strategy: "build",
       commit: state.checkout?.commit ?? base.commit,
       branch: state.checkout?.branch ?? null,
       remoteUrl,
       dirty: state.checkout?.dirty === true,
       dirtyPaths: state.checkout?.dirtyPaths ?? [],
-      image: state.image ?? OFFICIAL_SERVER_IMAGE,
+      image: state.image ?? DEFAULT_SERVER_IMAGE,
       imageTag: state.currentTag ?? null,
       previousImageTag: state.previousTag ?? null,
       canRollback: Boolean(state.previousTag),
@@ -193,11 +190,7 @@ export async function readServerUpdateStatus(
         error instanceof Error ? error.message : "The updater sidecar did not respond.",
       installKind: "compose",
       mode: "unavailable",
-      manualCommands: [
-        ...manualUpgradeCommands("compose", {
-          imageTag: imageTagHint,
-        }),
-      ],
+      manualCommands: [...manualUpgradeCommands("compose")],
     };
   }
 }

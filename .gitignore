@@ -29,6 +29,8 @@ apps/mobile/.expo
 apps/mobile/dist
 apps/mobile/android
 apps/mobile/ios
+# Generated at prebuild from the extension targets' `images`.
+apps/mobile/targets/*/Assets.xcassets
 packages/db/src/generated
 infra/sandboxes/supervisor/dist
 *.log
@@ -48,7 +50,6 @@ PRODUCT_PLAN.md
 apps/web/src/locales/**/*.mjs
 apps/web/src/locales/**/*.js
 apps/web/scripts/msgids.json
-playwright-report-www
 .ship/
 
 # Local EAS build outputs

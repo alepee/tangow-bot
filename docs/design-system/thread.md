@@ -183,7 +183,7 @@ Used by: `bot.message.sent`, `bot.message.received` and `handoff` entries.
 
 The bots behind a group, a delegation or a receipt, in one glance.
 
-Props: `items: { color, identity?, working?, shapeSeed? }[]`, `size: 14 | 16 |
+Props: `items: { identity?, working?, character? }[]`, `size: 14 | 16 |
 17 | 20` (native adds 28 for a header, with a round `+n` pill), `max?` (default 3), `label?`. Composes `BotAvatar`; each avatar after
 the first slides under the previous one by 5, 4 or 3 px depending on the size,
 and the rest collapse into `+N` in `text-label`. With a `label` the stack is a

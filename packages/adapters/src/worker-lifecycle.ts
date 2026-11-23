@@ -10,6 +10,7 @@ import {
   AgentRuntimeBusyError,
   AgentRuntimeUnavailableError,
   WORKER_PROTOCOL_VERSION,
+  WorkerEnsureSettledError,
 } from "@tangow/adapter-kit";
 import type { HomeStorage } from "@tangow/contracts";
 import { WorkerState } from "@tangow/contracts";
@@ -272,7 +273,12 @@ export function createWorkerLifecycle(deps: {
     throw new StaleAttemptError(attemptId);
   }
 
-  async function release(attemptId: string, context: AdapterContext): Promise<ReleaseOutcome> {
+  /** `ensureSettled`: the provider answered its ensure, so no creation can still land. */
+  async function release(
+    attemptId: string,
+    context: AdapterContext,
+    { ensureSettled = false } = {},
+  ): Promise<ReleaseOutcome> {
     const provider = requireProvider();
     const now = new Date();
     const [target] = await prisma.$queryRaw<
@@ -282,7 +288,7 @@ export function createWorkerLifecycle(deps: {
       WHERE id = ${attemptId} AND "workerState" IN (${RELEASABLE})
       RETURNING "workerProviderRef", "workerEnsureAt"`;
     if (!target) return "not_live";
-    if (ensureMayBeInFlight(target, now)) return "awaiting_ensure";
+    if (!ensureSettled && ensureMayBeInFlight(target, now)) return "awaiting_ensure";
     await provider.destroy({ attemptId, providerRef: target.workerProviderRef }, context);
     await prisma.$executeRaw`
       UPDATE attempts SET "workerState" = 'released', "workerStateAt" = ${new Date()}
@@ -455,7 +461,9 @@ export function createWorkerLifecycle(deps: {
           return await step();
         } catch (error) {
           // A destroy the provider could not confirm stays releasing for the reconciler.
-          await release(launch.attemptId, context).catch(() => undefined);
+          await release(launch.attemptId, context, {
+            ensureSettled: error instanceof WorkerEnsureSettledError,
+          }).catch(() => undefined);
           throw new AgentRuntimeUnavailableError(
             `The worker provider failed: ${error instanceof Error ? error.message : String(error)}`,
             { cause: error },
@@ -485,7 +493,7 @@ export function createWorkerLifecycle(deps: {
      * Idempotent, and a no-op for an attempt without a worker. Records release only after the
      * provider confirms destruction and ensure can no longer create the VM. Volumes are untouched.
      */
-    release,
+    release: (attemptId: string, context: AdapterContext) => release(attemptId, context),
 
     async status(attemptId: string): Promise<WorkerStatusV1 | null> {
       const attempt = await prisma.attempt.findUnique({

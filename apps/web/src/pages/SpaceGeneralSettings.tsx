@@ -5,6 +5,7 @@ import { Button, Input, SettingRow, UserAvatar } from "@tangow/ui-web";
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useId, useState } from "react";
 import { ApprovalRulesSettings } from "../components/ApprovalRulesSettings";
+import { AutoReviewSettings } from "../components/AutoReviewSettings";
 import { rpc } from "../lib/rpc";
 import { userInitials } from "../lib/user-initials";
 
@@ -15,11 +16,13 @@ export function SpaceGeneralSettings({
   onSpaceRenamed,
   messagingEnabled = false,
   onOpenMessaging,
+  onOpenDecisionModel,
 }: {
   space?: GeneralSpace;
   onSpaceRenamed?: () => void | Promise<void>;
   messagingEnabled?: boolean;
   onOpenMessaging?: () => void;
+  onOpenDecisionModel?: () => void;
 }) {
   return (
     <div className="space-y-5">
@@ -41,6 +44,8 @@ export function SpaceGeneralSettings({
           </Button>
         </section>
       ) : null}
+
+      <AutoReviewSettings onOpenDecisionModel={onOpenDecisionModel} />
 
       <details data-testid="advanced-settings" className="group rounded-card bg-group shadow-group">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 text-[14px] text-foreground/75">

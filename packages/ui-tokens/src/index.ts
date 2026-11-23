@@ -33,6 +33,11 @@ export type ColorTokens = {
   linkMentionTile: string;
   muted: string;
   mutedForeground: string;
+  /**
+   * The disc behind a bot's clay character: a translucent veil, as iOS fills are, so it reads
+   * over every part of the ambient light (opaque `muted` dissolves where the gradient matches it).
+   */
+  avatarDisc: string;
   accent: string;
   accentForeground: string;
   destructive: string;
@@ -96,6 +101,7 @@ export const darkTokens = {
   linkMentionTile: "#444447",
   muted: "#2A2A2D",
   mutedForeground: "#AEAEB2",
+  avatarDisc: "rgba(118, 118, 128, 0.24)",
   accent: "#252527",
   accentForeground: "#F5F5F7",
   destructive: "#EF4444",
@@ -147,6 +153,7 @@ export const lightTokens = {
   linkMentionTile: "#F2F2F4",
   muted: "#E8E8EA",
   mutedForeground: "#6E6E73",
+  avatarDisc: "rgba(118, 118, 128, 0.12)",
   accent: "#EBEBED",
   accentForeground: "#1D1D1F",
   destructive: "#DC2626",
@@ -321,7 +328,6 @@ export type MotionTokens = {
   arrive: number;
   press: number;
   hover: number;
-  breathe: number;
   caret: number;
   /** The send arrow pivoting in with the first character. */
   pivot: number;
@@ -345,7 +351,6 @@ export const motion: MotionTokens = {
   arrive: 240,
   press: 160,
   hover: 160,
-  breathe: 5600,
   caret: 1000,
   pivot: 320,
   morph: 260,
@@ -384,7 +389,7 @@ export const sizes = {
   interstitial: 17,
   chip: 18,
   stack: 20,
-  message: 26,
+  message: 32,
   row: 28,
   call: 120,
   hoverIcon: 28,
@@ -423,6 +428,10 @@ export const sizes = {
   linkMentionIcon: 16,
   /** Space between a link mention's icon and its label. */
   linkMentionGap: 5,
+  /** The glyph of a bot, group, everyone or skill mention, inline in the text (web and iOS). */
+  mentionGlyph: 16,
+  /** Space between a mention's glyph and its name. */
+  mentionGap: 4,
   /** Height of a share bar: the usage screen's split of spend. */
   shareBar: 8,
 } as const satisfies Record<string, number>;
