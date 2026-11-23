@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
+import type { Router } from "@orpc/server";
 import { implement, ORPCError } from "@orpc/server";
 import type {
   AdapterContext,
@@ -246,6 +247,7 @@ import {
   forwardedThreadEvent,
   loadChain,
   loadEntryPage,
+  loadPeerPage,
   threadSessionId,
   withoutHiddenPeerRuns,
 } from "./thread-message-pages.js";
@@ -563,9 +565,11 @@ function mapSpaceLifecycleError(error: unknown): unknown {
   return error;
 }
 
-export function createRouter(deps: RouterDeps) {
+type RouterContext = { actor: Actor | null; signal?: AbortSignal };
+
+export function createRouter(deps: RouterDeps): Router<typeof appContract, RouterContext> {
   const os = implement(appContract)
-    .$context<{ actor: Actor | null; signal?: AbortSignal }>()
+    .$context<RouterContext>()
     .use(async ({ next }) => {
       try {
         return await next();
@@ -1717,6 +1721,13 @@ export function createRouter(deps: RouterDeps) {
         const target = await resolveThreadTarget(deps.prisma, context.actor, input);
         const sessionId = await threadSessionId(deps.prisma, target.threadId);
         return loadEntryPage(deps, { threadId: target.threadId, sessionId }, input);
+      }),
+      peerMessages: authed.threads.peerMessages.handler(async ({ context, input }) => {
+        const target = await resolveThreadTarget(deps.prisma, context.actor, {
+          botId: input.botId,
+        });
+        const sessionId = await threadSessionId(deps.prisma, target.threadId);
+        return loadPeerPage(deps.prisma, { threadId: target.threadId, sessionId }, input);
       }),
       subscribe: authed.threads.subscribe.handler(async function* ({ context, input }) {
         const target = await resolveThreadTarget(deps.prisma, context.actor, input);

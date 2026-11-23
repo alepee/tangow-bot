@@ -3,7 +3,7 @@ import * as z from "zod";
 type AvatarCharacterShape = "ball" | "capsule" | "block";
 
 /** A crop of the character image, in the 1024 pixel square the images are exported in. */
-type AvatarCrop = { x: number; y: number; side: number };
+export type AvatarCrop = { x: number; y: number; side: number };
 
 type AvatarCharacterData = {
   id: string;

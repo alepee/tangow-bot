@@ -3,7 +3,6 @@ import {
   ChatMarkdown,
   hasMarkdownTable,
   LinkifiedText,
-  TableActionsProvider,
   truncateMarkdownForRender,
 } from "@tangow/chat-ui/native";
 import type {
@@ -35,11 +34,14 @@ import {
   buildComposerMentionOptions,
   type ComposerMention,
   canEditSpawnBotCard,
+  caretAfterEdit,
+  composerSegments,
   drawsNothing,
   editedWaitingDraft,
   failureSinceLabel,
   groupLeadBotId,
   imagesOf,
+  insertMentionToken,
   isApprovalAskBlock,
   isAsideOnlyMessage,
   isRunTerminalEvent,
@@ -49,14 +51,18 @@ import {
   linkMentionsKey,
   linkMentionsOf,
   mentionChipKey,
+  mentionQueryAt,
+  mentionsInDraft,
   projectThreadView,
   type RoutineItem,
   resolveComposerSendPlan,
   routineCardSettlement,
+  routineResultMessage,
   SLASH_ACTIONS,
   type SlashActionId,
   selectedAskActionLabel,
   serializeComposerPrompt,
+  skillInDraft,
   skillSourcesOf,
   slashSkillOptions as slashSkills,
   type ThreadRow,
@@ -100,7 +106,6 @@ import {
   TextInput,
   type TextProps,
   View,
-  type ViewStyle,
 } from "react-native";
 import { KeyboardAvoidingView, useKeyboardState } from "react-native-keyboard-controller";
 import Animated, {
@@ -123,7 +128,6 @@ import { AnimatedMessageBubble, MessageArrival } from "../components/animated-me
 import { BotAvatar } from "../components/bot-avatar";
 import type { BotBubbleMeta } from "../components/bot-bubble";
 import { BotBubble, BubbleMeta } from "../components/bot-bubble";
-import { BuzzingAvatar } from "../components/buzzing-avatar";
 import { ComposerAttachment } from "../components/composer-attachment";
 import { ComposerLinkPreview } from "../components/composer-link-preview";
 import { ComposerAttachBubble, ComposerShell } from "../components/composer-shell";
@@ -154,6 +158,7 @@ import { StackedAvatars } from "../components/stacked-avatars";
 import { StopContour } from "../components/stop-contour";
 import { Surface } from "../components/surface";
 import { TablePreview } from "../components/table-preview";
+import { ThreadProviders } from "../components/thread-providers";
 import { TypingBubble } from "../components/typing-bubble";
 import { UserAvatar } from "../components/user-avatar";
 import { UserBubble } from "../components/user-bubble";
@@ -289,22 +294,10 @@ const CARD_ONLY_BLOCK_KINDS = new Set<string>([
  * between two consecutive asides. */
 const GROUP_GAP = 14;
 const WITHIN_GROUP_GAP = 3;
-/** Avatar column (`sizes.message`, 26) plus its gap (8): a bot row's
+/** Avatar column (`sizes.message`, 32) plus its gap (8): a bot row's
  * reactions, and a card's indent, line up under its group's prose in multi.
  * 0 in mono, which has no avatar column. */
 const FRAMED_INDENT = sizes.message + 8;
-
-/** The 30 pt capsule a mention or a skill rides in, inside the composer. */
-const composerChip: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  gap: 6,
-  height: 30,
-  borderRadius: radii.pill,
-  paddingStart: 5,
-  paddingEnd: 10,
-  maxWidth: "100%",
-};
 
 function newClientNonce(): string {
   const webCrypto = globalThis.crypto;
@@ -512,8 +505,13 @@ function Thread() {
   const [snap, setSnap] = useState<MobileSnapshot | null>(null);
   const activeThreadId = useRef<string | undefined>(undefined);
   const [draft, setDraft] = useState("");
+  /** The draft as the field holds it, which a selection event may report before a re-render. */
+  const latestDraft = useRef(draft);
+  latestDraft.current = draft;
   const [composerFocused, setComposerFocused] = useState(false);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  /** The `@query` being typed: where its `@` sits, and the caret after it. */
+  const [mentionRange, setMentionRange] = useState<{ start: number; caret: number } | null>(null);
   const [slashQuery, setSlashQuery] = useState<string | null>(null);
   const [agentSkills, setAgentSkills] = useState<AgentSkillCatalogEntry[]>([]);
   const [mentionBots, setMentionBots] = useState<MobileBot[]>([]);
@@ -635,6 +633,7 @@ function Thread() {
         query: "",
         includeEveryone: inGroup,
         currentGroupId: groupId,
+        currentBotId: groupId ? null : botId,
         bots: mentionBots.map((bot) => ({
           id: bot.id,
           name: bot.name,
@@ -644,6 +643,7 @@ function Thread() {
         groups: mentionGroups.map((group) => ({
           id: group.id,
           name: group.name,
+          botIds: group.members.map((member) => member.botId),
         })),
         routines: mentionRoutines.map((routine) => ({
           id: routine.id,
@@ -654,7 +654,7 @@ function Thread() {
         })),
         connectors: mentionConnectors,
       }),
-    [groupId, inGroup, mentionBots, mentionConnectors, mentionGroups, mentionRoutines],
+    [botId, groupId, inGroup, mentionBots, mentionConnectors, mentionGroups, mentionRoutines],
   );
   const mentionOptions = useMemo(() => {
     if (mentionQuery === null || composerMentionTargets.length === 0) return [];
@@ -953,6 +953,7 @@ function Thread() {
                 size={34}
                 status={currentBotStatus}
                 muted={rosterMuted(currentBot)}
+                live
               />
             ) : null}
             {inGroup && groupAvatarItems.length > 0 ? (
@@ -1387,11 +1388,16 @@ function Thread() {
         block.kind === "image" || block.kind === "file" ? [block.artifactId] : [],
       ),
     );
-    setDraft(
-      message.blocks
-        .flatMap((block) => (block.kind === "text" && block.text ? [block.text] : []))
-        .join("\n"),
-    );
+    const text = message.blocks
+      .flatMap((block) => (block.kind === "text" && block.text ? [block.text] : []))
+      .join("\n");
+    setDraft(text);
+    // Only what the edited message still names stays picked.
+    setSelectedMentions(mentionsInDraft(text, selectedMentions));
+    setSelectedSkill(skillInDraft(text, selectedSkill));
+    setMentionQuery(null);
+    setMentionRange(null);
+    setSlashQuery(null);
   }
 
   // An iOS multiline field set to "" from JS keeps the height of its last text, so a
@@ -1401,36 +1407,57 @@ function Thread() {
     textInputRef.current?.clear();
   }
 
+  /**
+   * A picked skill or mention lives as long as its token text: editing it away drops it. The
+   * caret is read off the edit itself, since iOS reports the selection after the text.
+   */
   function updateDraft(value: string) {
+    const caret = caretAfterEdit(draft, value);
     setDraft(value);
-    const match = /(?:^|\s)@([\w-]*)$/.exec(value);
-    setMentionQuery(match ? (match[1] ?? "") : null);
-    const slashMatch = selectedSkill === null ? /^\/([^\n]*)$/.exec(value) : null;
+    latestDraft.current = value;
+    const mentions = mentionsInDraft(value, selectedMentions);
+    if (mentions.length !== selectedMentions.length) setSelectedMentions(mentions);
+    const skill = skillInDraft(value, selectedSkill);
+    if (skill !== selectedSkill) setSelectedSkill(skill);
+    const mention = mentionQueryAt(value, caret, mentions);
+    setMentionQuery(mention?.query ?? null);
+    setMentionRange(mention ? { start: mention.start, caret } : null);
+    const slashMatch = skill === null ? /^\/([^\n]*)$/.exec(value) : null;
     setSlashQuery(slashMatch ? (slashMatch[1] ?? "") : null);
   }
 
+  /** Moving the caret moves the `@` picker with it: it shows for a query right before the caret. */
+  function trackSelection({ start, end }: { start: number; end: number }) {
+    const mention =
+      start === end ? mentionQueryAt(latestDraft.current, start, selectedMentions) : null;
+    setMentionQuery(mention?.query ?? null);
+    setMentionRange(mention ? { start: mention.start, caret: start } : null);
+  }
+
+  function placeCaret(caret: number) {
+    requestAnimationFrame(() => textInputRef.current?.setSelection(caret, caret));
+  }
+
   function insertMention(mention: ComposerMention) {
-    setDraft((current) => current.replace(/@([\w-]*)$/, ""));
+    const range = mentionRange ?? { start: draft.length, caret: draft.length };
+    const next = insertMentionToken(draft, range.start, range.caret, mention.name);
+    setDraft(next.draft);
     setMentionQuery(null);
+    setMentionRange(null);
     setSelectedMentions((current) =>
       current.some((selected) => mentionChipKey(selected) === mentionChipKey(mention))
         ? current
         : [...current, mention],
     );
+    placeCaret(next.caret);
   }
 
   function insertSkill(skill: AgentSkillCatalogEntry) {
+    const next = `/${skill.name} `;
     setSelectedSkill(skill);
-    clearDraft();
+    setDraft(next);
     setSlashQuery(null);
-  }
-
-  function removeLastChip() {
-    if (selectedMentions.length > 0) {
-      setSelectedMentions((current) => current.slice(0, -1));
-      return;
-    }
-    if (selectedSkill) setSelectedSkill(null);
+    placeCaret(next.length);
   }
 
   // Entering dictation closes and disables both pickers — a draft starting
@@ -1471,7 +1498,7 @@ function Thread() {
   }
 
   function serializeComposerPromptText(): string {
-    return serializeComposerPrompt(draft, selectedSkill, selectedMentions);
+    return serializeComposerPrompt(draft, skillInDraft(draft, selectedSkill));
   }
 
   function runSlashAction(action: SlashActionId) {
@@ -1488,11 +1515,7 @@ function Thread() {
     router.push(action === "settings-usage" ? "/usage" : "/account");
   }
 
-  const canSend =
-    Boolean(draft.trim()) ||
-    selectedSkill !== null ||
-    selectedMentions.length > 0 ||
-    activePendingAttachments.length > 0;
+  const canSend = Boolean(draft.trim()) || activePendingAttachments.length > 0;
 
   // Stop contour colour: the answering bot's own identity colour in a 1:1
   // thread. A group (several bots may be working), an unknown colour, or one
@@ -1503,27 +1526,21 @@ function Thread() {
     hexWithAlpha(tokens.foreground, 0.45);
 
   async function send() {
-    const initialBotTarget = botId;
-    const initialGroupTarget = groupId;
-    if ((!initialBotTarget && !initialGroupTarget) || sending) return;
-    const originThreadKey = initialGroupTarget ?? initialBotTarget;
+    const botTarget = botId;
+    const groupTarget = groupId;
+    if ((!botTarget && !groupTarget) || sending) return;
+    const originThreadKey = groupTarget ?? botTarget;
     const attachments = attachmentsForThread(pendingAttachments, originThreadKey);
     const plan = resolveComposerSendPlan({
       text: serializeComposerPromptText(),
-      mentions: selectedMentions,
+      mentions: mentionsInDraft(draft, selectedMentions),
       hasAttachments: attachments.length > 0 || rewindArtifactIds.length > 0,
     });
     if (plan.isNoOp) return;
-    const reroutedToGroup = Boolean(
-      plan.rerouteGroupId && plan.rerouteGroupId !== initialGroupTarget,
-    );
-    const groupTarget = plan.rerouteGroupId ?? initialGroupTarget;
-    const botTarget = reroutedToGroup ? undefined : initialBotTarget;
     const trimmed = plan.trimmed;
     const dropDelayedSetup = () => {
       // Only after successful engagement so a failed upload/send keeps the setup card.
-      // Covers group-mention reroute while the bot thread stays mounted underneath.
-      if (initialBotTarget) cancelFocusPrompt(initialBotTarget);
+      if (botTarget) cancelFocusPrompt(botTarget);
     };
 
     // 7a / M2: snapshot the composer as it stands at the tap, then clear it
@@ -1579,16 +1596,6 @@ function Thread() {
       if (!plan.shouldSend) {
         delivered = true;
         dropDelayedSetup();
-        if (reroutedToGroup && groupTarget) {
-          router.push({
-            pathname: "/group-thread",
-            params: {
-              groupId: groupTarget,
-              name: plan.rerouteGroupName ?? t("Group"),
-            },
-          });
-          return;
-        }
         if (isCurrentTarget(botTarget, groupTarget)) {
           await refresh();
         }
@@ -1607,7 +1614,7 @@ function Thread() {
         artifactIds.push(artifact.id);
       }
       // Truncation happens here rather than on Edit, so backing out costs nothing.
-      if (composerSnapshot.rewindTarget && !reroutedToGroup) {
+      if (composerSnapshot.rewindTarget) {
         await rpc("threads/rewind", {
           ...(groupTarget ? { groupId: groupTarget } : { botId: botTarget! }),
           messageId: composerSnapshot.rewindTarget.id,
@@ -1615,7 +1622,7 @@ function Thread() {
         rewindApplied = true;
       }
       const clientNonce = newClientNonce();
-      const replaced = reroutedToGroup ? undefined : editedWaitingDraft(view, draftEdit);
+      const replaced = editedWaitingDraft(view, draftEdit);
       await rpc(
         "threads/send",
         groupTarget
@@ -1625,9 +1632,7 @@ function Thread() {
               text: trimmed || undefined,
               mentions: plan.mentionPayload.length ? plan.mentionPayload : undefined,
               artifactIds: artifactIds.length ? artifactIds : undefined,
-              replyToMessageId: reroutedToGroup
-                ? undefined
-                : composerSnapshot.replyTarget?.messageId,
+              replyToMessageId: composerSnapshot.replyTarget?.messageId,
               linkPreview: withoutLinkPreview ? (false as const) : undefined,
               draft: replaced?.draft,
             }
@@ -1648,16 +1653,6 @@ function Thread() {
       void loadSessionToken()
         .then((token) => resumeLiveNotifications(currentApiBase(), token, selectedSpaceId() ?? ""))
         .catch(() => undefined);
-      if (reroutedToGroup && groupTarget) {
-        router.push({
-          pathname: "/group-thread",
-          params: {
-            groupId: groupTarget,
-            name: plan.rerouteGroupName ?? t("Group"),
-          },
-        });
-        return;
-      }
       if (isCurrentTarget(botTarget, groupTarget)) {
         await refresh();
       }
@@ -1671,7 +1666,7 @@ function Thread() {
         if (composerSnapshot.pendingAttachments.length) {
           setPendingAttachments((current) => [...current, ...composerSnapshot.pendingAttachments]);
         }
-        if (isCurrentTarget(initialBotTarget, initialGroupTarget)) {
+        if (isCurrentTarget(botTarget, groupTarget)) {
           setDraft(composerSnapshot.draft);
           // The person had taken the link preview off: the draft comes back without it.
           if (withoutLinkPreview) linkPreview.controller.remove();
@@ -1684,9 +1679,7 @@ function Thread() {
           }
         }
       }
-      if (reroutedToGroup && groupTarget) {
-        setError(err instanceof Error ? err.message : t("Failed to send message"));
-      } else if (isCurrentTarget(botTarget, groupTarget)) {
+      if (isCurrentTarget(botTarget, groupTarget)) {
         setError(err instanceof Error ? err.message : t("Failed to send message"));
       }
     } finally {
@@ -2110,6 +2103,8 @@ function Thread() {
       new WeakMap<MobileMessage, { messageId: EntryId | undefined; props: MessageActionProps }>(),
     [locale, viewerUserId, creatorId, sharedHistory],
   );
+  // One message per routine item, so its action props stay cached and `ItemRow` skips re-renders.
+  const routineMessages = useMemo(() => new WeakMap<RoutineItem, MobileMessage>(), []);
   function messageActionProps(
     message: MobileMessage,
     messageId: EntryId | undefined,
@@ -2170,7 +2165,8 @@ function Thread() {
     const row = rowId === undefined ? undefined : rows[rowIndex.get(rowId) ?? -1];
     const item =
       row?.imageStack?.front.messageId === entryId ? row.imageStack.front.item : row?.item;
-    return item?.kind === "message" ? item : undefined;
+    if (item?.kind === "message") return item;
+    return row ? routineMessage(row) : undefined;
   }
 
   function renderRow(row: ThreadRow, options?: { enableJump?: boolean; previous?: ThreadRow }) {
@@ -2227,22 +2223,70 @@ function Thread() {
           {item.kind === "message" ? (
             renderMessage(row, item, isNew, options?.enableJump)
           ) : (
-            <ItemRow
-              row={row}
-              botId={botId ?? snap?.members?.[0]?.botId ?? ""}
-              groupId={groupId}
-              botName={displayName}
-              bots={mentionBots}
-              members={snap?.members}
-              isNew={isNew}
-              canAnswer={item.id === answerableAskMessageId}
-              viewerUserId={viewerUserId}
-              onAnswer={answerMessage}
-            />
+            <>
+              <ItemRow
+                row={row}
+                botId={botId ?? snap?.members?.[0]?.botId ?? ""}
+                groupId={groupId}
+                botName={displayName}
+                bots={mentionBots}
+                members={snap?.members}
+                isNew={isNew}
+                canAnswer={item.id === answerableAskMessageId}
+                viewerUserId={viewerUserId}
+                onAnswer={answerMessage}
+                actionProps={routineActionProps(row)}
+              />
+              {item.kind === "routine" && row.routine?.kind === "message"
+                ? renderReactions(row, inGroup ? FRAMED_INDENT : 0, false)
+                : null}
+            </>
           )}
         </View>
       </View>
     );
+  }
+
+  function renderReactions(row: ThreadRow, marginStart: number, mine: boolean) {
+    if (row.reactions.length === 0) return null;
+    return (
+      <View
+        style={{
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: 4,
+          marginTop: 6,
+          marginStart,
+          justifyContent: mine ? "flex-end" : "flex-start",
+        }}
+      >
+        {row.reactions.map(([emoji, count]) => (
+          <ReactionPill
+            key={emoji}
+            emoji={emoji}
+            count={count}
+            pop={poppedReactionKeys.has(reactionPopKey(row.item.id, emoji))}
+          />
+        ))}
+      </View>
+    );
+  }
+
+  /** A routine's shown result acts as the bot message it reads as: the run's start entry is its target. */
+  function routineActionProps(row: ThreadRow): MessageActionProps | undefined {
+    const message = routineMessage(row);
+    return message && messageActionProps(message, row.messageId ?? message.id);
+  }
+
+  function routineMessage(row: ThreadRow): MobileMessage | undefined {
+    const { item, routine } = row;
+    if (item.kind !== "routine" || routine?.kind !== "message") return undefined;
+    let message = routineMessages.get(item);
+    if (!message) {
+      message = routineResultMessage(item, routine.text);
+      routineMessages.set(item, message);
+    }
+    return message;
   }
 
   function renderMessage(
@@ -2257,7 +2301,6 @@ function Thread() {
     const frontActionProps = stack
       ? messageActionProps(stack.front.item, stack.front.messageId)
       : actionProps;
-    const messageReactions = row.reactions;
     const drawnBlocks = visibleMessageBlocks(message.blocks, showSteps);
     const chrome: MessageChrome = isAsideOnlyMessage(drawnBlocks) ? "aside" : "row";
     const authorBotId = message.role === "bot" ? message.botId : botId;
@@ -2464,27 +2507,7 @@ function Thread() {
         ) : (
           <View>{bubble}</View>
         )}
-        {messageReactions.length > 0 ? (
-          <View
-            style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              gap: 4,
-              marginTop: 6,
-              marginStart: chrome === "row" && !mine && inGroup ? FRAMED_INDENT : 0,
-              justifyContent: mine ? "flex-end" : "flex-start",
-            }}
-          >
-            {messageReactions.map(([emoji, count]) => (
-              <ReactionPill
-                key={emoji}
-                emoji={emoji}
-                count={count}
-                pop={poppedReactionKeys.has(reactionPopKey(message.id, emoji))}
-              />
-            ))}
-          </View>
-        ) : null}
+        {renderReactions(row, chrome === "row" && !mine && inGroup ? FRAMED_INDENT : 0, mine)}
       </>
     );
   }
@@ -2562,11 +2585,7 @@ function Thread() {
       onLayout={() => performScroll(scrollBehavior.current.onTailChanged())}
     >
       <MessageRow
-        avatar={
-          <BuzzingAvatar>
-            {workingActive ? workingAvatar : lastWorking.current.avatar}
-          </BuzzingAvatar>
-        }
+        avatar={workingActive ? workingAvatar : lastWorking.current.avatar}
         author={workingActive ? workingName : lastWorking.current.name}
         showAuthor={inGroup}
         showAvatar={inGroup}
@@ -2597,7 +2616,11 @@ function Thread() {
     ) : null;
 
   return (
-    <TableActionsProvider value={tableActions}>
+    <ThreadProviders
+      tableActions={tableActions}
+      mentions={composerMentionTargets}
+      skills={agentSkills}
+    >
       <AmbientBackground />
       <AnimatedKeyboardAvoidingView
         behavior="height"
@@ -3027,99 +3050,6 @@ function Thread() {
                   </ScrollView>
                 ) : undefined
               }
-              leading={
-                selectedSkill || selectedMentions.length > 0 ? (
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      flexWrap: "wrap",
-                      alignItems: "center",
-                      gap: 6,
-                      flexShrink: 1,
-                      maxWidth: "60%",
-                    }}
-                  >
-                    {selectedSkill ? (
-                      <View
-                        testID="skill-chip"
-                        style={[composerChip, { backgroundColor: tokens.accent }]}
-                      >
-                        <NativeSymbol
-                          ios="cube"
-                          android="cube-outline"
-                          size={14}
-                          color={tokens.mutedForeground}
-                        />
-                        <Text
-                          numberOfLines={1}
-                          style={{
-                            color: tokens.foreground,
-                            flexShrink: 1,
-                            ...nativeTextStyle("capsule"),
-                          }}
-                        >
-                          {selectedSkill.name}
-                        </Text>
-                        <Pressable
-                          accessibilityLabel={t("Remove skill {name}", {
-                            name: selectedSkill.name,
-                          })}
-                          hitSlop={8}
-                          disabled={dictation.dictating}
-                          onPress={() => setSelectedSkill(null)}
-                        >
-                          <NativeSymbol
-                            ios="xmark"
-                            android="close"
-                            size={12}
-                            color={tokens.mutedForeground}
-                          />
-                        </Pressable>
-                      </View>
-                    ) : null}
-                    {selectedMentions.map((mention) => (
-                      <View
-                        key={mentionChipKey(mention)}
-                        testID="mention-chip"
-                        style={[composerChip, { backgroundColor: tokens.mentionChip }]}
-                      >
-                        <MentionChipIcon mention={mention} />
-                        <Text
-                          numberOfLines={1}
-                          style={{
-                            color: tokens.mentionChipForeground,
-                            flexShrink: 1,
-                            ...nativeTextStyle("capsule"),
-                          }}
-                        >
-                          {mention.name}
-                        </Text>
-                        <Pressable
-                          accessibilityLabel={t("Remove mention {name}", {
-                            name: mention.name,
-                          })}
-                          hitSlop={8}
-                          disabled={dictation.dictating}
-                          onPress={() =>
-                            setSelectedMentions((current) =>
-                              current.filter(
-                                (selected) => mentionChipKey(selected) !== mentionChipKey(mention),
-                              ),
-                            )
-                          }
-                        >
-                          <NativeSymbol
-                            ios="xmark"
-                            android="close"
-                            size={12}
-                            color={tokens.mutedForeground}
-                          />
-                        </Pressable>
-                      </View>
-                    ))}
-                  </View>
-                ) : undefined
-              }
               trailing={
                 dictation.dictating ? undefined : (
                   <>
@@ -3234,24 +3164,13 @@ function Thread() {
               ) : (
                 <TextInput
                   ref={textInputRef}
-                  value={draft}
                   onChangeText={updateDraft}
+                  onSelectionChange={(event) => trackSelection(event.nativeEvent.selection)}
                   accessibilityLabel={composerName(t, displayName, answerName)}
-                  onKeyPress={(event) => {
-                    if (
-                      event.nativeEvent.key === "Backspace" &&
-                      draft.length === 0 &&
-                      (selectedSkill !== null || selectedMentions.length > 0)
-                    ) {
-                      removeLastChip();
-                    }
-                  }}
                   placeholder={
-                    selectedSkill || selectedMentions.length
-                      ? undefined
-                      : displayName || answerName
-                        ? composerName(t, displayName, answerName)
-                        : t("Message…")
+                    displayName || answerName
+                      ? composerName(t, displayName, answerName)
+                      : t("Message…")
                   }
                   placeholderTextColor={tokens.mutedForeground}
                   selectionColor={tokens.foreground}
@@ -3280,7 +3199,21 @@ function Thread() {
                       ? { lineHeight: undefined, paddingVertical: 11 }
                       : { paddingVertical: 4 }),
                   }}
-                />
+                >
+                  {/* A field cannot hold a view: a picked token is its own styled text. */}
+                  {composerSegments(draft, selectedMentions, selectedSkill).map((segment) =>
+                    segment.kind === "text" ? (
+                      <Text key={segment.start}>{segment.text}</Text>
+                    ) : (
+                      <Text key={segment.start} style={{ fontWeight: "600" }}>
+                        <Text style={{ color: tokens.mutedForeground, fontWeight: "500" }}>
+                          {segment.text.slice(0, 1)}
+                        </Text>
+                        {segment.text.slice(1)}
+                      </Text>
+                    ),
+                  )}
+                </TextInput>
               )}
             </ComposerShell>
           </View>
@@ -3367,7 +3300,7 @@ function Thread() {
         ) : null}
       </AnimatedKeyboardAvoidingView>
       {barTransparent ? <ThreadScrollEdge height={headerHeight + 40} /> : null}
-    </TableActionsProvider>
+    </ThreadProviders>
   );
 }
 
@@ -3525,44 +3458,6 @@ function ComposerButton({
       </Animated.View>
     </Pressable>
   );
-}
-
-function MentionChipIcon({ mention }: { mention: ComposerMention }) {
-  const tokens = useMobileTokens();
-  if (mention.kind === "routine") {
-    return (
-      <NativeSymbol ios="clock" android="time-outline" size={13} color={tokens.mutedForeground} />
-    );
-  }
-  if (mention.kind === "connector") {
-    return (
-      <NativeSymbol
-        ios="puzzlepiece.extension"
-        android="extension-puzzle-outline"
-        size={13}
-        color={tokens.mutedForeground}
-      />
-    );
-  }
-  if (mention.kind === "group" || mention.kind === "everyone") {
-    return (
-      <View
-        style={{
-          width: 14,
-          height: 14,
-          borderRadius: 7,
-          backgroundColor: tokens.muted,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Text style={{ color: tokens.foreground, fontSize: 9 }}>
-          {mention.kind === "group" ? "G" : "@"}
-        </Text>
-      </View>
-    );
-  }
-  return <BotAvatar character={mention.avatarCharacter} size={sizes.chip} />;
 }
 
 function previewMessageText(message: MobileMessage): string {
@@ -4238,6 +4133,7 @@ const ItemRow = memo(function ItemRow({
   canAnswer,
   viewerUserId,
   onAnswer,
+  actionProps,
   readOnly = false,
 }: {
   row: ThreadRow;
@@ -4250,6 +4146,8 @@ const ItemRow = memo(function ItemRow({
   canAnswer: boolean;
   viewerUserId?: string;
   onAnswer?: (item: { id: string }, answer: string, edits?: CardEdits) => Promise<void>;
+  /** The actions of a routine's shown result; a row without them keeps its entrance only. */
+  actionProps?: MessageActionProps;
   readOnly?: boolean;
 }) {
   const tokens = mobileTokens();
@@ -4316,6 +4214,7 @@ const ItemRow = memo(function ItemRow({
                   botId={botId}
                   isNew={isNew}
                   mono={!inGroup}
+                  actionProps={actionProps}
                 />
               </MessageRow>
             </>
@@ -4897,6 +4796,7 @@ function RoutineBubble({
   botId,
   isNew,
   mono,
+  actionProps,
 }: {
   item: RoutineItem;
   text: string;
@@ -4904,6 +4804,7 @@ function RoutineBubble({
   botId: string | undefined;
   isNew: boolean;
   mono: boolean;
+  actionProps: MessageActionProps | undefined;
 }) {
   const tokens = mobileTokens();
   const colorScheme = useResolvedAppearance();
@@ -4927,11 +4828,23 @@ function RoutineBubble({
   const card = linkPreviewCardOf({ role: "bot", blocks: links });
   // Without the line that is only the card's link, as a message's bubble draws it.
   const shown = card ? textWithoutPreviewedLinkLine(text, card.url) : text;
+  const press = actionProps ?? NO_ACTIONS;
   return (
-    <MessageArrival isNew={isNew}>
-      <View style={{ gap: 4 }}>
-        {shown ? (
-          <BotBubble mono={mono}>
+    <View style={{ gap: 4 }}>
+      {shown ? (
+        <AnimatedMessageBubble
+          variant="bot"
+          isNew={isNew}
+          entranceOnly={!actionProps}
+          onLongPress={press.onLongPress}
+          accessibilityActions={press.accessibilityActions}
+          onAccessibilityAction={press.onAccessibilityAction}
+        >
+          <BotBubble
+            mono={mono}
+            accessibilityActions={press.accessibilityActions}
+            onAccessibilityAction={press.onAccessibilityAction}
+          >
             <ChatMarkdown
               allowImages={false}
               palette={tokens}
@@ -4942,10 +4855,22 @@ function RoutineBubble({
               {truncateMarkdownForRender(shown)}
             </ChatMarkdown>
           </BotBubble>
-        ) : null}
-        {card ? <LinkPreviewCard card={card} target={target} mono={mono} align="start" /> : null}
-      </View>
-    </MessageArrival>
+        </AnimatedMessageBubble>
+      ) : null}
+      {card ? (
+        <MessageArrival isNew={isNew}>
+          <LinkPreviewCard
+            card={card}
+            target={target}
+            mono={mono}
+            align="start"
+            onLongPress={press.onLongPress}
+            accessibilityActions={press.accessibilityActions}
+            onAccessibilityAction={press.onAccessibilityAction}
+          />
+        </MessageArrival>
+      ) : null}
+    </View>
   );
 }
 

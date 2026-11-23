@@ -8,7 +8,7 @@ import type {
 } from "@tangow/contracts";
 import { SessionId, toThreadEntry } from "@tangow/contracts";
 import { appendedEntries, visibleEntries } from "@tangow/core";
-import { hiddenPeerRunIds, type Prisma, type PrismaClient } from "@tangow/db";
+import { hiddenPeerRunIds, loadPeerMessagePage, type Prisma, type PrismaClient } from "@tangow/db";
 
 type ThreadDb = PrismaClient | Prisma.TransactionClient;
 type PageLog = Pick<SessionLog<Prisma.TransactionClient>, "readPage" | "readAround">;
@@ -63,6 +63,20 @@ export async function loadEntryPage(
     entries: query.includePeerRuns ? entries : await withoutHiddenPeerRuns(deps.prisma, entries),
     olderCursor: olderCursor(page),
   };
+}
+
+export async function loadPeerPage(
+  prisma: ThreadDb,
+  { threadId, sessionId }: { threadId: string; sessionId: SessionId },
+  { peerBotId, before }: { peerBotId: string; before?: EntryId },
+): Promise<ThreadMessagePage> {
+  const page = await loadPeerMessagePage(prisma, {
+    sessionId,
+    peerId: peerBotId,
+    before,
+    limit: THREAD_PAGE_SIZE,
+  });
+  return { threadId, entries: page.entries.map(toThreadEntry), olderCursor: page.olderCursor };
 }
 
 /** The session's chain oldest first, what every rewind and clear left, read a page at a time. */

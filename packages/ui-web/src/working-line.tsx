@@ -60,7 +60,7 @@ export function WorkingLine({ avatar, label, startedAt, className, ...props }: W
       )}
       {...props}
     >
-      {avatar ? <span className="rk-buzz w-message shrink-0">{avatar}</span> : null}
+      {avatar ? <span className="w-message shrink-0">{avatar}</span> : null}
       {overflowing || open ? (
         <button
           type="button"

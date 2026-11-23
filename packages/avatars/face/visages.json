@@ -1,0 +1,672 @@
+{
+ "constantes": {
+  "repere": 1024,
+  "seuil_mini_px": 20,
+  "debord_paupiere": 1.1,
+  "ombre_paupiere": [
+   {
+    "largeur": 0.3,
+    "opacite": 0.07
+   },
+   {
+    "largeur": 0.2,
+    "opacite": 0.09
+   },
+   {
+    "largeur": 0.12,
+    "opacite": 0.11
+   },
+   {
+    "largeur": 0.06,
+    "opacite": 0.12
+   }
+  ],
+  "mini": {
+   "pupille": 1.4,
+   "pupille_max": 0.62,
+   "bord": 1.35,
+   "bouche": 1.8
+  },
+  "source": "outils/oeil.py (dessin), outils/nuances.py (animateur), outils/hybride.py (repères et pose)"
+ },
+ "persos": [
+  {
+   "id": "scout",
+   "hybride": "v1",
+   "defaut": "emerveille",
+   "yeux": [
+    {
+     "cote": "g",
+     "cx": 402.0,
+     "cy": 557.0,
+     "r": 93.73,
+     "pr": 38.0,
+     "gx": 0.55,
+     "gy": 0.0
+    },
+    {
+     "cote": "d",
+     "cx": 626.0,
+     "cy": 559.0,
+     "r": 91.67,
+     "pr": 38.0,
+     "gx": -0.55,
+     "gy": 0.0
+    }
+   ],
+   "ouvert": 1.0,
+   "ch": -1,
+   "bouche": {
+    "cx": 514.5,
+    "cy": 682.0,
+    "w": 112.0,
+    "t": -3.0,
+    "qx": 11.0,
+    "p": 21.5,
+    "ep": 16.0,
+    "e0": 12.0,
+    "qb": -6.0
+   },
+   "couleurs": {
+    "paupiere": "#C06977",
+    "joue": "#9C4249",
+    "lisere": "#77414A",
+    "blanc": "#E4DBCA",
+    "pupille": "#373037",
+    "creux": "#471318",
+    "reflet": "#C86271",
+    "paroi": "#8A4C56"
+   },
+   "mini": {
+    "pr": [
+     53.2,
+     53.2
+    ],
+    "bouche": {
+     "ep": 28.8,
+     "e0": 21.6
+    }
+   }
+  },
+  {
+   "id": "atlas",
+   "hybride": "v2",
+   "defaut": "content",
+   "yeux": [
+    {
+     "cote": "g",
+     "cx": 422.0,
+     "cy": 456.0,
+     "r": 77.25,
+     "pr": 31.0,
+     "gx": 0.15,
+     "gy": 0.1
+    },
+    {
+     "cote": "d",
+     "cx": 622.0,
+     "cy": 452.0,
+     "r": 80.34,
+     "pr": 31.0,
+     "gx": 0.15,
+     "gy": 0.1
+    }
+   ],
+   "ouvert": 0.5,
+   "ch": 1.8,
+   "bouche": {
+    "cx": 536.5,
+    "cy": 579.5,
+    "w": 97.0,
+    "t": -9.5,
+    "qx": 2.0,
+    "p": 15.0,
+    "ep": 12.0,
+    "e0": 9.0,
+    "qb": 22.0
+   },
+   "couleurs": {
+    "paupiere": "#878FBA",
+    "joue": "#7B7EA4",
+    "lisere": "#545973",
+    "blanc": "#DCD0BC",
+    "pupille": "#392F30",
+    "creux": "#2A2F4B",
+    "reflet": "#A7B1D9",
+    "paroi": "#616786"
+   },
+   "mini": {
+    "pr": [
+     43.4,
+     43.4
+    ],
+    "bouche": {
+     "ep": 21.6,
+     "e0": 16.2
+    }
+   }
+  },
+  {
+   "id": "ivy",
+   "hybride": "v3",
+   "defaut": "reveur",
+   "yeux": [
+    {
+     "cote": "g",
+     "cx": 398.0,
+     "cy": 431.0,
+     "r": 57.68,
+     "pr": 21.0,
+     "gx": -0.75,
+     "gy": 0.0
+    },
+    {
+     "cote": "d",
+     "cx": 520.0,
+     "cy": 442.0,
+     "r": 59.74,
+     "pr": 21.0,
+     "gx": -0.75,
+     "gy": 0.0
+    }
+   ],
+   "ouvert": 0.68,
+   "ch": 1.8,
+   "bouche": {
+    "cx": 462.5,
+    "cy": 535.2,
+    "w": 71.0,
+    "t": 2.8,
+    "qx": 13.0,
+    "p": 12.0,
+    "ep": 17.0,
+    "e0": 12.0,
+    "qb": 24.0
+   },
+   "couleurs": {
+    "paupiere": "#9EC5AB",
+    "joue": "#8CB598",
+    "lisere": "#627A6A",
+    "blanc": "#DED8C6",
+    "pupille": "#201D24",
+    "creux": "#355743",
+    "reflet": "#B5D7C1",
+    "paroi": "#728E7B"
+   },
+   "mini": {
+    "pr": [
+     29.4,
+     29.4
+    ],
+    "bouche": {
+     "ep": 30.6,
+     "e0": 21.6
+    }
+   }
+  },
+  {
+   "id": "saint-demon",
+   "hybride": "demon",
+   "defaut": "narquois",
+   "yeux": [
+    {
+     "cote": "g",
+     "cx": 400.0,
+     "cy": 557.0,
+     "r": 92.7,
+     "pr": 38.0,
+     "gx": 0.59,
+     "gy": 0.0
+    },
+    {
+     "cote": "d",
+     "cx": 626.0,
+     "cy": 555.0,
+     "r": 91.67,
+     "pr": 38.0,
+     "gx": -0.53,
+     "gy": 0.0
+    }
+   ],
+   "ouvert": 1.0,
+   "ch": -1,
+   "bouche": {
+    "cx": 514.5,
+    "cy": 682.5,
+    "w": 111.0,
+    "t": -3.0,
+    "qx": 11.0,
+    "p": 21.5,
+    "ep": 14.0,
+    "e0": 12.0,
+    "qb": 2.0
+   },
+   "couleurs": {
+    "paupiere": "#B96777",
+    "joue": "#94454A",
+    "lisere": "#73404A",
+    "blanc": "#E1D9CC",
+    "pupille": "#37303A",
+    "creux": "#4B141D",
+    "reflet": "#C36473",
+    "paroi": "#854A56"
+   },
+   "mini": {
+    "pr": [
+     53.2,
+     53.2
+    ],
+    "bouche": {
+     "ep": 25.2,
+     "e0": 21.6
+    }
+   }
+  },
+  {
+   "id": "sorciere",
+   "hybride": "sorciere",
+   "defaut": "hautain",
+   "yeux": [
+    {
+     "cote": "g",
+     "cx": 414.0,
+     "cy": 603.0,
+     "r": 80.34,
+     "pr": 33.0,
+     "gx": 0.57,
+     "gy": 0.0
+    },
+    {
+     "cote": "d",
+     "cx": 611.0,
+     "cy": 602.0,
+     "r": 80.34,
+     "pr": 33.0,
+     "gx": -0.54,
+     "gy": 0.0
+    }
+   ],
+   "ouvert": 1.0,
+   "ch": -1,
+   "bouche": {
+    "cx": 513.5,
+    "cy": 713.0,
+    "w": 98.0,
+    "t": -2.0,
+    "qx": 9.0,
+    "p": 19.0,
+    "ep": 11.5,
+    "e0": 9.0,
+    "qb": 4.0
+   },
+   "couleurs": {
+    "paupiere": "#B96173",
+    "joue": "#99464C",
+    "lisere": "#733C47",
+    "blanc": "#E1D9CA",
+    "pupille": "#38313A",
+    "creux": "#4A121B",
+    "reflet": "#C76475",
+    "paroi": "#854653"
+   },
+   "mini": {
+    "pr": [
+     46.2,
+     46.2
+    ],
+    "bouche": {
+     "ep": 20.7,
+     "e0": 16.2
+    }
+   }
+  },
+  {
+   "id": "roi",
+   "hybride": "roi",
+   "defaut": "hautain",
+   "yeux": [
+    {
+     "cote": "g",
+     "cx": 400.0,
+     "cy": 557.0,
+     "r": 92.7,
+     "pr": 38.0,
+     "gx": 0.59,
+     "gy": 0.0
+    },
+    {
+     "cote": "d",
+     "cx": 626.0,
+     "cy": 555.0,
+     "r": 91.67,
+     "pr": 38.0,
+     "gx": -0.53,
+     "gy": 0.0
+    }
+   ],
+   "ouvert": 1.0,
+   "ch": -1,
+   "bouche": {
+    "cx": 514.5,
+    "cy": 682.2,
+    "w": 112.0,
+    "t": -3.2,
+    "qx": 11.0,
+    "p": 21.5,
+    "ep": 12.5,
+    "e0": 11.0,
+    "qb": 2.0
+   },
+   "couleurs": {
+    "paupiere": "#C16879",
+    "joue": "#97424A",
+    "lisere": "#78404B",
+    "blanc": "#E1D9CB",
+    "pupille": "#39303A",
+    "creux": "#4A131C",
+    "reflet": "#C66476",
+    "paroi": "#8B4B57"
+   },
+   "mini": {
+    "pr": [
+     53.2,
+     53.2
+    ],
+    "bouche": {
+     "ep": 22.5,
+     "e0": 19.8
+    }
+   }
+  },
+  {
+   "id": "mariachi",
+   "hybride": "mariachi",
+   "defaut": "perplexe",
+   "yeux": [
+    {
+     "cote": "g",
+     "cx": 429.0,
+     "cy": 465.0,
+     "r": 70.04,
+     "pr": 29.0,
+     "gx": -0.16,
+     "gy": -0.16
+    },
+    {
+     "cote": "d",
+     "cx": 596.0,
+     "cy": 461.0,
+     "r": 71.07,
+     "pr": 29.0,
+     "gx": 0.02,
+     "gy": -0.11
+    }
+   ],
+   "ouvert": 0.54,
+   "ch": 0,
+   "bouche": {
+    "cx": 536.0,
+    "cy": 581.0,
+    "w": 92.0,
+    "t": -10.0,
+    "qx": 8.0,
+    "p": 13.0,
+    "ep": 7.5,
+    "e0": 5.0,
+    "qb": 14.0
+   },
+   "couleurs": {
+    "paupiere": "#7C7E9D",
+    "joue": "#7A7EA3",
+    "lisere": "#4D4E61",
+    "blanc": "#DCD2C2",
+    "pupille": "#342C2F",
+    "creux": "#2D3047",
+    "reflet": "#A1A8D2",
+    "paroi": "#595B71"
+   },
+   "mini": {
+    "pr": [
+     40.6,
+     40.6
+    ],
+    "bouche": {
+     "ep": 13.5,
+     "e0": 9.0
+    }
+   }
+  },
+  {
+   "id": "viking",
+   "hybride": "viking",
+   "defaut": "content",
+   "yeux": [
+    {
+     "cote": "g",
+     "cx": 432.0,
+     "cy": 504.0,
+     "r": 62.83,
+     "pr": 30.0,
+     "gx": 0.0,
+     "gy": -0.39
+    },
+    {
+     "cote": "d",
+     "cx": 594.0,
+     "cy": 501.0,
+     "r": 61.8,
+     "pr": 29.0,
+     "gx": 0.0,
+     "gy": -0.35
+    }
+   ],
+   "ouvert": 0.58,
+   "ch": 1.2,
+   "bouche": {
+    "cx": 530.5,
+    "cy": 605.2,
+    "w": 87.0,
+    "t": -7.2,
+    "qx": 19.0,
+    "p": 0.0,
+    "ep": 8.0,
+    "e0": 5.0,
+    "qb": -10.0
+   },
+   "couleurs": {
+    "paupiere": "#959ABC",
+    "joue": "#8084A8",
+    "lisere": "#5C5F75",
+    "blanc": "#DACFBF",
+    "pupille": "#3B3132",
+    "creux": "#303248",
+    "reflet": "#AEB5DA",
+    "paroi": "#6B6F87"
+   },
+   "mini": {
+    "pr": [
+     38.955,
+     38.316
+    ],
+    "bouche": {
+     "ep": 14.4,
+     "e0": 9.0
+    }
+   }
+  },
+  {
+   "id": "monstre",
+   "hybride": "monstre",
+   "defaut": "panique",
+   "yeux": [
+    {
+     "cote": "g",
+     "cx": 409.0,
+     "cy": 434.0,
+     "r": 55.62,
+     "pr": 20.0,
+     "gx": -1.25,
+     "gy": -0.14
+    },
+    {
+     "cote": "d",
+     "cx": 532.0,
+     "cy": 443.0,
+     "r": 56.65,
+     "pr": 20.0,
+     "gx": -1.17,
+     "gy": -0.14
+    }
+   ],
+   "ouvert": 0.69,
+   "ch": 1.8,
+   "bouche": {
+    "cx": 473.0,
+    "cy": 535.2,
+    "w": 71.0,
+    "t": 1.8,
+    "qx": 17.0,
+    "p": 12.0,
+    "ep": 12.5,
+    "e0": 10.0,
+    "qb": 12.0
+   },
+   "couleurs": {
+    "paupiere": "#9FC4AE",
+    "joue": "#89B095",
+    "lisere": "#637A6C",
+    "blanc": "#DAD2C2",
+    "pupille": "#201D24",
+    "creux": "#3B5847",
+    "reflet": "#B5D8C2",
+    "paroi": "#728D7D"
+   },
+   "mini": {
+    "pr": [
+     28.0,
+     28.0
+    ],
+    "bouche": {
+     "ep": 22.5,
+     "e0": 18.0
+    }
+   }
+  },
+  {
+   "id": "toutankit",
+   "hybride": "toutankit",
+   "defaut": "serein",
+   "yeux": [
+    {
+     "cote": "g",
+     "cx": 438.0,
+     "cy": 436.0,
+     "r": 60.77,
+     "pr": 20.0,
+     "gx": -0.71,
+     "gy": 0.08
+    },
+    {
+     "cote": "d",
+     "cx": 577.0,
+     "cy": 442.0,
+     "r": 61.8,
+     "pr": 20.0,
+     "gx": -0.66,
+     "gy": 0.03
+    }
+   ],
+   "ouvert": 0.71,
+   "ch": 1.8,
+   "bouche": {
+    "cx": 507.5,
+    "cy": 539.0,
+    "w": 81.0,
+    "t": 0.5,
+    "qx": 9.0,
+    "p": 12.5,
+    "ep": 12.0,
+    "e0": 10.0,
+    "qb": 4.0
+   },
+   "couleurs": {
+    "paupiere": "#8FB9A3",
+    "joue": "#7DA385",
+    "lisere": "#597365",
+    "blanc": "#D4C6B1",
+    "pupille": "#201D24",
+    "creux": "#375241",
+    "reflet": "#A7CFB7",
+    "paroi": "#678575"
+   },
+   "mini": {
+    "pr": [
+     28.0,
+     28.0
+    ],
+    "bouche": {
+     "ep": 21.6,
+     "e0": 18.0
+    }
+   }
+  },
+  {
+   "id": "docteur-disquette",
+   "hybride": "docteur",
+   "defaut": "meprisant",
+   "yeux": [
+    {
+     "cote": "g",
+     "cx": 413.0,
+     "cy": 494.0,
+     "r": 49.44,
+     "pr": 17.0,
+     "gx": -0.95,
+     "gy": -0.1
+    },
+    {
+     "cote": "d",
+     "cx": 522.0,
+     "cy": 501.0,
+     "r": 52.53,
+     "pr": 17.0,
+     "gx": -0.85,
+     "gy": -0.04
+    }
+   ],
+   "ouvert": 0.73,
+   "ch": 1.8,
+   "bouche": {
+    "cx": 469.5,
+    "cy": 584.0,
+    "w": 62.0,
+    "t": 2.5,
+    "qx": 16.0,
+    "p": 10.0,
+    "ep": 11.5,
+    "e0": 8.0,
+    "qb": 10.0
+   },
+   "couleurs": {
+    "paupiere": "#99C2AE",
+    "joue": "#8BB299",
+    "lisere": "#5F786C",
+    "blanc": "#DACEBD",
+    "pupille": "#201D24",
+    "creux": "#426251",
+    "reflet": "#AED6C1",
+    "paroi": "#6E8C7D"
+   },
+   "mini": {
+    "pr": [
+     23.8,
+     23.8
+    ],
+    "bouche": {
+     "ep": 20.7,
+     "e0": 14.4
+    }
+   }
+  }
+ ]
+}

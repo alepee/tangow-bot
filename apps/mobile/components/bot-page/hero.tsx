@@ -37,7 +37,7 @@ export function BotHero({
         onPress={onAppearance}
         hitSlop={8}
       >
-        <BotAvatar character={character.value} size={88} status={bot.status} />
+        <BotAvatar character={character.value} size={88} status={bot.status} live />
       </Pressable>
       <HeroText
         field={name}

@@ -2094,6 +2094,72 @@ describe("sendThreadMessage", () => {
     expect(sentMessages()[0]!.payload.replyTo).toEqual({ entryId: "parent" });
   });
 
+  it("accepts a quote excerpt that matches a routine's result", async () => {
+    const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([]),
+      thread: { findUniqueOrThrow: vi.fn().mockResolvedValue(THREAD) },
+      sessionEntry: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "routine-start",
+          sessionId: "session-1",
+          runId: "run-routine",
+          payload: {},
+        }),
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: "routine-end",
+            sessionId: "session-1",
+            seq: 2,
+            parentId: "routine-start",
+            type: "routine.finished",
+            payload: {
+              status: "completed",
+              usage: { inputTokens: 10, outputTokens: 2 },
+              result: "Two meetings today, then a long review.",
+            },
+            botId: "bot-1",
+            runId: "run-routine",
+            createdAt: new Date("2026-10-01T09:00:00.000Z"),
+          },
+        ]),
+      },
+      run: {
+        findMany: vi.fn().mockResolvedValue([]),
+        findUnique: vi.fn().mockResolvedValue({ status: "queued", startedAt: null }),
+        create: vi.fn().mockResolvedValue({ id: "run-1", taskId: "task-1", status: "queued" }),
+      },
+      task: { create: vi.fn().mockResolvedValue({ id: "task-1" }) },
+      steeringMessage: { create: vi.fn() },
+    };
+    const prisma = {
+      $queryRaw: vi.fn().mockResolvedValue([]),
+      $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+    } as unknown as PrismaClient;
+    const actor = { spaceId: "workspace-1", userId: "user-1" } as Actor;
+    const target = { kind: "bot", botId: "bot-1", threadId: "thread-1" } as ThreadTarget;
+
+    await sendThreadMessage(
+      {
+        prisma,
+        events: { notify: vi.fn().mockResolvedValue(undefined) } as never,
+        jobs: { enqueue: vi.fn().mockResolvedValue(undefined) } as never,
+      },
+      actor,
+      target,
+      {
+        text: "which ones?",
+        replyToMessageId: "routine-start",
+        replyQuote: "a long review",
+        clientNonce: "nonce-1",
+      },
+    );
+
+    expect(sentMessages()[0]!.payload.replyTo).toEqual({
+      entryId: "routine-start",
+      quote: "a long review",
+    });
+  });
+
   it("accepts a quote excerpt that matches formatted parent text", async () => {
     const tx = {
       $queryRaw: vi.fn().mockResolvedValue([]),

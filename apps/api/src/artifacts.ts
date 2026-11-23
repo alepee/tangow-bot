@@ -258,8 +258,16 @@ export function buildSendPrompt(
   text: string | undefined,
   artifacts: Array<{ name: string; mimeType: string; size: number }>,
   connectorNames: string[] = [],
+  groupNames: string[] = [],
 ) {
-  const prompt = promptTextForAttachments(text, artifacts);
+  const prompt = withConnectorLine(promptTextForAttachments(text, artifacts), connectorNames);
+  if (groupNames.length === 0) return prompt;
+  const line = `Mentioned groups: ${groupNames.join(", ")}.`;
+  return prompt ? `${prompt}\n\n${line}` : line;
+}
+
+/** Merges the connector names into the line a client may already have written. */
+function withConnectorLine(prompt: string, connectorNames: string[]) {
   if (connectorNames.length === 0) return prompt;
   const marker = "Use these connectors if relevant:";
   const existing = new RegExp(`^${marker} (.*)\\.$`, "m").exec(prompt);

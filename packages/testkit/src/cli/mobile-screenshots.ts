@@ -15,9 +15,11 @@ import {
 import type { EntryId, MessageBlock, SessionEntry, SessionId } from "@tangow/contracts";
 import { messageBlockForArtifact } from "@tangow/core";
 import {
+  appendRunFinishedInTransaction,
   appendSessionEntryInTransaction,
   createBotMessageInTransaction,
   createThreadMessage,
+  openRoutineSessionInTransaction,
   type PrismaClient,
 } from "@tangow/db";
 import { sessionCookieHeader } from "../index.js";
@@ -74,6 +76,7 @@ async function main() {
     port: API_PORT,
   });
   const deviceControl = startDeviceControlServer();
+  disableIosPasswordSaving();
 
   try {
     await waitForHealth(`${HOST_API_URL}/health`, 15_000);
@@ -136,6 +139,20 @@ async function main() {
   }
 }
 
+/**
+ * iOS offers to save the fixture password after sign-in, in an alert Maestro often cannot see,
+ * so its "Not Now" tap went through to the inbox. Without a booted simulator this is an Android run.
+ */
+function disableIosPasswordSaving() {
+  if (process.platform !== "darwin") return;
+  const setting = ["com.apple.WebUI", "AutoFillPasswords", "-bool", "NO"];
+  try {
+    execFileSync("xcrun", ["simctl", "spawn", "booted", "defaults", "write", ...setting], {
+      stdio: "ignore",
+    });
+  } catch {}
+}
+
 /** Maestro host-side helper: expand the Android shade without flaky status-bar swipes. */
 function startDeviceControlServer(): Server {
   const server = createServer((req, res) => {
@@ -185,6 +202,13 @@ function configureEnvironment() {
 
 async function seedFixture(app: App, prisma: PrismaClient) {
   const cookie = await signup(app);
+  // A connected model, so the models screen can switch from Auto to a fixed model.
+  await rpc(app, cookie, "models/connect", {
+    provider: "scripted",
+    apiKey: "fake-scripted-key",
+    modelId: "scripted",
+    label: "Scripted",
+  });
   const researcher = await rpc<{ id: string }>(app, cookie, "bots/create", {
     name: "Researcher",
     title: "Product research",
@@ -192,6 +216,8 @@ async function seedFixture(app: App, prisma: PrismaClient) {
     instructions: "Find evidence and summarize it clearly.",
     notifyOnFinish: true,
   });
+  // Up already: on iOS, booting it from a link opened over the avatar sheet leaves its screen blank.
+  await rpc(app, cookie, "computer/boot", { botId: researcher.id });
   await prisma.volumeSkill.create({
     data: {
       botId: researcher.id,
@@ -248,6 +274,7 @@ async function seedFixture(app: App, prisma: PrismaClient) {
     ask: { text: "Which checklist should I use?", answer: "The launch checklist." },
     reply: "The fixture workspace is ready.",
   });
+  await seedRoutineResult(prisma, botThread, researcher.id, routine.id);
   const supportThread = await prisma.thread.findUniqueOrThrow({ where: { botId: support.id } });
   await seedFailedRun(prisma, supportThread, support.id);
   const sharing = await seedSharedBots(app, cookie, prisma, writer.id);
@@ -322,6 +349,70 @@ async function seedFailedRun(prisma: PrismaClient, thread: FixtureThread, botId:
       startedAt: new Date(Date.now() - 2_000),
       completedAt: new Date(),
     },
+  });
+}
+
+/** A completed run of "Weekly fixture review", its final words shown in the bot's thread. */
+async function seedRoutineResult(
+  prisma: PrismaClient,
+  thread: FixtureThread,
+  botId: string,
+  routineId: string,
+) {
+  const task = await prisma.task.create({
+    data: {
+      spaceId: thread.spaceId,
+      userId: thread.userId,
+      botId,
+      threadId: thread.id,
+      prompt: "Review the fixture launch notes and summarize the open questions.",
+      status: "completed",
+    },
+  });
+  const run = await prisma.run.create({
+    data: {
+      spaceId: thread.spaceId,
+      userId: thread.userId,
+      botId,
+      threadId: thread.id,
+      taskId: task.id,
+      routineId,
+      status: "completed",
+      trigger: "routine",
+      modelProvider: "scripted",
+      modelId: "scripted",
+      startedAt: new Date(Date.now() - 2_000),
+      completedAt: new Date(),
+    },
+  });
+  const model = { provider: "scripted", id: "scripted" };
+  const started = {
+    routineId,
+    name: "Weekly fixture review",
+    scheduledAt: new Date().toISOString(),
+  };
+  await prisma.$transaction(async (tx) => {
+    const sessionId = await openRoutineSessionInTransaction(
+      tx,
+      { id: run.id, spaceId: thread.spaceId, threadId: thread.id, botId },
+      { ...started, trigger: "routine", model, notify: true },
+    );
+    await appendSessionEntryInTransaction(tx, {
+      type: "run.started",
+      sessionId,
+      botId,
+      runId: run.id,
+      payload: { trigger: { kind: "routine", ...started }, model, effort: null },
+    });
+    await appendRunFinishedInTransaction(
+      tx,
+      run.id,
+      { status: "completed" },
+      {
+        usage: { inputTokens: 1520, outputTokens: 96 },
+        result: "Two open questions remain on the fixture launch.",
+      },
+    );
   });
 }
 

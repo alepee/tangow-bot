@@ -834,6 +834,7 @@ describe("projectThreadView rows", () => {
       item: { kind: "routine", links: [card, mention] },
       routine: { kind: "message", text: "https://a.test/post and https://b.test/doc" },
       previewMessageId: "rl-1",
+      messageId: "rl-0",
     });
     const removal = { type: "link.preview.removed", payload: { target: "rl-2" } };
     const removed = row(linkEntries("rl", [...bodies, removal]));
@@ -905,6 +906,7 @@ describe("projectThreadView rows", () => {
         ...alone,
         routine: { kind: "message", text: "Invoice due Thursday." },
         marker: { at: at(3), withTime: true },
+        messageId: "rtn-2",
       },
       {
         item: {

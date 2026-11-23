@@ -64,16 +64,16 @@ const HERO_VIEWPORTS = [
 
 for (const theme of ["light", "dark"] as const) {
   for (const viewport of HERO_VIEWPORTS) {
-    test(`the hero shows the clay character and its picker, ${viewport.name}, ${theme}`, async ({
+    test(`the hero shows the clay character alive and its picker, ${viewport.name}, ${theme}`, async ({
       page,
     }, testInfo) => {
       if (viewport.size) await page.setViewportSize(viewport.size);
+      // Still, so the capture shows the face at rest, as the still image draws it.
+      await page.emulateMedia({ reducedMotion: "reduce" });
       await page.goto(`${FIXTURE}?tab=settings&theme=${theme}`);
-      const avatar = page.getByTestId("bot-appearance-trigger").locator("img");
-      await expect(avatar).toBeVisible();
-      await expect
-        .poll(() => avatar.evaluate((image: HTMLImageElement) => image.naturalWidth))
-        .toBeGreaterThan(0);
+      await expect(
+        page.getByTestId("bot-appearance-trigger").locator(".tangow-clay-face"),
+      ).toBeVisible();
       await captureScreenshot(page, testInfo, `bot-page-hero-${viewport.name}-${theme}`);
 
       await page.getByTestId("bot-appearance-trigger").click();

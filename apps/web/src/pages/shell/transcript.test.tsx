@@ -354,6 +354,72 @@ describe("the transcript", () => {
     ]);
   });
 
+  it("gives a routine's result the hover pill of a bot message, and quotes it under a reply", async () => {
+    const onReply = vi.fn();
+    const entry = (seq: number, body: object) =>
+      SessionEntrySchema.parse({
+        id: `rt-0${seq}`,
+        sessionId: "ses_streamed",
+        seq,
+        parentId: seq === 1 ? "str-00" : `rt-0${seq - 1}`,
+        ts: `2026-10-10T09:00:0${seq}.000Z`,
+        ...body,
+      });
+    const routine = { botId: "bot_ada", runId: "run_routine" };
+    await renderThread(
+      [
+        ...fixture.slice(0, 1),
+        entry(1, {
+          ...routine,
+          type: "routine.started",
+          payload: {
+            sessionId: "ses_routine",
+            routineId: "rtn_brief",
+            name: "Morning brief",
+            trigger: "routine",
+            scheduledAt: "2026-10-10T07:00:00.000Z",
+            model: { provider: "openai", id: "gpt-5" },
+          },
+        }),
+        entry(2, {
+          ...routine,
+          type: "routine.finished",
+          payload: {
+            status: "completed",
+            usage: { inputTokens: 10, outputTokens: 2 },
+            result: "Two meetings today.",
+          },
+        }),
+        entry(3, {
+          type: "user.message",
+          payload: {
+            blocks: [{ kind: "text", text: "Which ones?" }],
+            replyTo: { entryId: "rt-01" },
+            source: "app",
+          },
+        }),
+      ],
+      { onReply },
+    );
+
+    const row = document.querySelector('[data-message-id="rt-01"]');
+    const pill = row?.querySelector('[data-testid="message-hover-rail"]');
+    expect(
+      [...(pill?.querySelectorAll("button") ?? [])].map((button) =>
+        button.getAttribute("aria-label"),
+      ),
+    ).toEqual(["Reply", "React", "Copy"]);
+    expect(
+      pill?.querySelector('[data-testid="message-hover-time"]')?.getAttribute("datetime"),
+    ).toBe("2026-10-10T09:00:02.000Z");
+    expect(text('[data-testid="reply-parent-preview"]')).toEqual(["Two meetings today."]);
+
+    await act(async () => pill?.querySelector<HTMLButtonElement>('[aria-label="Reply"]')?.click());
+    expect(onReply.mock.calls.map(([message]) => [message.id, message.blocks])).toEqual([
+      ["rt-01", [{ kind: "text", text: "Two meetings today." }]],
+    ]);
+  });
+
   it("draws three screenshots sent as three messages as one stack that acts on the newest", async () => {
     const onReply = vi.fn();
     const shots = ["a", "b", "c"].map((name, seq) =>

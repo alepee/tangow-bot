@@ -387,3 +387,101 @@
 .rk-linkified .rk-link-mention-glyph {
   color: inherit;
 }
+
+/* A bot, group, everyone or skill named in a message: its glyph glued to its semibold name, in
+   place in the sentence. One line box tall and bottom-aligned like a link mention, but no
+   underline and no fill, so the two never look alike. */
+.rk-entity-mention {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-mention-gap);
+  max-width: min(22ch, 100%);
+  vertical-align: bottom;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.rk-entity-mention-glyph {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--size-mention-glyph);
+  height: var(--size-mention-glyph);
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--avatar-disc);
+  color: var(--muted-foreground);
+}
+
+.rk-entity-mention-glyph[data-shape="square"] {
+  border-radius: var(--corner-link-mention);
+  background: var(--link-mention-tile);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+.rk-entity-mention-glyph[data-shape="avatar"] {
+  background: none;
+}
+
+/* A bot's face is not a markdown picture: none of `.rk-chat-markdown img`'s box. */
+.rk-entity-mention-glyph img {
+  max-width: none;
+  margin: 0;
+  border-radius: 0;
+}
+
+.rk-entity-mention-glyph > svg {
+  width: 62.5%;
+  height: 62.5%;
+}
+
+/* The person's ink bubble: a veil of its text colour, the icon in that colour. */
+.rk-entity-mention-ink .rk-entity-mention-glyph:not([data-shape="avatar"]) {
+  background: color-mix(in srgb, currentColor 16%, transparent);
+  box-shadow: none;
+  color: inherit;
+}
+
+.rk-entity-mention-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  unicode-bidi: isolate;
+}
+
+/* The composer's mirror keeps the textarea's metrics: same characters, a stroke for the weight. */
+.rk-entity-mention-field {
+  border-radius: var(--corner-link-mention);
+  -webkit-text-stroke: 0.03em currentColor;
+}
+
+.rk-entity-mention-field[data-selected] {
+  background: var(--mention-chip);
+  box-shadow: 0 0 0 2px var(--mention-chip);
+}
+
+.rk-entity-mention-prefix {
+  position: relative;
+  color: transparent;
+}
+
+/* Over the `@`, as wide as it allows; a bot's 16 px face stays centred in it, its rim clipped. */
+.rk-entity-mention-prefix > .rk-entity-mention-glyph {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(var(--size-mention-glyph), 100%);
+  height: auto;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  -webkit-text-stroke: 0;
+}
+
+/* A leading skill's `/` is too narrow: the glyph takes the field's first-line indent before it. */
+.rk-entity-mention-field[data-kind="skill"] > .rk-entity-mention-prefix > .rk-entity-mention-glyph {
+  left: auto;
+  inset-inline-end: 100%;
+  width: var(--size-mention-glyph);
+  translate: 0 -50%;
+}

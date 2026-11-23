@@ -1,5 +1,6 @@
 import { useLingui } from "@lingui/react/macro";
-import { useCallback, useLayoutEffect, useRef } from "react";
+import { preloadClayBodies } from "@tangow/ui-web";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ComputerUpdateProgress } from "../components/ComputerUpdateProgress";
 import { authClient } from "../lib/auth";
@@ -47,6 +48,7 @@ export function ShellPage() {
     onBootstrapThread: store.primeFromBootstrap,
   });
   const { bots, archivedBots, active, activeGroup, inGroup, bootstrapMe, refreshBots } = roster;
+  useEffect(() => preloadClayBodies(bots.map((bot) => bot.avatarCharacter)), [bots]);
   const overlays = useShellOverlays(session.data?.user, bootstrapMe?.spaceId);
   const sidebar = useSidebarState({ userId, roster, navigate });
   const panels = usePanels(roster);
@@ -129,7 +131,6 @@ export function ShellPage() {
     sync,
     thread,
     draft,
-    navigate,
     flushPendingBrowserNotifications: notifications.flushPendingBrowserNotifications,
     cancelFocusPromptFor,
   });
